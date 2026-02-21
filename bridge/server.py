@@ -16,6 +16,7 @@ Tools, resources, and prompts are defined in submodules:
 
 from __future__ import annotations
 
+import logging
 import os
 from contextlib import asynccontextmanager
 
@@ -31,6 +32,8 @@ from bridge.openapi_utils import create_openapi_provider
 from bridge.prompts import register_prompts
 from bridge.resources import register_resources
 from bridge.tools import register_agent_tools, register_execution_tools, register_setup_tools
+
+logger = logging.getLogger("bridge.server")
 
 # ── Lifespan ─────────────────────────────────────────────
 
@@ -55,6 +58,7 @@ async def _lifespan(server: FastMCP):
     if not org_id:
         raise ToolError("CODEGEN_ORG_ID not set.")
 
+    logger.info("Starting Codegen Bridge: org_id=%s", org_id)
     client = CodegenClient(api_key=api_key, org_id=org_id)
 
     http_client = httpx.AsyncClient(
@@ -68,11 +72,12 @@ async def _lifespan(server: FastMCP):
         provider = create_openapi_provider(http_client, org_id)
         server.add_provider(provider)
     except Exception:
-        pass  # OpenAPI provider is optional; manual tools always work
+        logger.warning("OpenAPI provider unavailable; manual tools only", exc_info=True)
 
     registry = ContextRegistry()
     repo_cache = RepoCache()
 
+    logger.info("Codegen Bridge ready")
     try:
         yield {
             "client": client,
@@ -81,6 +86,7 @@ async def _lifespan(server: FastMCP):
             "repo_cache": repo_cache,
         }
     finally:
+        logger.info("Shutting down Codegen Bridge")
         await client.close()
         await http_client.aclose()
 
