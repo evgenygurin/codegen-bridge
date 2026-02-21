@@ -6,10 +6,11 @@ import json
 from typing import Any, Literal
 
 from fastmcp import FastMCP
+from fastmcp.server.context import Context
 
 from bridge.client import CodegenClient
 from bridge.context import ContextRegistry
-from bridge.dependencies import Depends, get_client, get_registry, get_repo_cache
+from bridge.dependencies import CurrentContext, Depends, get_client, get_registry, get_repo_cache
 from bridge.helpers.repo_detection import RepoCache, detect_repo_id
 
 
@@ -25,6 +26,7 @@ def register_execution_tools(mcp: FastMCP) -> None:
         tech_stack: list[str] | None = None,
         architecture: str | None = None,
         repo_structure: str | None = None,
+        ctx: Context = CurrentContext(),
         client: CodegenClient = Depends(get_client),
         registry: ContextRegistry = Depends(get_registry),
         repo_cache: RepoCache = Depends(get_repo_cache),
@@ -43,6 +45,8 @@ def register_execution_tools(mcp: FastMCP) -> None:
             architecture: Architecture description.
             repo_structure: Repository structure overview.
         """
+        await ctx.info(f"Starting execution: id={execution_id}, mode={mode}")
+
         # Build task tuples from dicts
         task_tuples: list[tuple[str, str]] | None = None
         if tasks:
@@ -70,8 +74,8 @@ def register_execution_tools(mcp: FastMCP) -> None:
             combined = "\n\n".join(filter(None, [org_rules, user_prompt]))
             if combined:
                 kwargs["agent_rules"] = combined
-        except Exception:
-            pass  # Rules are optional enrichment
+        except Exception as exc:
+            await ctx.warning(f"Rules enrichment failed, continuing without rules: {exc}")
 
         exec_ctx = registry.start_execution(
             execution_id=execution_id,
@@ -79,6 +83,10 @@ def register_execution_tools(mcp: FastMCP) -> None:
             goal=goal,
             tasks=task_tuples,
             **kwargs,
+        )
+        await ctx.info(
+            f"Execution started: id={exec_ctx.id}, tasks={len(exec_ctx.tasks)}, "
+            f"has_rules={bool(exec_ctx.agent_rules)}"
         )
         return json.dumps(
             {
@@ -93,6 +101,7 @@ def register_execution_tools(mcp: FastMCP) -> None:
     @mcp.tool(tags={"context"})
     async def codegen_get_execution_context(
         execution_id: str | None = None,
+        ctx: Context = CurrentContext(),
         registry: ContextRegistry = Depends(get_registry),
     ) -> str:
         """Get full execution context — active or by ID.
@@ -102,15 +111,18 @@ def register_execution_tools(mcp: FastMCP) -> None:
         Args:
             execution_id: Specific execution ID. If not provided, returns the active execution.
         """
+        await ctx.info(f"Fetching execution context: id={execution_id or 'active'}")
         exec_ctx = registry.get(execution_id) if execution_id else registry.get_active()
 
         if exec_ctx is None:
+            await ctx.warning(f"No execution context found for id={execution_id or 'active'}")
             return json.dumps({"error": "No execution context found"})
 
         return exec_ctx.model_dump_json(indent=2)
 
     @mcp.tool(tags={"context"})
     async def codegen_get_agent_rules(
+        ctx: Context = CurrentContext(),
         client: CodegenClient = Depends(get_client),
     ) -> str:
         """Fetch organization agent rules from the Codegen API.
@@ -118,5 +130,7 @@ def register_execution_tools(mcp: FastMCP) -> None:
         Returns organization-level rules and user custom prompts that should
         guide agent behavior.
         """
+        await ctx.info("Fetching agent rules")
         rules = await client.get_rules()
+        await ctx.info("Agent rules fetched successfully")
         return json.dumps(rules)
