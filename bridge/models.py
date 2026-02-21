@@ -355,6 +355,26 @@ class OAuthProvider(BaseModel):
 # ── Pagination ──────────────────────────────────────────────────────
 
 
+class MCPProvider(BaseModel):
+    """MCP-enabled OAuth provider."""
+
+    id: int
+    name: str
+    issuer: str | None = None
+    authorization_endpoint: str | None = None
+    token_endpoint: str | None = None
+    default_scopes: list[str] | None = None
+    is_mcp: bool = True
+    meta: dict | None = None
+
+
+class OAuthTokenStatus(BaseModel):
+    """OAuth token status for a connected provider."""
+
+    provider: str
+    active: bool = True
+
+
 class Page[T](BaseModel):
     """Paginated response."""
 

@@ -1,4 +1,4 @@
-"""Tests for setup tools (list_orgs, list_repos, users, generate_setup_commands)."""
+"""Tests for setup tools (list_orgs, list_repos, users, generate_setup_commands, MCP providers, OAuth)."""
 
 from __future__ import annotations
 
@@ -228,3 +228,110 @@ class TestGenerateSetupCommands:
         )
         data = json.loads(result.data)
         assert data["agent_run_id"] == 100
+
+
+class TestGetMCPProviders:
+    async def test_tool_registered(self, client: Client):
+        tools = await client.list_tools()
+        names = {t.name for t in tools}
+        assert "codegen_get_mcp_providers" in names
+
+    @respx.mock
+    async def test_returns_providers(self, client: Client):
+        respx.get("https://api.codegen.com/v1/mcp-providers").mock(
+            return_value=Response(
+                200,
+                json=[
+                    {
+                        "id": 1,
+                        "name": "github",
+                        "issuer": "https://github.com",
+                        "authorization_endpoint": "https://github.com/login/oauth/authorize",
+                        "token_endpoint": "https://github.com/login/oauth/access_token",
+                        "default_scopes": ["repo", "read:org"],
+                        "is_mcp": True,
+                    },
+                    {
+                        "id": 2,
+                        "name": "linear",
+                        "issuer": "https://linear.app",
+                        "authorization_endpoint": "https://linear.app/oauth/authorize",
+                        "token_endpoint": "https://api.linear.app/oauth/token",
+                        "default_scopes": ["read"],
+                        "is_mcp": True,
+                    },
+                ],
+            )
+        )
+
+        result = await client.call_tool("codegen_get_mcp_providers", {})
+        data = json.loads(result.data)
+        assert data["total"] == 2
+        assert data["providers"][0]["name"] == "github"
+        assert data["providers"][0]["issuer"] == "https://github.com"
+        assert data["providers"][1]["name"] == "linear"
+
+
+class TestGetOAuthStatus:
+    async def test_tool_registered(self, client: Client):
+        tools = await client.list_tools()
+        names = {t.name for t in tools}
+        assert "codegen_get_oauth_status" in names
+
+    @respx.mock
+    async def test_returns_connected_providers(self, client: Client):
+        respx.get("https://api.codegen.com/v1/oauth/tokens/status").mock(
+            return_value=Response(200, json=["github", "linear"])
+        )
+
+        result = await client.call_tool("codegen_get_oauth_status", {})
+        data = json.loads(result.data)
+        assert data["total"] == 2
+        assert data["connected_providers"][0]["provider"] == "github"
+        assert data["connected_providers"][0]["active"] is True
+        assert data["connected_providers"][1]["provider"] == "linear"
+
+
+class TestRevokeOAuth:
+    async def test_tool_registered(self, client: Client):
+        tools = await client.list_tools()
+        names = {t.name for t in tools}
+        assert "codegen_revoke_oauth" in names
+
+    @respx.mock
+    async def test_revokes_token_confirmed(self, client: Client):
+        route = respx.post("https://api.codegen.com/v1/oauth/tokens/revoke").mock(
+            return_value=Response(200, json={"status": "revoked"})
+        )
+
+        result = await client.call_tool(
+            "codegen_revoke_oauth",
+            {"provider": "github", "confirmed": True},
+        )
+        data = json.loads(result.data)
+        assert data["action"] == "revoked"
+        assert data["provider"] == "github"
+        assert route.called
+
+    @respx.mock
+    async def test_revoke_proceeds_when_elicitation_unsupported(self, client: Client):
+        """When elicitation is unsupported, confirm_action defaults to True."""
+        route = respx.post("https://api.codegen.com/v1/oauth/tokens/revoke").mock(
+            return_value=Response(200, json={"status": "revoked"})
+        )
+
+        result = await client.call_tool(
+            "codegen_revoke_oauth",
+            {"provider": "slack"},
+        )
+        data = json.loads(result.data)
+        assert data["action"] == "revoked"
+        assert data["provider"] == "slack"
+        assert route.called
+
+    async def test_revoke_tagged_as_dangerous(self, client: Client):
+        tools = await client.list_tools()
+        tool = next(t for t in tools if t.name == "codegen_revoke_oauth")
+        tags = tool.meta.get("fastmcp", {}).get("tags", [])
+        assert "dangerous" in tags
+

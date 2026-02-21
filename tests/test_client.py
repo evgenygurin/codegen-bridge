@@ -201,6 +201,146 @@ class TestListRepos:
         assert repos.items[0].full_name == "org/myrepo"
 
 
+class TestGetMCPProviders:
+    @respx.mock
+    async def test_returns_providers(self):
+        respx.get("https://api.codegen.com/v1/mcp-providers").mock(
+            return_value=Response(
+                200,
+                json=[
+                    {
+                        "id": 1,
+                        "name": "github",
+                        "issuer": "https://github.com",
+                        "authorization_endpoint": "https://github.com/login/oauth/authorize",
+                        "token_endpoint": "https://github.com/login/oauth/access_token",
+                        "default_scopes": ["repo", "read:org"],
+                        "is_mcp": True,
+                        "meta": {"docs": "https://docs.github.com"},
+                    },
+                    {
+                        "id": 2,
+                        "name": "linear",
+                        "issuer": "https://linear.app",
+                        "authorization_endpoint": "https://linear.app/oauth/authorize",
+                        "token_endpoint": "https://api.linear.app/oauth/token",
+                        "default_scopes": ["read"],
+                        "is_mcp": True,
+                    },
+                ],
+            )
+        )
+
+        async with CodegenClient(api_key="test", org_id=42) as client:
+            providers = await client.get_mcp_providers()
+
+        assert len(providers) == 2
+        assert providers[0].name == "github"
+        assert providers[0].issuer == "https://github.com"
+        assert providers[0].default_scopes == ["repo", "read:org"]
+        assert providers[0].meta == {"docs": "https://docs.github.com"}
+        assert providers[1].name == "linear"
+        assert providers[1].is_mcp is True
+
+    @respx.mock
+    async def test_returns_empty_list(self):
+        respx.get("https://api.codegen.com/v1/mcp-providers").mock(
+            return_value=Response(200, json=[])
+        )
+
+        async with CodegenClient(api_key="test", org_id=42) as client:
+            providers = await client.get_mcp_providers()
+
+        assert providers == []
+
+
+class TestGetOAuthStatus:
+    @respx.mock
+    async def test_returns_connected_providers_as_strings(self):
+        respx.get("https://api.codegen.com/v1/oauth/tokens/status").mock(
+            return_value=Response(200, json=["github", "linear"])
+        )
+
+        async with CodegenClient(api_key="test", org_id=42) as client:
+            statuses = await client.get_oauth_status()
+
+        assert len(statuses) == 2
+        assert statuses[0].provider == "github"
+        assert statuses[0].active is True
+        assert statuses[1].provider == "linear"
+
+    @respx.mock
+    async def test_returns_connected_providers_as_dicts(self):
+        respx.get("https://api.codegen.com/v1/oauth/tokens/status").mock(
+            return_value=Response(
+                200,
+                json=[
+                    {"provider": "github", "active": True},
+                    {"provider": "slack", "active": False},
+                ],
+            )
+        )
+
+        async with CodegenClient(api_key="test", org_id=42) as client:
+            statuses = await client.get_oauth_status()
+
+        assert len(statuses) == 2
+        assert statuses[0].provider == "github"
+        assert statuses[0].active is True
+        assert statuses[1].provider == "slack"
+        assert statuses[1].active is False
+
+    @respx.mock
+    async def test_passes_org_id_query_param(self):
+        route = respx.get("https://api.codegen.com/v1/oauth/tokens/status").mock(
+            return_value=Response(200, json=[])
+        )
+
+        async with CodegenClient(api_key="test", org_id=42) as client:
+            await client.get_oauth_status()
+
+        assert route.called
+        assert route.calls[0].request.url.params["org_id"] == "42"
+
+    @respx.mock
+    async def test_returns_empty_list(self):
+        respx.get("https://api.codegen.com/v1/oauth/tokens/status").mock(
+            return_value=Response(200, json=[])
+        )
+
+        async with CodegenClient(api_key="test", org_id=42) as client:
+            statuses = await client.get_oauth_status()
+
+        assert statuses == []
+
+
+class TestRevokeOAuth:
+    @respx.mock
+    async def test_revokes_token(self):
+        route = respx.post("https://api.codegen.com/v1/oauth/tokens/revoke").mock(
+            return_value=Response(200, json={"status": "revoked"})
+        )
+
+        async with CodegenClient(api_key="test", org_id=42) as client:
+            await client.revoke_oauth("github")
+
+        assert route.called
+        assert route.calls[0].request.url.params["provider"] == "github"
+        assert route.calls[0].request.url.params["org_id"] == "42"
+
+    @respx.mock
+    async def test_raises_on_error(self):
+        import httpx as _httpx
+
+        respx.post("https://api.codegen.com/v1/oauth/tokens/revoke").mock(
+            return_value=Response(422, json={"detail": "Invalid provider"})
+        )
+
+        async with CodegenClient(api_key="test", org_id=42) as client:
+            with pytest.raises(_httpx.HTTPStatusError):
+                await client.revoke_oauth("nonexistent")
+
+
 class TestGetRules:
     @respx.mock
     async def test_gets_org_rules(self):
