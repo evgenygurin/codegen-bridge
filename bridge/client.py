@@ -12,6 +12,7 @@ from bridge.models import (
     Organization,
     Page,
     Repository,
+    User,
 )
 
 BASE_URL = "https://api.codegen.com/v1"
@@ -140,6 +141,29 @@ class CodegenClient:
         body: dict[str, Any] = {"agent_run_id": run_id}
         resp = await self._post(f"/organizations/{self.org_id}/agent/run/ban", json=body)
         return AgentRun.model_validate(resp)
+
+    # ── Users ──────────────────────────────────────────────
+
+    async def get_current_user(self) -> User:
+        """Get current user from API token."""
+        resp = await self._get("/users/me")
+        return User.model_validate(resp)
+
+    async def list_users(
+        self,
+        *,
+        skip: int = 0,
+        limit: int = 100,
+    ) -> Page[User]:
+        """List users in the organization."""
+        params: dict[str, Any] = {"skip": skip, "limit": limit}
+        resp = await self._get(f"/organizations/{self.org_id}/users", params=params)
+        return Page[User].model_validate(resp)
+
+    async def get_user(self, user_id: int) -> User:
+        """Get user by ID."""
+        resp = await self._get(f"/organizations/{self.org_id}/users/{user_id}")
+        return User.model_validate(resp)
 
     # ── Organizations & Repos ───────────────────────────────
 

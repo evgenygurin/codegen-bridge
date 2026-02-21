@@ -1,4 +1,4 @@
-"""Organization and repository setup tools."""
+"""Organization, repository, and user setup tools."""
 
 from __future__ import annotations
 
@@ -14,11 +14,90 @@ from bridge.helpers.pagination import (
     build_paginated_response,
     cursor_to_offset,
 )
-from bridge.icons import ICON_ORG, ICON_REPO
+from bridge.icons import ICON_ORG, ICON_REPO, ICON_USER, ICON_USERS
+
+
+def _user_to_dict(user) -> dict:
+    """Serialize a User model to a dict for JSON responses."""
+    return {
+        "id": user.id,
+        "github_user_id": user.github_user_id,
+        "github_username": user.github_username,
+        "email": user.email,
+        "avatar_url": user.avatar_url,
+        "full_name": user.full_name,
+        "role": user.role,
+        "is_admin": user.is_admin,
+    }
 
 
 def register_setup_tools(mcp: FastMCP) -> None:
     """Register all setup tools on the given FastMCP server."""
+
+    # ── Users ──────────────────────────────────────────────
+
+    @mcp.tool(tags={"setup"}, icons=ICON_USER)
+    async def codegen_get_current_user(
+        ctx: Context = CurrentContext(),
+        client: CodegenClient = Depends(get_client),
+    ) -> str:
+        """Get current user information from the API token.
+
+        Returns the profile of the authenticated user, including
+        GitHub username, email, role, and avatar URL.
+        """
+        await ctx.info("Fetching current user")
+        user = await client.get_current_user()
+        await ctx.info(f"Current user: {user.github_username}")
+        return json.dumps({"user": _user_to_dict(user)})
+
+    @mcp.tool(tags={"setup"}, icons=ICON_USERS)
+    async def codegen_list_users(
+        limit: int = DEFAULT_PAGE_SIZE,
+        cursor: str | None = None,
+        ctx: Context = CurrentContext(),
+        client: CodegenClient = Depends(get_client),
+    ) -> str:
+        """List users in the configured Codegen organization.
+
+        Supports cursor-based pagination for large user lists.
+
+        Args:
+            limit: Maximum users per page (default 20).
+            cursor: Opaque cursor from a previous response's ``next_cursor``
+                field.  Omit or pass ``null`` for the first page.
+        """
+        offset = cursor_to_offset(cursor)
+        await ctx.info(f"Listing users: limit={limit}, offset={offset}")
+        page = await client.list_users(skip=offset, limit=limit)
+        await ctx.info(f"Listed {len(page.items)} of {page.total} users")
+        return json.dumps(
+            build_paginated_response(
+                items=[_user_to_dict(u) for u in page.items],
+                total=page.total,
+                offset=offset,
+                page_size=limit,
+                items_key="users",
+            )
+        )
+
+    @mcp.tool(tags={"setup"}, icons=ICON_USER)
+    async def codegen_get_user(
+        user_id: int,
+        ctx: Context = CurrentContext(),
+        client: CodegenClient = Depends(get_client),
+    ) -> str:
+        """Get details for a specific user in the organization.
+
+        Args:
+            user_id: Unique user ID.
+        """
+        await ctx.info(f"Fetching user {user_id}")
+        user = await client.get_user(user_id)
+        await ctx.info(f"Found user: {user.github_username}")
+        return json.dumps({"user": _user_to_dict(user)})
+
+    # ── Organizations ──────────────────────────────────────
 
     @mcp.tool(tags={"setup"}, icons=ICON_ORG)
     async def codegen_list_orgs(

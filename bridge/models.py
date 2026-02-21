@@ -50,6 +50,19 @@ class AgentRunWithLogs(BaseModel):
     total_logs: int = 0
 
 
+class User(BaseModel):
+    """Codegen user profile."""
+
+    id: int
+    github_user_id: str
+    github_username: str
+    email: str | None = None
+    avatar_url: str | None = None
+    full_name: str | None = None
+    role: str | None = None
+    is_admin: bool | None = None
+
+
 class Organization(BaseModel):
     """Codegen organization."""
 
