@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel
 
 
@@ -76,3 +78,19 @@ class Page[T](BaseModel):
     page: int = 1
     size: int = 100
     pages: int = 1
+
+
+# ── Pull Requests ──────────────────────────────────────────
+
+PRState = Literal["open", "closed", "draft", "ready_for_review"]
+
+
+class EditPRResponse(BaseModel):
+    """Response from editing PR properties."""
+
+    success: bool
+    url: str | None = None
+    number: int | None = None
+    title: str | None = None
+    state: str | None = None
+    error: str | None = None
