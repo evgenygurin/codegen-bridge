@@ -6,7 +6,7 @@ from typing import Any
 
 import httpx
 
-from bridge.types import (
+from bridge.models import (
     AgentRun,
     AgentRunWithLogs,
     Organization,
