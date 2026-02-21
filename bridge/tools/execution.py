@@ -78,7 +78,7 @@ def register_execution_tools(mcp: FastMCP) -> None:
         except Exception as exc:
             await ctx.warning(f"Rules enrichment failed, continuing without rules: {exc}")
 
-        exec_ctx = registry.start_execution(
+        exec_ctx = await registry.start_execution(
             execution_id=execution_id,
             mode=mode,
             goal=goal,
@@ -113,7 +113,10 @@ def register_execution_tools(mcp: FastMCP) -> None:
             execution_id: Specific execution ID. If not provided, returns the active execution.
         """
         await ctx.info(f"Fetching execution context: id={execution_id or 'active'}")
-        exec_ctx = registry.get(execution_id) if execution_id else registry.get_active()
+        if execution_id:
+            exec_ctx = await registry.get(execution_id)
+        else:
+            exec_ctx = await registry.get_active()
 
         if exec_ctx is None:
             await ctx.warning(f"No execution context found for id={execution_id or 'active'}")

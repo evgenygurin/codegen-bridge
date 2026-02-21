@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from pathlib import Path
 from typing import Literal
 
 from pydantic import BaseModel, Field
+
+from bridge.storage import MemoryStorage, StorageBackend
 
 
 class PRInfo(BaseModel):
@@ -89,16 +90,30 @@ class ExecutionContext(BaseModel):
 
 
 class ContextRegistry:
-    """Manages execution contexts with file-based persistence."""
+    """Manages execution contexts with pluggable storage backends.
 
-    def __init__(self, storage_dir: Path | None = None) -> None:
-        if storage_dir is None:
-            storage_dir = Path(".codegen-bridge") / "executions"
-        self._storage_dir = storage_dir
-        self._storage_dir.mkdir(parents=True, exist_ok=True)
+    Uses a ``StorageBackend`` (Strategy pattern) for persistence and keeps
+    an in-memory write-through cache for fast lookups.  All public mutating
+    methods are ``async`` because the underlying storage may perform I/O.
+
+    The default backend is ``MemoryStorage`` — swap to ``FileStorage`` for
+    persistence across restarts.
+    """
+
+    def __init__(self, storage: StorageBackend | None = None) -> None:
+        self._storage: StorageBackend = storage or MemoryStorage()
         self._cache: dict[str, ExecutionContext] = {}
 
-    def start_execution(
+    async def setup(self) -> None:
+        """Initialise the storage backend and warm the in-memory cache."""
+        await self._storage.setup()
+        # Warm cache from any data already in the store.
+        for key in await self._storage.keys():
+            data = await self._storage.get(key)
+            if data is not None:
+                self._cache[key] = ExecutionContext.model_validate(data)
+
+    async def start_execution(
         self,
         *,
         execution_id: str,
@@ -123,28 +138,31 @@ class ContextRegistry:
             status="active",
             **kwargs,
         )
-        self._cache[execution_id] = ctx
-        self._save(ctx)
+        await self._save(ctx)
         return ctx
 
-    def get(self, execution_id: str) -> ExecutionContext | None:
-        """Retrieve an execution context by ID (cache first, then disk)."""
+    async def get(self, execution_id: str) -> ExecutionContext | None:
+        """Retrieve an execution context by ID (cache first, then store)."""
         if execution_id in self._cache:
             return self._cache[execution_id]
-        return self._load(execution_id)
+        return await self._load(execution_id)
 
-    def get_active(self) -> ExecutionContext | None:
-        """Find the first active execution context (cache then disk scan)."""
+    async def get_active(self) -> ExecutionContext | None:
+        """Find the first active execution context (cache then store scan)."""
+        # Check cache first
         for ctx in self._cache.values():
             if ctx.status == "active":
                 return ctx
-        for f in self._storage_dir.glob("*.json"):
-            ctx = self._load(f.stem)
+        # Fall back to scanning the store
+        for key in await self._storage.keys():
+            if key in self._cache:
+                continue  # Already checked above
+            ctx = await self._load(key)
             if ctx and ctx.status == "active":
                 return ctx
         return None
 
-    def update_task(
+    async def update_task(
         self,
         *,
         execution_id: str,
@@ -154,7 +172,7 @@ class ContextRegistry:
         report: TaskReport | None = None,
     ) -> None:
         """Update a task's status, run_id, or report within an execution."""
-        ctx = self.get(execution_id)
+        ctx = await self.get(execution_id)
         if ctx is None or task_index >= len(ctx.tasks):
             return
         task = ctx.tasks[task_index]
@@ -164,19 +182,18 @@ class ContextRegistry:
             task.run_id = run_id
         if report is not None:
             task.report = report
-        self._save(ctx)
+        await self._save(ctx)
 
-    def _save(self, ctx: ExecutionContext) -> None:
-        """Persist an execution context to cache and disk."""
+    async def _save(self, ctx: ExecutionContext) -> None:
+        """Persist an execution context to cache and store."""
         self._cache[ctx.id] = ctx
-        path = self._storage_dir / f"{ctx.id}.json"
-        path.write_text(ctx.model_dump_json(indent=2))
+        await self._storage.put(ctx.id, ctx.model_dump(mode="json"))
 
-    def _load(self, execution_id: str) -> ExecutionContext | None:
-        """Load an execution context from disk into cache."""
-        path = self._storage_dir / f"{execution_id}.json"
-        if not path.exists():
+    async def _load(self, execution_id: str) -> ExecutionContext | None:
+        """Load an execution context from the store into cache."""
+        data = await self._storage.get(execution_id)
+        if data is None:
             return None
-        ctx = ExecutionContext.model_validate_json(path.read_text())
+        ctx = ExecutionContext.model_validate(data)
         self._cache[execution_id] = ctx
         return ctx
