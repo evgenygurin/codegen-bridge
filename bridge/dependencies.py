@@ -1,44 +1,48 @@
-"""Dependency injection helpers for MCP tools.
+"""Dependency injection providers for MCP tools.
 
-Provides access to CodegenClient and ContextRegistry from either
-the FastMCP lifespan context or a global/lazy fallback.
+Uses FastMCP ``Depends()`` and ``CurrentContext()`` to inject
+``CodegenClient`` and ``ContextRegistry`` into tool / resource functions.
+
+Providers first try to resolve from ``lifespan_context`` (production),
+falling back to lazy initialisation from environment variables (testing).
 """
 
 from __future__ import annotations
 
 import os
 
-from fastmcp import Context
+from fastmcp.dependencies import CurrentContext, Depends
 from fastmcp.exceptions import ToolError
+from fastmcp.server.context import Context
 
 from bridge.client import CodegenClient
 from bridge.context import ContextRegistry
 
-# Global fallbacks (set during lifespan)
-_client: CodegenClient | None = None
-_registry: ContextRegistry | None = None
+__all__ = [
+    "CurrentContext",
+    "Depends",
+    "get_client",
+    "get_registry",
+]
 
 
-def set_global_client(client: CodegenClient | None) -> None:
-    """Set the global client instance (called from lifespan)."""
-    global _client
-    _client = client
+# ── DI provider functions ───────────────────────────────
 
 
-def set_global_registry(registry: ContextRegistry | None) -> None:
-    """Set the global registry instance (called from lifespan)."""
-    global _registry
-    _registry = registry
+async def get_client(ctx: Context = CurrentContext()) -> CodegenClient:
+    """Provide a ``CodegenClient`` instance.
 
-
-def get_client(ctx: Context | None = None) -> CodegenClient:
-    """Get Codegen client from lifespan context or global fallback."""
-    if ctx is not None:
+    Resolution order:
+    1. ``ctx.lifespan_context["client"]`` (set by server lifespan)
+    2. Lazy creation from ``CODEGEN_API_KEY`` / ``CODEGEN_ORG_ID`` env vars
+    """
+    try:
         lc = ctx.lifespan_context
         if lc and "client" in lc:
             return lc["client"]
-    if _client is not None:
-        return _client
+    except Exception:
+        pass  # Context may not have lifespan_context in tests
+
     # Fallback: lazy init (for testing without lifespan)
     api_key = os.environ.get("CODEGEN_API_KEY", "")
     org_id_str = os.environ.get("CODEGEN_ORG_ID", "0")
@@ -53,14 +57,26 @@ def get_client(ctx: Context | None = None) -> CodegenClient:
     return CodegenClient(api_key=api_key, org_id=org_id)
 
 
-def get_registry(ctx: Context | None = None) -> ContextRegistry:
-    """Get ContextRegistry from lifespan context or global fallback."""
-    global _registry
-    if ctx is not None:
+# Module-level fallback for registry (stateful, survives across requests)
+_fallback_registry: ContextRegistry | None = None
+
+
+async def get_registry(ctx: Context = CurrentContext()) -> ContextRegistry:
+    """Provide a ``ContextRegistry`` instance.
+
+    Resolution order:
+    1. ``ctx.lifespan_context["registry"]`` (set by server lifespan)
+    2. Module-level singleton (for testing without lifespan)
+    """
+    global _fallback_registry
+
+    try:
         lc = ctx.lifespan_context
         if lc and "registry" in lc:
             return lc["registry"]
-    if _registry is not None:
-        return _registry
-    _registry = ContextRegistry()
-    return _registry
+    except Exception:
+        pass  # Context may not have lifespan_context in tests
+
+    if _fallback_registry is None:
+        _fallback_registry = ContextRegistry()
+    return _fallback_registry

@@ -4,18 +4,20 @@ from __future__ import annotations
 
 import json
 
-from fastmcp import Context, FastMCP
+from fastmcp import FastMCP
 
-from bridge.dependencies import get_client
+from bridge.client import CodegenClient
+from bridge.dependencies import Depends, get_client
 
 
 def register_setup_tools(mcp: FastMCP) -> None:
     """Register all setup tools on the given FastMCP server."""
 
     @mcp.tool(tags={"setup"})
-    async def codegen_list_orgs(ctx: Context) -> str:
+    async def codegen_list_orgs(
+        client: CodegenClient = Depends(get_client),
+    ) -> str:
         """List Codegen organizations the authenticated user belongs to."""
-        client = get_client(ctx)
         page = await client.list_orgs()
         return json.dumps(
             {
@@ -24,13 +26,15 @@ def register_setup_tools(mcp: FastMCP) -> None:
         )
 
     @mcp.tool(tags={"setup"})
-    async def codegen_list_repos(ctx: Context, limit: int = 50) -> str:
+    async def codegen_list_repos(
+        limit: int = 50,
+        client: CodegenClient = Depends(get_client),
+    ) -> str:
         """List repositories in the configured Codegen organization.
 
         Args:
             limit: Maximum repos to return (default 50).
         """
-        client = get_client(ctx)
         page = await client.list_repos(limit=limit)
         return json.dumps(
             {

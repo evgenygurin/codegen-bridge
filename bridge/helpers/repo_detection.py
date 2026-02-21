@@ -4,18 +4,19 @@ from __future__ import annotations
 
 import subprocess
 
-from fastmcp import Context
-
-from bridge.dependencies import get_client
+from bridge.client import CodegenClient
 
 _repo_cache: dict[str, int] = {}
 
 
-async def detect_repo_id(ctx: Context | None = None) -> int | None:
+async def detect_repo_id(client: CodegenClient) -> int | None:
     """Auto-detect repo_id from git remote origin.
 
     Parses the git remote URL, extracts the org/repo full name,
     then looks it up via the Codegen API.
+
+    Args:
+        client: An already-resolved ``CodegenClient`` instance.
     """
     try:
         result = subprocess.run(
@@ -43,7 +44,6 @@ async def detect_repo_id(ctx: Context | None = None) -> int | None:
         if full_name in _repo_cache:
             return _repo_cache[full_name]
 
-        client = get_client(ctx)
         repos = await client.list_repos(limit=100)
         for repo in repos.items:
             _repo_cache[repo.full_name] = repo.id

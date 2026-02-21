@@ -5,11 +5,12 @@ from __future__ import annotations
 import json
 from typing import Any, Literal
 
-from fastmcp import Context, FastMCP
+from fastmcp import FastMCP
 
-from bridge.dependencies import get_client, get_registry
+from bridge.client import CodegenClient
+from bridge.context import ContextRegistry
+from bridge.dependencies import Depends, get_client, get_registry
 from bridge.helpers.repo_detection import detect_repo_id
-from bridge.prompt_builder import build_task_prompt
 
 
 def register_execution_tools(mcp: FastMCP) -> None:
@@ -17,7 +18,6 @@ def register_execution_tools(mcp: FastMCP) -> None:
 
     @mcp.tool(tags={"context"})
     async def codegen_start_execution(
-        ctx: Context,
         execution_id: str,
         goal: str,
         mode: Literal["plan", "adhoc"] = "adhoc",
@@ -25,6 +25,8 @@ def register_execution_tools(mcp: FastMCP) -> None:
         tech_stack: list[str] | None = None,
         architecture: str | None = None,
         repo_structure: str | None = None,
+        client: CodegenClient = Depends(get_client),
+        registry: ContextRegistry = Depends(get_registry),
     ) -> str:
         """Initialize an execution context, load agent rules and integrations.
 
@@ -40,9 +42,6 @@ def register_execution_tools(mcp: FastMCP) -> None:
             architecture: Architecture description.
             repo_structure: Repository structure overview.
         """
-        registry = get_registry(ctx)
-        client = get_client(ctx)
-
         # Build task tuples from dicts
         task_tuples: list[tuple[str, str]] | None = None
         if tasks:
@@ -58,7 +57,7 @@ def register_execution_tools(mcp: FastMCP) -> None:
             kwargs["repo_structure"] = repo_structure
 
         # Detect repo
-        repo_id = await detect_repo_id(ctx)
+        repo_id = await detect_repo_id(client)
         if repo_id is not None:
             kwargs["repo_id"] = repo_id
 
@@ -92,8 +91,8 @@ def register_execution_tools(mcp: FastMCP) -> None:
 
     @mcp.tool(tags={"context"})
     async def codegen_get_execution_context(
-        ctx: Context,
         execution_id: str | None = None,
+        registry: ContextRegistry = Depends(get_registry),
     ) -> str:
         """Get full execution context — active or by ID.
 
@@ -102,8 +101,6 @@ def register_execution_tools(mcp: FastMCP) -> None:
         Args:
             execution_id: Specific execution ID. If not provided, returns the active execution.
         """
-        registry = get_registry(ctx)
-
         exec_ctx = registry.get(execution_id) if execution_id else registry.get_active()
 
         if exec_ctx is None:
@@ -112,12 +109,13 @@ def register_execution_tools(mcp: FastMCP) -> None:
         return exec_ctx.model_dump_json(indent=2)
 
     @mcp.tool(tags={"context"})
-    async def codegen_get_agent_rules(ctx: Context) -> str:
+    async def codegen_get_agent_rules(
+        client: CodegenClient = Depends(get_client),
+    ) -> str:
         """Fetch organization agent rules from the Codegen API.
 
         Returns organization-level rules and user custom prompts that should
         guide agent behavior.
         """
-        client = get_client(ctx)
         rules = await client.get_rules()
         return json.dumps(rules)
