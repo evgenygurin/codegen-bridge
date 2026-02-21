@@ -25,6 +25,7 @@ __all__ = [
     "get_org_id",
     "get_registry",
     "get_repo_cache",
+    "get_sampling_config",
 ]
 
 
@@ -49,3 +50,13 @@ async def get_registry(ctx: Context = CurrentContext()) -> ContextRegistry:
 async def get_repo_cache(ctx: Context = CurrentContext()) -> RepoCache:
     """Provide the ``RepoCache`` from lifespan context."""
     return ctx.lifespan_context["repo_cache"]
+
+
+async def get_sampling_config(ctx: Context = CurrentContext()):
+    """Provide the ``SamplingConfig`` from lifespan context."""
+    from bridge.sampling.config import SamplingConfig
+
+    lc = ctx.lifespan_context
+    if lc and "sampling_config" in lc:
+        return lc["sampling_config"]
+    return SamplingConfig()
