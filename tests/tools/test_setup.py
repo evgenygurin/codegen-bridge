@@ -146,6 +146,30 @@ class TestListOrgs:
         assert data["organizations"][0]["name"] == "My Org"
 
 
+class TestGetOrganizationSettings:
+    async def test_tool_registered(self, client: Client):
+        tools = await client.list_tools()
+        names = {t.name for t in tools}
+        assert "codegen_get_organization_settings" in names
+
+    @respx.mock
+    async def test_returns_settings(self, client: Client):
+        respx.get("https://api.codegen.com/v1/organizations/42/settings").mock(
+            return_value=Response(
+                200,
+                json={
+                    "enable_pr_creation": False,
+                    "enable_rules_detection": True,
+                },
+            )
+        )
+
+        result = await client.call_tool("codegen_get_organization_settings", {})
+        data = json.loads(result.data)
+        assert data["enable_pr_creation"] is False
+        assert data["enable_rules_detection"] is True
+
+
 class TestListRepos:
     async def test_tool_registered(self, client: Client):
         tools = await client.list_tools()

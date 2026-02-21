@@ -16,6 +16,7 @@ from bridge.models import (
     OAuthTokenStatus,
     Organization,
     OrganizationIntegrations,
+    OrganizationSettings,
     Page,
     PRState,
     Repository,
@@ -260,6 +261,14 @@ class CodegenClient:
         """List organizations."""
         resp = await self._get("/organizations")
         return Page[Organization].model_validate(resp)
+
+    async def get_organization_settings(self) -> OrganizationSettings:
+        """Get organization feature-flag settings.
+
+        Endpoint: ``GET /v1/organizations/{org_id}/settings``
+        """
+        resp = await self._get(f"/organizations/{self.org_id}/settings")
+        return OrganizationSettings.model_validate(resp)
 
     async def list_repos(
         self,
