@@ -10,9 +10,9 @@ from fastmcp.exceptions import ToolError
 
 from bridge.client import CodegenClient
 from bridge.context import ContextRegistry, PRInfo, TaskReport
-from bridge.dependencies import Depends, get_client, get_registry
+from bridge.dependencies import Depends, get_client, get_registry, get_repo_cache
 from bridge.helpers.formatting import format_logs, format_run_basic, format_run_list
-from bridge.helpers.repo_detection import detect_repo_id
+from bridge.helpers.repo_detection import RepoCache, detect_repo_id
 from bridge.log_parser import parse_logs
 from bridge.prompt_builder import build_task_prompt
 
@@ -30,6 +30,7 @@ def register_agent_tools(mcp: FastMCP) -> None:
         task_index: int | None = None,
         client: CodegenClient = Depends(get_client),
         registry: ContextRegistry = Depends(get_registry),
+        repo_cache: RepoCache = Depends(get_repo_cache),
     ) -> str:
         """Create a new Codegen agent run.
 
@@ -60,7 +61,7 @@ def register_agent_tools(mcp: FastMCP) -> None:
                     repo_id = exec_ctx.repo_id
 
         if repo_id is None:
-            repo_id = await detect_repo_id(client)
+            repo_id = await detect_repo_id(client, repo_cache)
             if repo_id is None:
                 raise ToolError(
                     "Could not auto-detect repository. "

@@ -9,8 +9,8 @@ from fastmcp import FastMCP
 
 from bridge.client import CodegenClient
 from bridge.context import ContextRegistry
-from bridge.dependencies import Depends, get_client, get_registry
-from bridge.helpers.repo_detection import detect_repo_id
+from bridge.dependencies import Depends, get_client, get_registry, get_repo_cache
+from bridge.helpers.repo_detection import RepoCache, detect_repo_id
 
 
 def register_execution_tools(mcp: FastMCP) -> None:
@@ -27,6 +27,7 @@ def register_execution_tools(mcp: FastMCP) -> None:
         repo_structure: str | None = None,
         client: CodegenClient = Depends(get_client),
         registry: ContextRegistry = Depends(get_registry),
+        repo_cache: RepoCache = Depends(get_repo_cache),
     ) -> str:
         """Initialize an execution context, load agent rules and integrations.
 
@@ -57,7 +58,7 @@ def register_execution_tools(mcp: FastMCP) -> None:
             kwargs["repo_structure"] = repo_structure
 
         # Detect repo
-        repo_id = await detect_repo_id(client)
+        repo_id = await detect_repo_id(client, repo_cache)
         if repo_id is not None:
             kwargs["repo_id"] = repo_id
 

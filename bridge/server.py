@@ -25,6 +25,7 @@ from fastmcp.exceptions import ToolError
 
 from bridge.client import CodegenClient
 from bridge.context import ContextRegistry
+from bridge.helpers.repo_detection import RepoCache
 from bridge.openapi_utils import create_openapi_provider
 from bridge.prompts import register_prompts
 from bridge.resources import register_resources
@@ -69,9 +70,15 @@ async def _lifespan(server: FastMCP):
         pass  # OpenAPI provider is optional; manual tools always work
 
     registry = ContextRegistry()
+    repo_cache = RepoCache()
 
     try:
-        yield {"client": client, "org_id": org_id, "registry": registry}
+        yield {
+            "client": client,
+            "org_id": org_id,
+            "registry": registry,
+            "repo_cache": repo_cache,
+        }
     finally:
         await client.close()
         await http_client.aclose()
