@@ -1,10 +1,69 @@
 {
   "name": "codegen-bridge",
   "description": "Bridge to Codegen AI agent platform — execute implementation plans via cloud agents",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "author": {
     "name": "DJ Techno Set Builder"
   },
   "license": "MIT",
-  "keywords": ["codegen", "agent", "execution", "delegation"]
+  "keywords": ["codegen", "agent", "execution", "delegation", "mcp"],
+  "skills": [
+    {
+      "name": "executing-via-codegen",
+      "path": "skills/executing-via-codegen/SKILL.md",
+      "description": "Delegate implementation plans to Codegen cloud agents — one task per agent run with automatic context enrichment and progress tracking."
+    }
+  ],
+  "agents": [
+    {
+      "name": "codegen-executor",
+      "description": "Orchestrates multi-task plan execution via Codegen cloud agents. Creates agent runs, monitors progress, handles failures, and collects PR links.",
+      "skill": "executing-via-codegen",
+      "triggers": ["plan execution", "delegate tasks", "cloud agent"]
+    }
+  ],
+  "hooks": {
+    "on_run_complete": {
+      "description": "Triggered when an agent run completes — logs result summary and PR links.",
+      "event": "agent_run.completed"
+    },
+    "on_run_failed": {
+      "description": "Triggered when an agent run fails — logs error details and prompts for recovery action.",
+      "event": "agent_run.failed"
+    },
+    "on_run_paused": {
+      "description": "Triggered when an agent run pauses for user input — surfaces the agent's question.",
+      "event": "agent_run.paused"
+    }
+  },
+  "settings": {
+    "file": "settings.json",
+    "schema": {
+      "default_model": {
+        "type": "string",
+        "nullable": true,
+        "default": null,
+        "description": "Default LLM model for agent runs. null = use organization default."
+      },
+      "auto_monitor": {
+        "type": "boolean",
+        "default": true,
+        "description": "Automatically poll agent runs after creation."
+      },
+      "poll_interval": {
+        "type": "integer",
+        "default": 30,
+        "minimum": 5,
+        "maximum": 300,
+        "description": "Seconds between status polls (5-300)."
+      }
+    }
+  },
+  "commands": [
+    "commands/codegen.md",
+    "commands/cg-status.md",
+    "commands/cg-logs.md",
+    "commands/cg-merge.md",
+    "commands/cg-settings.md"
+  ]
 }

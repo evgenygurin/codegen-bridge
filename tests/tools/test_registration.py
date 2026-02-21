@@ -21,6 +21,8 @@ class TestToolRegistration:
             "codegen_start_execution",
             "codegen_get_execution_context",
             "codegen_get_agent_rules",
+            "codegen_get_settings",
+            "codegen_update_settings",
         }
         assert core.issubset(names), f"Missing core tools: {core - names}"
 

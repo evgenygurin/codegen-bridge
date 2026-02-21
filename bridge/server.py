@@ -18,6 +18,7 @@ Tools, resources, and prompts are defined in submodules:
 - bridge.tools.pr — pull request management
 - bridge.tools.setup — organization and repository setup + setup commands
 - bridge.tools.integrations — integrations, webhooks, sandbox, Slack connect
+- bridge.tools.settings — plugin settings management
 - bridge.resources.config — configuration and execution state
 - bridge.prompts.templates — prompt templates
 - bridge.providers — custom and built-in MCP providers
@@ -48,6 +49,7 @@ from bridge.tools import (
     register_execution_tools,
     register_integration_tools,
     register_pr_tools,
+    register_settings_tools,
     register_setup_tools,
 )
 from bridge.transforms import configure_transforms
@@ -145,6 +147,7 @@ register_execution_tools(mcp)
 register_pr_tools(mcp)
 register_setup_tools(mcp)
 register_integration_tools(mcp)
+register_settings_tools(mcp)
 register_resources(mcp)
 register_prompts(mcp)
 register_sampling_tools(mcp)
