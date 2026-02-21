@@ -20,6 +20,7 @@ from pathlib import Path
 from fastmcp.server.providers import Provider
 from fastmcp.server.providers.skills import SkillsDirectoryProvider
 
+from bridge.providers.agents import AgentsProvider
 from bridge.providers.commands import CommandsProvider
 
 logger = logging.getLogger("bridge.providers.registry")
@@ -28,6 +29,7 @@ logger = logging.getLogger("bridge.providers.registry")
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 _DEFAULT_SKILLS_DIR = _PROJECT_ROOT / "skills"
 _DEFAULT_COMMANDS_DIR = _PROJECT_ROOT / "commands"
+_DEFAULT_AGENTS_DIR = _PROJECT_ROOT / "agents"
 
 
 def create_skills_provider(
@@ -101,19 +103,57 @@ def create_commands_provider(
     return CommandsProvider(commands_dir=root)
 
 
+def create_agents_provider(
+    agents_dir: str | Path | None = None,
+) -> AgentsProvider | None:
+    """Create an AgentsProvider for agent definition markdown files.
+
+    Agent definitions are designed to be used with the Claude Code **Task**
+    tool.  Each ``.md`` file describes a subagent workflow that uses the
+    codegen MCP tools.
+
+    Args:
+        agents_dir: Path to the agents directory.
+            Defaults to ``<project>/agents/``.
+
+    Returns:
+        Configured provider, or ``None`` if the directory doesn't exist
+        or contains no ``.md`` files.
+    """
+    root = Path(agents_dir) if agents_dir else _DEFAULT_AGENTS_DIR
+
+    if not root.is_dir():
+        logger.info("Agents directory not found: %s", root)
+        return None
+
+    md_files = list(root.glob("*.md"))
+    if not md_files:
+        logger.info("No agent files found in: %s", root)
+        return None
+
+    logger.info(
+        "Creating AgentsProvider: root=%s, agents=%d",
+        root,
+        len(md_files),
+    )
+    return AgentsProvider(agents_dir=root)
+
+
 def create_all_providers(
     *,
     skills_dir: str | Path | None = None,
     commands_dir: str | Path | None = None,
+    agents_dir: str | Path | None = None,
 ) -> list[Provider]:
     """Create all filesystem-based providers.
 
-    Convenience factory that creates both the skills and commands providers.
-    Providers whose directories don't exist are silently skipped.
+    Convenience factory that creates the skills, commands, and agents
+    providers.  Providers whose directories don't exist are silently skipped.
 
     Args:
         skills_dir: Override for skills directory path.
         commands_dir: Override for commands directory path.
+        agents_dir: Override for agents directory path.
 
     Returns:
         List of successfully created providers (may be empty).
@@ -127,6 +167,10 @@ def create_all_providers(
     commands = create_commands_provider(commands_dir)
     if commands is not None:
         providers.append(commands)
+
+    agents = create_agents_provider(agents_dir)
+    if agents is not None:
+        providers.append(agents)
 
     logger.info("Provider registry created %d filesystem providers", len(providers))
     return providers
