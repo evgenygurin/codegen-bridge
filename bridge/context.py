@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from pathlib import Path
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -63,7 +64,7 @@ class ExecutionContext(BaseModel):
     id: str
     mode: Literal["plan", "adhoc"]
     created_at: str = Field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
+        default_factory=lambda: datetime.now(UTC).isoformat()
     )
 
     # Plan metadata
@@ -88,27 +89,94 @@ class ExecutionContext(BaseModel):
 
 
 class ContextRegistry:
-    """Registry for managing execution contexts.
+    """Manages execution contexts with file-based persistence."""
 
-    Stores and retrieves execution contexts by ID. Provides methods
-    to create, update, and query contexts for structured agent communication.
-    """
+    def __init__(self, storage_dir: Path | None = None) -> None:
+        if storage_dir is None:
+            storage_dir = Path(".codegen-bridge") / "executions"
+        self._storage_dir = storage_dir
+        self._storage_dir.mkdir(parents=True, exist_ok=True)
+        self._cache: dict[str, ExecutionContext] = {}
 
-    def __init__(self) -> None:
-        self._contexts: dict[str, ExecutionContext] = {}
+    def start_execution(
+        self,
+        *,
+        execution_id: str,
+        mode: Literal["plan", "adhoc"],
+        goal: str,
+        tasks: list[tuple[str, str]] | None = None,
+        **kwargs: object,
+    ) -> ExecutionContext:
+        """Create and persist a new execution context."""
+        task_list: list[TaskContext] = []
+        if tasks:
+            for i, (title, desc) in enumerate(tasks):
+                task_list.append(TaskContext(index=i, title=title, description=desc))
+        elif mode == "adhoc":
+            task_list.append(TaskContext(index=0, title=goal, description=goal))
 
-    def register(self, context: ExecutionContext) -> None:
-        """Register an execution context."""
-        self._contexts[context.id] = context
+        ctx = ExecutionContext(
+            id=execution_id,
+            mode=mode,
+            goal=goal,
+            tasks=task_list,
+            status="active",
+            **kwargs,
+        )
+        self._cache[execution_id] = ctx
+        self._save(ctx)
+        return ctx
 
-    def get(self, context_id: str) -> ExecutionContext | None:
-        """Retrieve an execution context by ID."""
-        return self._contexts.get(context_id)
+    def get(self, execution_id: str) -> ExecutionContext | None:
+        """Retrieve an execution context by ID (cache first, then disk)."""
+        if execution_id in self._cache:
+            return self._cache[execution_id]
+        return self._load(execution_id)
 
-    def list_active(self) -> list[ExecutionContext]:
-        """List all active execution contexts."""
-        return [ctx for ctx in self._contexts.values() if ctx.status == "active"]
+    def get_active(self) -> ExecutionContext | None:
+        """Find the first active execution context (cache then disk scan)."""
+        for ctx in self._cache.values():
+            if ctx.status == "active":
+                return ctx
+        for f in self._storage_dir.glob("*.json"):
+            ctx = self._load(f.stem)
+            if ctx and ctx.status == "active":
+                return ctx
+        return None
 
-    def remove(self, context_id: str) -> bool:
-        """Remove an execution context. Returns True if it existed."""
-        return self._contexts.pop(context_id, None) is not None
+    def update_task(
+        self,
+        *,
+        execution_id: str,
+        task_index: int,
+        status: str | None = None,
+        run_id: int | None = None,
+        report: TaskReport | None = None,
+    ) -> None:
+        """Update a task's status, run_id, or report within an execution."""
+        ctx = self.get(execution_id)
+        if ctx is None or task_index >= len(ctx.tasks):
+            return
+        task = ctx.tasks[task_index]
+        if status is not None:
+            task.status = status
+        if run_id is not None:
+            task.run_id = run_id
+        if report is not None:
+            task.report = report
+        self._save(ctx)
+
+    def _save(self, ctx: ExecutionContext) -> None:
+        """Persist an execution context to cache and disk."""
+        self._cache[ctx.id] = ctx
+        path = self._storage_dir / f"{ctx.id}.json"
+        path.write_text(ctx.model_dump_json(indent=2))
+
+    def _load(self, execution_id: str) -> ExecutionContext | None:
+        """Load an execution context from disk into cache."""
+        path = self._storage_dir / f"{execution_id}.json"
+        if not path.exists():
+            return None
+        ctx = ExecutionContext.model_validate_json(path.read_text())
+        self._cache[execution_id] = ctx
+        return ctx
