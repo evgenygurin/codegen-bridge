@@ -159,6 +159,13 @@ class CodegenClient:
         resp = await self._get(f"/organizations/{self.org_id}/repos", params=params)
         return Page[Repository].model_validate(resp)
 
+    # ── Rules ────────────────────────────────────────────────
+
+    async def get_rules(self) -> dict[str, str]:
+        """Get organization and user agent rules."""
+        resp = await self._get(f"/organizations/{self.org_id}/cli/rules")
+        return resp
+
     # ── HTTP Helpers ────────────────────────────────────────
 
     async def _get(self, path: str, *, params: dict | None = None) -> dict:
