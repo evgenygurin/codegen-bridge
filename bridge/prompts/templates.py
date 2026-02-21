@@ -4,11 +4,13 @@ from __future__ import annotations
 
 from fastmcp import FastMCP
 
+from bridge.icons import ICON_DELEGATE, ICON_MONITOR, ICON_SUMMARY, ICON_TEMPLATE
+
 
 def register_prompts(mcp: FastMCP) -> None:
     """Register all MCP prompts on the given FastMCP server."""
 
-    @mcp.prompt()
+    @mcp.prompt(icons=ICON_DELEGATE)
     def delegate_task(task_description: str, context: str = "") -> str:
         """Create a prompt for delegating a task to a Codegen agent."""
         parts = []
@@ -24,7 +26,7 @@ def register_prompts(mcp: FastMCP) -> None:
         )
         return "\n".join(parts)
 
-    @mcp.prompt()
+    @mcp.prompt(icons=ICON_MONITOR)
     def monitor_runs() -> str:
         """Prompt for checking status of all active agent runs."""
         return (
@@ -34,7 +36,7 @@ def register_prompts(mcp: FastMCP) -> None:
             "For 'completed' runs, show PR links if available."
         )
 
-    @mcp.prompt()
+    @mcp.prompt(icons=ICON_TEMPLATE)
     def build_task_prompt_template(
         goal: str, task_description: str, context: str = ""
     ) -> str:
@@ -55,7 +57,7 @@ def register_prompts(mcp: FastMCP) -> None:
         )
         return "\n".join(parts)
 
-    @mcp.prompt()
+    @mcp.prompt(icons=ICON_SUMMARY)
     def execution_summary() -> str:
         """Prompt for generating a final summary of an execution."""
         return (

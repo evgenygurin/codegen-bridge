@@ -14,12 +14,13 @@ from bridge.helpers.pagination import (
     build_paginated_response,
     cursor_to_offset,
 )
+from bridge.icons import ICON_ORG, ICON_REPO
 
 
 def register_setup_tools(mcp: FastMCP) -> None:
     """Register all setup tools on the given FastMCP server."""
 
-    @mcp.tool(tags={"setup"})
+    @mcp.tool(tags={"setup"}, icons=ICON_ORG)
     async def codegen_list_orgs(
         ctx: Context = CurrentContext(),
         client: CodegenClient = Depends(get_client),
@@ -34,7 +35,7 @@ def register_setup_tools(mcp: FastMCP) -> None:
             }
         )
 
-    @mcp.tool(tags={"setup"})
+    @mcp.tool(tags={"setup"}, icons=ICON_REPO)
     async def codegen_list_repos(
         limit: int = DEFAULT_PAGE_SIZE,
         cursor: str | None = None,

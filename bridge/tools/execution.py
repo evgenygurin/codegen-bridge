@@ -12,12 +12,13 @@ from bridge.client import CodegenClient
 from bridge.context import ContextRegistry
 from bridge.dependencies import CurrentContext, Depends, get_client, get_registry, get_repo_cache
 from bridge.helpers.repo_detection import RepoCache, detect_repo_id
+from bridge.icons import ICON_CONTEXT, ICON_EXECUTION, ICON_RULES
 
 
 def register_execution_tools(mcp: FastMCP) -> None:
     """Register all execution context management tools on the given FastMCP server."""
 
-    @mcp.tool(tags={"context"})
+    @mcp.tool(tags={"context"}, icons=ICON_EXECUTION)
     async def codegen_start_execution(
         execution_id: str,
         goal: str,
@@ -98,7 +99,7 @@ def register_execution_tools(mcp: FastMCP) -> None:
             }
         )
 
-    @mcp.tool(tags={"context"})
+    @mcp.tool(tags={"context"}, icons=ICON_CONTEXT)
     async def codegen_get_execution_context(
         execution_id: str | None = None,
         ctx: Context = CurrentContext(),
@@ -120,7 +121,7 @@ def register_execution_tools(mcp: FastMCP) -> None:
 
         return exec_ctx.model_dump_json(indent=2)
 
-    @mcp.tool(tags={"context"})
+    @mcp.tool(tags={"context"}, icons=ICON_RULES)
     async def codegen_get_agent_rules(
         ctx: Context = CurrentContext(),
         client: CodegenClient = Depends(get_client),
