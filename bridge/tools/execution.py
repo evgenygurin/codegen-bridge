@@ -11,6 +11,7 @@ from fastmcp.server.context import Context
 from bridge.client import CodegenClient
 from bridge.context import ContextRegistry
 from bridge.dependencies import CurrentContext, Depends, get_client, get_registry, get_repo_cache
+from bridge.elicitation import confirm_action
 from bridge.helpers.repo_detection import RepoCache, detect_repo_id
 from bridge.icons import ICON_CONTEXT, ICON_EXECUTION, ICON_RULES
 
@@ -27,6 +28,7 @@ def register_execution_tools(mcp: FastMCP) -> None:
         tech_stack: list[str] | None = None,
         architecture: str | None = None,
         repo_structure: str | None = None,
+        confirmed: bool = False,
         ctx: Context = CurrentContext(),
         client: CodegenClient = Depends(get_client),
         registry: ContextRegistry = Depends(get_registry),
@@ -36,6 +38,8 @@ def register_execution_tools(mcp: FastMCP) -> None:
 
         Call this at the start of a plan or ad-hoc task to set up full context
         that will be available to all subsequent agent runs.
+        When a repository is auto-detected and the client supports elicitation,
+        the user is prompted to confirm the detected repo.
 
         Args:
             execution_id: Unique identifier for the execution.
@@ -45,6 +49,7 @@ def register_execution_tools(mcp: FastMCP) -> None:
             tech_stack: Technologies used (e.g. ["Python", "FastAPI"]).
             architecture: Architecture description.
             repo_structure: Repository structure overview.
+            confirmed: Skip interactive repo confirmation when True (programmatic use).
         """
         await ctx.info(f"Starting execution: id={execution_id}, mode={mode}")
 
@@ -65,6 +70,19 @@ def register_execution_tools(mcp: FastMCP) -> None:
         # Detect repo
         repo_id = await detect_repo_id(client, repo_cache)
         if repo_id is not None:
+            # Elicit confirmation for auto-detected repository
+            if not confirmed:
+                user_confirmed = await confirm_action(
+                    ctx,
+                    f"Start execution '{goal}' using detected repo_id={repo_id}?",
+                )
+                if not user_confirmed:
+                    return json.dumps(
+                        {
+                            "action": "cancelled",
+                            "reason": "User declined to use detected repository",
+                        }
+                    )
             kwargs["repo_id"] = repo_id
 
         # Load agent rules
