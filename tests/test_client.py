@@ -161,3 +161,22 @@ class TestListRepos:
             repos = await client.list_repos()
 
         assert repos.items[0].full_name == "org/myrepo"
+
+
+class TestGetRules:
+    @respx.mock
+    async def test_gets_org_rules(self):
+        respx.get("https://api.codegen.com/v1/organizations/42/cli/rules").mock(
+            return_value=Response(
+                200,
+                json={
+                    "organization_rules": "Use conventional commits\nAdd type hints",
+                    "user_custom_prompt": "Prefer pytest over unittest",
+                },
+            )
+        )
+
+        async with CodegenClient(api_key="test", org_id=42) as client:
+            rules = await client.get_rules()
+
+        assert "conventional commits" in rules["organization_rules"]
