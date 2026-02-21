@@ -1,65 +1,12 @@
-"""Tests for MCP server tools, resources, and prompts."""
+"""Tests for agent run management tools (create, get, list, resume, stop, logs)."""
 
 from __future__ import annotations
 
 import json
-import os
 
-import pytest
 import respx
 from fastmcp import Client
 from httpx import Response
-
-# Force test env vars before importing server
-os.environ["CODEGEN_API_KEY"] = "test-key"
-os.environ["CODEGEN_ORG_ID"] = "42"
-
-from bridge.server import mcp
-
-
-@pytest.fixture(autouse=True)
-def _force_test_env(monkeypatch):
-    """Ensure test env vars override real ones for every test."""
-    monkeypatch.setenv("CODEGEN_API_KEY", "test-key")
-    monkeypatch.setenv("CODEGEN_ORG_ID", "42")
-
-
-@pytest.fixture
-async def client():
-    """Create in-memory MCP client with lifespan."""
-    async with Client(mcp) as c:
-        yield c
-
-
-# ── Tool Registration ────────────────────────────────────
-
-
-class TestToolRegistration:
-    async def test_core_tools_registered(self, client: Client):
-        tools = await client.list_tools()
-        names = {t.name for t in tools}
-        core = {
-            "codegen_create_run",
-            "codegen_get_run",
-            "codegen_list_runs",
-            "codegen_resume_run",
-            "codegen_stop_run",
-            "codegen_get_logs",
-            "codegen_list_orgs",
-            "codegen_list_repos",
-            "codegen_start_execution",
-            "codegen_get_execution_context",
-            "codegen_get_agent_rules",
-        }
-        assert core.issubset(names), f"Missing core tools: {core - names}"
-
-    async def test_create_run_has_description(self, client: Client):
-        tools = await client.list_tools()
-        create_tool = next(t for t in tools if t.name == "codegen_create_run")
-        assert "agent run" in create_tool.description.lower()
-
-
-# ── Core Tools ───────────────────────────────────────────
 
 
 class TestCreateRun:
@@ -169,113 +116,6 @@ class TestGetLogs:
         assert data["logs"][0]["thought"] == "Reading code"
 
 
-# ── Resources ────────────────────────────────────────────
-
-
-class TestResources:
-    async def test_config_resource(self, client: Client):
-        resources = await client.list_resources()
-        uris = {str(r.uri) for r in resources}
-        assert "codegen://config" in uris
-
-    async def test_config_returns_org_id(self, client: Client):
-        result = await client.read_resource("codegen://config")
-        data = json.loads(result[0].text)
-        assert data["org_id"] == "42"
-        assert data["has_api_key"] is True
-
-
-# ── Prompts ──────────────────────────────────────────────
-
-
-class TestPrompts:
-    async def test_prompts_registered(self, client: Client):
-        prompts = await client.list_prompts()
-        names = {p.name for p in prompts}
-        assert "delegate_task" in names
-        assert "monitor_runs" in names
-
-    async def test_delegate_task_prompt(self, client: Client):
-        result = await client.get_prompt(
-            "delegate_task",
-            {"task_description": "Fix login bug"},
-        )
-        text = result.messages[0].content.text
-        assert "Fix login bug" in text
-        assert "Constraints" in text
-
-
-# ── Context Tools ────────────────────────────────────────
-
-
-class TestStartExecution:
-    async def test_tool_registered(self, client: Client):
-        tools = await client.list_tools()
-        names = {t.name for t in tools}
-        assert "codegen_start_execution" in names
-
-    @respx.mock
-    async def test_starts_adhoc_execution(self, client: Client):
-        # Mock rules endpoint
-        respx.get("https://api.codegen.com/v1/organizations/42/cli/rules").mock(
-            return_value=Response(
-                200,
-                json={"organization_rules": "Use type hints", "user_custom_prompt": ""},
-            )
-        )
-        # Mock repo detection
-        respx.get("https://api.codegen.com/v1/organizations/42/repos").mock(
-            return_value=Response(200, json={"items": [], "total": 0})
-        )
-
-        result = await client.call_tool(
-            "codegen_start_execution",
-            {"execution_id": "test-exec", "goal": "Fix the bug"},
-        )
-        data = json.loads(result.data)
-        assert data["execution_id"] == "test-exec"
-        assert data["mode"] == "adhoc"
-        assert data["status"] == "active"
-
-
-class TestGetExecutionContext:
-    async def test_tool_registered(self, client: Client):
-        tools = await client.list_tools()
-        names = {t.name for t in tools}
-        assert "codegen_get_execution_context" in names
-
-    @respx.mock
-    async def test_returns_error_when_no_context(self, client: Client):
-        result = await client.call_tool(
-            "codegen_get_execution_context",
-            {"execution_id": "nonexistent"},
-        )
-        data = json.loads(result.data)
-        assert "error" in data
-
-
-class TestGetAgentRules:
-    async def test_tool_registered(self, client: Client):
-        tools = await client.list_tools()
-        names = {t.name for t in tools}
-        assert "codegen_get_agent_rules" in names
-
-    @respx.mock
-    async def test_returns_rules(self, client: Client):
-        respx.get("https://api.codegen.com/v1/organizations/42/cli/rules").mock(
-            return_value=Response(
-                200,
-                json={"organization_rules": "Use type hints", "user_custom_prompt": ""},
-            )
-        )
-        result = await client.call_tool("codegen_get_agent_rules", {})
-        data = json.loads(result.data)
-        assert "type hints" in data["organization_rules"]
-
-
-# ── Create Run with Execution Context ────────────────────
-
-
 class TestCreateRunWithExecution:
     @respx.mock
     async def test_enriches_prompt_when_execution_id_provided(self, client: Client):
@@ -346,9 +186,6 @@ class TestCreateRunWithExecution:
 
         body = json.loads(route.calls[0].request.content)
         assert body["prompt"] == "Raw prompt only"
-
-
-# ── Get Run with Execution Context ───────────────────────
 
 
 class TestGetRunWithExecution:
@@ -437,28 +274,3 @@ class TestGetRunWithExecution:
         assert ctx_data["tasks"][0]["status"] == "completed"
         assert ctx_data["tasks"][0]["report"]["summary"] == "Built the feature"
         assert ctx_data["current_task_index"] == 1
-
-
-# ── New Prompts ──────────────────────────────────────────
-
-
-class TestNewPrompts:
-    async def test_build_task_prompt_template_registered(self, client: Client):
-        prompts = await client.list_prompts()
-        names = {p.name for p in prompts}
-        assert "build_task_prompt_template" in names
-
-    async def test_execution_summary_registered(self, client: Client):
-        prompts = await client.list_prompts()
-        names = {p.name for p in prompts}
-        assert "execution_summary" in names
-
-
-# ── Execution Resource ───────────────────────────────────
-
-
-class TestExecutionResource:
-    async def test_execution_resource_registered(self, client: Client):
-        resources = await client.list_resources()
-        uris = {str(r.uri) for r in resources}
-        assert "codegen://config" in uris
