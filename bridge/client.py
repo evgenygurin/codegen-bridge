@@ -10,6 +10,7 @@ from bridge.models import (
     AgentRun,
     AgentRunWithLogs,
     BanActionResponse,
+    CheckSuiteSettings,
     EditPRResponse,
     MCPProvider,
     OAuthTokenStatus,
@@ -405,6 +406,40 @@ class CodegenClient:
         )
         resp.raise_for_status()
 
+    # ── Check Suite Settings ────────────────────────────────
+
+    async def get_check_suite_settings(self, repo_id: int) -> CheckSuiteSettings:
+        """Get check suite settings for a repository.
+
+        Endpoint: ``GET /v1/organizations/{org_id}/repos/check-suite-settings?repo_id=``
+        """
+        resp = await self._get(
+            f"/organizations/{self.org_id}/repos/check-suite-settings",
+            params={"repo_id": repo_id},
+        )
+        return CheckSuiteSettings.model_validate(resp)
+
+    async def update_check_suite_settings(
+        self,
+        repo_id: int,
+        settings: dict[str, Any],
+    ) -> dict:
+        """Update check suite settings for a repository.
+
+        Endpoint: ``PUT /v1/organizations/{org_id}/repos/check-suite-settings?repo_id=``
+
+        Args:
+            repo_id: Repository ID.
+            settings: Dict of settings fields to update (e.g. check_retry_count,
+                ignored_checks, check_retry_counts, custom_prompts,
+                high_priority_apps).
+        """
+        return await self._put(
+            f"/organizations/{self.org_id}/repos/check-suite-settings",
+            json=settings,
+            params={"repo_id": repo_id},
+        )
+
     # ── Rules ────────────────────────────────────────────────
 
     async def get_rules(self) -> dict[str, str]:
@@ -433,6 +468,17 @@ class CodegenClient:
         params: dict | None = None,
     ) -> dict:
         resp = await self._client.post(path, json=json, params=params)
+        resp.raise_for_status()
+        return resp.json()
+
+    async def _put(
+        self,
+        path: str,
+        *,
+        json: dict | None = None,
+        params: dict | None = None,
+    ) -> dict:
+        resp = await self._client.put(path, json=json, params=params)
         resp.raise_for_status()
         return resp.json()
 

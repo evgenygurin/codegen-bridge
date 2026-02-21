@@ -1,9 +1,10 @@
-"""Tests for setup tools (list_orgs, list_repos, users, generate_setup_commands, MCP providers, OAuth)."""
+"""Tests for setup tools (list_orgs, list_repos, users, generate_setup_commands, MCP providers, OAuth, check suite settings)."""
 
 from __future__ import annotations
 
 import json
 
+import pytest
 import respx
 from fastmcp import Client
 from httpx import Response
@@ -290,6 +291,90 @@ class TestGetOAuthStatus:
         assert data["connected_providers"][0]["provider"] == "github"
         assert data["connected_providers"][0]["active"] is True
         assert data["connected_providers"][1]["provider"] == "linear"
+
+
+# ── Check Suite Settings ──────────────────────────────────
+
+
+class TestGetCheckSuiteSettings:
+    async def test_tool_registered(self, client: Client):
+        tools = await client.list_tools()
+        names = {t.name for t in tools}
+        assert "codegen_get_check_suite_settings" in names
+
+    @respx.mock
+    async def test_returns_settings(self, client: Client):
+        respx.get(
+            "https://api.codegen.com/v1/organizations/42/repos/check-suite-settings"
+        ).mock(
+            return_value=Response(
+                200,
+                json={
+                    "check_retry_count": 3,
+                    "ignored_checks": ["lint"],
+                    "check_retry_counts": {"ci": 2},
+                    "custom_prompts": {"ci": "Fix CI"},
+                    "high_priority_apps": ["GitHub Actions"],
+                    "available_check_suite_names": ["ci", "lint", "test"],
+                },
+            )
+        )
+
+        result = await client.call_tool(
+            "codegen_get_check_suite_settings",
+            {"repo_id": 10},
+        )
+        data = json.loads(result.data)
+        assert data["check_retry_count"] == 3
+        assert data["ignored_checks"] == ["lint"]
+        assert data["check_retry_counts"] == {"ci": 2}
+        assert data["custom_prompts"] == {"ci": "Fix CI"}
+        assert data["high_priority_apps"] == ["GitHub Actions"]
+        assert data["available_check_suite_names"] == ["ci", "lint", "test"]
+
+
+class TestUpdateCheckSuiteSettings:
+    async def test_tool_registered(self, client: Client):
+        tools = await client.list_tools()
+        names = {t.name for t in tools}
+        assert "codegen_update_check_suite_settings" in names
+
+    @respx.mock
+    async def test_updates_settings(self, client: Client):
+        respx.put(
+            "https://api.codegen.com/v1/organizations/42/repos/check-suite-settings"
+        ).mock(return_value=Response(200, json={"status": "ok"}))
+
+        result = await client.call_tool(
+            "codegen_update_check_suite_settings",
+            {"repo_id": 10, "check_retry_count": 5, "ignored_checks": ["lint"]},
+        )
+        data = json.loads(result.data)
+        assert data["status"] == "updated"
+        assert data["result"]["status"] == "ok"
+
+    @respx.mock
+    async def test_updates_single_field(self, client: Client):
+        respx.put(
+            "https://api.codegen.com/v1/organizations/42/repos/check-suite-settings"
+        ).mock(return_value=Response(200, json={"status": "ok"}))
+
+        result = await client.call_tool(
+            "codegen_update_check_suite_settings",
+            {"repo_id": 10, "check_retry_count": 2},
+        )
+        data = json.loads(result.data)
+        assert data["status"] == "updated"
+
+    async def test_rejects_empty_update(self, client: Client):
+        """Calling update with no setting fields raises ToolError."""
+        from fastmcp.exceptions import ToolError
+
+        with pytest.raises(ToolError, match="At least one setting field"):
+            await client.call_tool(
+                "codegen_update_check_suite_settings",
+                {"repo_id": 10},
+            )
 
 
 class TestRevokeOAuth:
