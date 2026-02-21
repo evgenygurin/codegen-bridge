@@ -101,12 +101,12 @@ def register_agent_tools(mcp: FastMCP) -> None:
         # Step 2: Enrich prompt from execution context
         await _report(ctx, step, total, "Enriching prompt")
         if execution_id is not None:
-            exec_ctx = registry.get(execution_id)
+            exec_ctx = await registry.get(execution_id)
             if exec_ctx is not None:
                 idx = task_index if task_index is not None else exec_ctx.current_task_index
                 if idx < len(exec_ctx.tasks):
                     effective_prompt = build_task_prompt(exec_ctx, idx)
-                    registry.update_task(
+                    await registry.update_task(
                         execution_id=execution_id,
                         task_index=idx,
                         status="running",
@@ -142,11 +142,11 @@ def register_agent_tools(mcp: FastMCP) -> None:
         # Step 5: Track in execution context
         await _report(ctx, step, total, "Tracking in execution context")
         if execution_id is not None:
-            exec_ctx = registry.get(execution_id)
+            exec_ctx = await registry.get(execution_id)
             if exec_ctx is not None:
                 idx = task_index if task_index is not None else exec_ctx.current_task_index
                 if idx < len(exec_ctx.tasks):
-                    registry.update_task(
+                    await registry.update_task(
                         execution_id=execution_id,
                         task_index=idx,
                         run_id=run.id,
@@ -202,7 +202,7 @@ def register_agent_tools(mcp: FastMCP) -> None:
 
         # Auto-report back to execution context on terminal status
         if execution_id is not None and run.status in ("completed", "failed"):
-            exec_ctx = registry.get(execution_id)
+            exec_ctx = await registry.get(execution_id)
             if exec_ctx is not None:
                 idx = task_index if task_index is not None else exec_ctx.current_task_index
                 if idx < len(exec_ctx.tasks):
@@ -243,7 +243,7 @@ def register_agent_tools(mcp: FastMCP) -> None:
                     )
 
                     task_status = "completed" if run.status == "completed" else "failed"
-                    registry.update_task(
+                    await registry.update_task(
                         execution_id=execution_id,
                         task_index=idx,
                         status=task_status,
@@ -253,7 +253,7 @@ def register_agent_tools(mcp: FastMCP) -> None:
                     # Advance current_task_index if completed
                     if run.status == "completed":
                         exec_ctx.current_task_index = idx + 1
-                        registry._save(exec_ctx)
+                        await registry._save(exec_ctx)
 
         return json.dumps(result)
 

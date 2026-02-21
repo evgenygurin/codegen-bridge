@@ -13,6 +13,7 @@ from bridge.context import (
     TaskContext,
     TaskReport,
 )
+from bridge.storage import MemoryStorage
 
 
 class TestPRInfo:
@@ -92,18 +93,14 @@ class TestExecutionContext:
 
 class TestContextRegistry:
     @pytest.fixture
-    def storage_dir(self, tmp_path):
-        return tmp_path / "executions"
+    async def registry(self):
+        storage = MemoryStorage()
+        reg = ContextRegistry(storage=storage)
+        await reg.setup()
+        return reg
 
-    @pytest.fixture
-    def registry(self, storage_dir):
-        return ContextRegistry(storage_dir=storage_dir)
-
-    def test_creates_storage_dir(self, registry, storage_dir):
-        assert storage_dir.exists()
-
-    def test_start_plan_execution(self, registry):
-        ctx = registry.start_execution(
+    async def test_start_plan_execution(self, registry):
+        ctx = await registry.start_execution(
             execution_id="test-1",
             mode="plan",
             goal="Build auth",
@@ -112,72 +109,89 @@ class TestContextRegistry:
         assert ctx.id == "test-1"
         assert len(ctx.tasks) == 1
 
-    def test_start_adhoc_execution(self, registry):
-        ctx = registry.start_execution(execution_id="adhoc-1", mode="adhoc", goal="Fix the bug")
+    async def test_start_adhoc_execution(self, registry):
+        ctx = await registry.start_execution(
+            execution_id="adhoc-1", mode="adhoc", goal="Fix the bug"
+        )
         assert len(ctx.tasks) == 1
         assert ctx.tasks[0].title == "Fix the bug"
 
-    def test_persists_to_disk(self, registry, storage_dir):
-        registry.start_execution(
+    async def test_persists_to_store(self, registry):
+        await registry.start_execution(
             execution_id="persist-test", mode="adhoc", goal="Test persistence"
         )
-        assert (storage_dir / "persist-test.json").exists()
+        # Verify the data is in the underlying storage
+        data = await registry._storage.get("persist-test")
+        assert data is not None
+        assert data["id"] == "persist-test"
 
-    def test_get_returns_cached(self, registry):
-        registry.start_execution(execution_id="cached", mode="adhoc", goal="Test")
-        assert registry.get("cached") is not None
+    async def test_get_returns_cached(self, registry):
+        await registry.start_execution(execution_id="cached", mode="adhoc", goal="Test")
+        assert await registry.get("cached") is not None
 
-    def test_get_returns_none_for_missing(self, registry):
-        assert registry.get("nonexistent") is None
+    async def test_get_returns_none_for_missing(self, registry):
+        assert await registry.get("nonexistent") is None
 
-    def test_update_task_status(self, registry):
-        registry.start_execution(
+    async def test_update_task_status(self, registry):
+        await registry.start_execution(
             execution_id="upd", mode="plan", goal="Test", tasks=[("T1", "Do stuff")]
         )
-        registry.update_task(execution_id="upd", task_index=0, status="running", run_id=99)
-        ctx = registry.get("upd")
+        await registry.update_task(
+            execution_id="upd", task_index=0, status="running", run_id=99
+        )
+        ctx = await registry.get("upd")
         assert ctx.tasks[0].status == "running"
         assert ctx.tasks[0].run_id == 99
 
-    def test_get_active_returns_active_execution(self, registry):
-        registry.start_execution(execution_id="active-1", mode="adhoc", goal="Active")
-        assert registry.get_active() is not None
+    async def test_get_active_returns_active_execution(self, registry):
+        await registry.start_execution(execution_id="active-1", mode="adhoc", goal="Active")
+        assert await registry.get_active() is not None
 
-    def test_loads_from_disk_when_not_cached(self, storage_dir):
+    async def test_loads_from_store_when_not_cached(self):
         """Verify that a context persisted by one registry can be loaded by a fresh one."""
-        reg1 = ContextRegistry(storage_dir=storage_dir)
-        reg1.start_execution(execution_id="disk-load", mode="adhoc", goal="Persist me")
+        storage = MemoryStorage()
+        reg1 = ContextRegistry(storage=storage)
+        await reg1.setup()
+        await reg1.start_execution(
+            execution_id="store-load", mode="adhoc", goal="Persist me"
+        )
 
-        # New registry instance (empty cache) should load from disk
-        reg2 = ContextRegistry(storage_dir=storage_dir)
-        ctx = reg2.get("disk-load")
+        # New registry instance sharing the same storage (empty cache)
+        reg2 = ContextRegistry(storage=storage)
+        await reg2.setup()
+        ctx = await reg2.get("store-load")
         assert ctx is not None
         assert ctx.goal == "Persist me"
 
-    def test_get_active_from_disk(self, storage_dir):
-        """get_active() should scan disk if cache has no active contexts."""
-        reg1 = ContextRegistry(storage_dir=storage_dir)
-        reg1.start_execution(execution_id="disk-active", mode="adhoc", goal="Active on disk")
+    async def test_get_active_from_store(self):
+        """get_active() should scan store if cache has no active contexts."""
+        storage = MemoryStorage()
+        reg1 = ContextRegistry(storage=storage)
+        await reg1.setup()
+        await reg1.start_execution(
+            execution_id="store-active", mode="adhoc", goal="Active in store"
+        )
 
-        reg2 = ContextRegistry(storage_dir=storage_dir)
-        active = reg2.get_active()
+        reg2 = ContextRegistry(storage=storage)
+        await reg2.setup()
+        active = await reg2.get_active()
         assert active is not None
-        assert active.id == "disk-active"
+        assert active.id == "store-active"
 
-    def test_update_task_with_report(self, registry):
-        registry.start_execution(
+    async def test_update_task_with_report(self, registry):
+        await registry.start_execution(
             execution_id="rpt", mode="plan", goal="Test", tasks=[("T1", "Do stuff")]
         )
         report = TaskReport(summary="All done", web_url="https://codegen.com/run/1")
-        registry.update_task(execution_id="rpt", task_index=0, report=report)
-        ctx = registry.get("rpt")
+        await registry.update_task(execution_id="rpt", task_index=0, report=report)
+        ctx = await registry.get("rpt")
         assert ctx.tasks[0].report is not None
         assert ctx.tasks[0].report.summary == "All done"
 
-    def test_update_task_out_of_bounds(self, registry):
+    async def test_update_task_out_of_bounds(self, registry):
         """update_task with an invalid index should be a no-op."""
-        registry.start_execution(
+        await registry.start_execution(
             execution_id="oob", mode="plan", goal="Test", tasks=[("T1", "Do")]
         )
         # Should not raise
-        registry.update_task(execution_id="oob", task_index=999, status="running")
+        await registry.update_task(execution_id="oob", task_index=999, status="running")

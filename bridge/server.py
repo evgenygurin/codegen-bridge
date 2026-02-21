@@ -40,6 +40,7 @@ from bridge.prompts import register_prompts
 from bridge.providers import create_all_providers
 from bridge.resources import register_resources
 from bridge.sampling import SamplingConfig, register_sampling_tools
+from bridge.storage import FileStorage
 from bridge.tools import register_agent_tools, register_execution_tools, register_setup_tools
 from bridge.transforms import configure_transforms
 
@@ -96,7 +97,9 @@ async def _lifespan(server: FastMCP):
                 exc_info=True,
             )
 
-    registry = ContextRegistry()
+    storage = FileStorage()
+    registry = ContextRegistry(storage=storage)
+    await registry.setup()
     repo_cache = RepoCache()
     sampling_config = SamplingConfig()
 

@@ -33,7 +33,7 @@ def register_resources(mcp: FastMCP) -> None:
         registry: ContextRegistry = Depends(get_registry),
     ) -> str:
         """Current execution progress — plan status, task list, active run."""
-        exec_ctx = registry.get_active()
+        exec_ctx = await registry.get_active()
         if exec_ctx is None:
             return json.dumps({"status": "no_active_execution"})
         return exec_ctx.model_dump_json(indent=2)
