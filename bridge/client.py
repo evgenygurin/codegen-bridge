@@ -11,6 +11,8 @@ from bridge.models import (
     AgentRunWithLogs,
     BanActionResponse,
     EditPRResponse,
+    MCPProvider,
+    OAuthTokenStatus,
     Organization,
     OrganizationIntegrations,
     Page,
@@ -373,6 +375,36 @@ class CodegenClient:
         resp = await self._post("/slack-connect/generate-token", json=body)
         return SlackToken.model_validate(resp)
 
+    # ── MCP Providers & OAuth ──────────────────────────────
+
+    async def get_mcp_providers(self) -> list[MCPProvider]:
+        """Get all MCP-enabled OAuth providers."""
+        resp = await self._get_raw("/mcp-providers")
+        return [MCPProvider.model_validate(item) for item in resp]
+
+    async def get_oauth_status(self) -> list[OAuthTokenStatus]:
+        """Get OAuth token status for the current user and organization."""
+        resp = await self._get_raw(
+            "/oauth/tokens/status",
+            params={"org_id": self.org_id},
+        )
+        # Normalize: API may return list[str] or list[dict]
+        result: list[OAuthTokenStatus] = []
+        for item in resp:
+            if isinstance(item, str):
+                result.append(OAuthTokenStatus(provider=item))
+            else:
+                result.append(OAuthTokenStatus.model_validate(item))
+        return result
+
+    async def revoke_oauth(self, provider: str) -> None:
+        """Revoke/disconnect an OAuth token for a specific provider."""
+        resp = await self._client.post(
+            "/oauth/tokens/revoke",
+            params={"provider": provider, "org_id": self.org_id},
+        )
+        resp.raise_for_status()
+
     # ── Rules ────────────────────────────────────────────────
 
     async def get_rules(self) -> dict[str, str]:
@@ -387,8 +419,20 @@ class CodegenClient:
         resp.raise_for_status()
         return resp.json()
 
-    async def _post(self, path: str, *, json: dict | None = None) -> dict:
-        resp = await self._client.post(path, json=json)
+    async def _get_raw(self, path: str, *, params: dict | None = None) -> Any:
+        """GET that returns the raw JSON value (may be a list or dict)."""
+        resp = await self._client.get(path, params=params)
+        resp.raise_for_status()
+        return resp.json()
+
+    async def _post(
+        self,
+        path: str,
+        *,
+        json: dict | None = None,
+        params: dict | None = None,
+    ) -> dict:
+        resp = await self._client.post(path, json=json, params=params)
         resp.raise_for_status()
         return resp.json()
 
