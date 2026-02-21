@@ -22,6 +22,7 @@ from fastmcp.server.tasks import TaskConfig
 from bridge.client import CodegenClient
 from bridge.context import ContextRegistry, PRInfo, TaskReport
 from bridge.dependencies import CurrentContext, Depends, get_client, get_registry, get_repo_cache
+from bridge.elicitation import confirm_action, select_choice
 from bridge.helpers.formatting import format_run_basic
 from bridge.helpers.pagination import (
     DEFAULT_PAGE_SIZE,
@@ -70,6 +71,7 @@ def register_agent_tools(mcp: FastMCP) -> None:
         agent_type: Literal["codegen", "claude_code"] = "claude_code",
         execution_id: str | None = None,
         task_index: int | None = None,
+        confirmed: bool = False,
         ctx: Context = CurrentContext(),
         client: CodegenClient = Depends(get_client),
         registry: ContextRegistry = Depends(get_registry),
@@ -79,14 +81,17 @@ def register_agent_tools(mcp: FastMCP) -> None:
 
         The agent will execute the task in a cloud sandbox and may create a PR.
         Supports background execution with progress reporting.
+        When ``model`` is not provided and the client supports elicitation,
+        the user is prompted to choose a model interactively.
 
         Args:
             prompt: Task description for the agent (natural language, full context).
             repo_id: Repository ID. If not provided, auto-detected from git remote.
-            model: LLM model to use. None = organization default.
+            model: LLM model to use. None = organization default or interactive selection.
             agent_type: Agent type — "codegen" or "claude_code".
             execution_id: Optional execution context ID for prompt enrichment.
             task_index: Task index within the execution (default: current_task_index).
+            confirmed: Skip interactive repo confirmation when True (for programmatic use).
         """
         total = _CREATE_RUN_STEPS
         step = 0
@@ -127,6 +132,33 @@ def register_agent_tools(mcp: FastMCP) -> None:
                     "that is registered in your Codegen organization."
                 )
         step += 1
+
+        # Elicit model selection when not explicitly provided
+        if model is None and not confirmed:
+            available_models = ["claude-3-5-sonnet", "claude-3-5-haiku", "gpt-4o", "o3"]
+            selected = await select_choice(
+                ctx,
+                "Choose a model for this agent run "
+                "(or decline to use the organization default):",
+                available_models,
+            )
+            if selected is not None:
+                model = selected
+
+        # Elicit repo confirmation when auto-detected (not explicitly provided)
+        if not confirmed:
+            user_confirmed = await confirm_action(
+                ctx,
+                f"Create agent run on repo_id={repo_id} "
+                f"with model={model or 'org default'}?",
+            )
+            if not user_confirmed:
+                return json.dumps(
+                    {
+                        "action": "cancelled",
+                        "reason": "User declined to create run",
+                    }
+                )
 
         # Step 4: Create the agent run
         await _report(ctx, step, total, "Creating agent run")
@@ -321,14 +353,29 @@ def register_agent_tools(mcp: FastMCP) -> None:
     @mcp.tool(tags={"execution", "dangerous"}, icons=ICON_STOP)
     async def codegen_stop_run(
         run_id: int,
+        confirmed: bool = False,
         ctx: Context = CurrentContext(),
         client: CodegenClient = Depends(get_client),
     ) -> str:
         """Stop a running agent. Use when a task needs to be cancelled.
 
+        Asks for user confirmation before stopping unless ``confirmed=True``.
+
         Args:
             run_id: Agent run ID to stop.
+            confirmed: Skip interactive confirmation when True (for programmatic use).
         """
+        if not confirmed:
+            user_confirmed = await confirm_action(
+                ctx,
+                f"Are you sure you want to stop agent run {run_id}? "
+                "This action cannot be undone.",
+            )
+            if not user_confirmed:
+                return json.dumps(
+                    {"run_id": run_id, "action": "cancelled", "reason": "User declined to stop"}
+                )
+
         await ctx.warning(f"Stopping run: id={run_id}")
         run = await client.stop_run(run_id)
         await ctx.info(f"Run stopped: id={run.id}, status={run.status}")
