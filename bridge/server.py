@@ -32,6 +32,7 @@ from bridge.openapi_utils import create_openapi_provider
 from bridge.prompts import register_prompts
 from bridge.resources import register_resources
 from bridge.tools import register_agent_tools, register_execution_tools, register_setup_tools
+from bridge.transforms import configure_transforms
 
 logger = logging.getLogger("bridge.server")
 
@@ -110,6 +111,10 @@ register_execution_tools(mcp)
 register_setup_tools(mcp)
 register_resources(mcp)
 register_prompts(mcp)
+
+# Configure transform chain (namespace, tool transforms, visibility,
+# version filter).  Default: passthrough (no transforms applied).
+configure_transforms(mcp)
 
 # ── Entry Point ─────────────────────────────────────────
 
