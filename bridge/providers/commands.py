@@ -116,7 +116,7 @@ class CommandsProvider(Provider):
         uri = f"{self._uri_prefix}/{stem}"
 
         return TextResource(
-            uri=uri,
+            uri=uri,  # type: ignore[arg-type]
             name=f"command_{stem}",
             description=description,
             mime_type="text/markdown",

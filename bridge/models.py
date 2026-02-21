@@ -10,7 +10,7 @@ code is broken by adding ``field: X | None = None``.
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -49,7 +49,7 @@ class AgentRun(BaseModel):
     created_at: str | None = None
     source_type: str | None = None
     github_pull_requests: list[PullRequest] | None = None
-    metadata: dict | None = None
+    metadata: dict[str, Any] | None = None
 
 
 class AgentLog(BaseModel):
@@ -63,9 +63,9 @@ class AgentLog(BaseModel):
     tool_name: str | None = None
     message_type: str | None = None
     thought: str | None = None
-    observation: str | dict | None = None
-    tool_input: dict | None = None
-    tool_output: str | dict | None = None
+    observation: str | dict[str, Any] | None = None
+    tool_input: dict[str, Any] | None = None
+    tool_output: str | dict[str, Any] | None = None
 
 
 class BanActionResponse(BaseModel):
@@ -87,7 +87,7 @@ class AgentRunWithLogs(BaseModel):
     created_at: str | None = None
     web_url: str | None = None
     result: str | None = None
-    metadata: dict | None = None
+    metadata: dict[str, Any] | None = None
     logs: list[AgentLog]
     total_logs: int | None = 0
     page: int | None = None
@@ -206,7 +206,7 @@ class IntegrationStatus(BaseModel):
     active: bool
     token_id: int | None = None
     installation_id: int | None = None
-    metadata: dict | None = None
+    metadata: dict[str, Any] | None = None
 
 
 class OrganizationIntegrations(BaseModel):
@@ -349,7 +349,7 @@ class OAuthProvider(BaseModel):
     token_endpoint: str
     default_scopes: list[str] | None = None
     is_mcp: bool = False
-    meta: dict | None = None
+    meta: dict[str, Any] | None = None
 
 
 # ── Pagination ──────────────────────────────────────────────────────
@@ -365,7 +365,7 @@ class MCPProvider(BaseModel):
     token_endpoint: str | None = None
     default_scopes: list[str] | None = None
     is_mcp: bool = True
-    meta: dict | None = None
+    meta: dict[str, Any] | None = None
 
 
 class OAuthTokenStatus(BaseModel):
@@ -385,20 +385,9 @@ class Page[T](BaseModel):
     pages: int = 1
 
 
-# ── Pull Requests ──────────────────────────────────────────
+# ── Pull Request state type ────────────────────────────────
 
 PRState = Literal["open", "closed", "draft", "ready_for_review"]
-
-
-class EditPRResponse(BaseModel):
-    """Response from editing PR properties."""
-
-    success: bool
-    url: str | None = None
-    number: int | None = None
-    title: str | None = None
-    state: str | None = None
-    error: str | None = None
 
 
 # ── Forward references ──────────────────────────────────────────────

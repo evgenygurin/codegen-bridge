@@ -74,7 +74,7 @@ async def confirm_action(
         unavailable.
     """
     try:
-        result = await ctx.elicit(message, bool)
+        result = await ctx.elicit(message, bool)  # type: ignore[arg-type]
     except McpError:
         logger.debug("Elicitation not supported; using default=%s", default)
         return default
@@ -83,7 +83,7 @@ async def confirm_action(
         return default
 
     if isinstance(result, AcceptedElicitation):
-        confirmed: bool = result.data
+        confirmed: bool = result.data  # type: ignore[assignment]
         await ctx.info(f"User {'confirmed' if confirmed else 'rejected'}: {message}")
         return confirmed
 
@@ -113,7 +113,7 @@ async def confirm_with_schema[T](
         *default_on_unsupported* on decline/cancel/unsupported.
     """
     try:
-        result = await ctx.elicit(message, schema)
+        result = await ctx.elicit(message, schema)  # type: ignore[arg-type]
     except McpError:
         logger.debug("Elicitation not supported; returning default")
         return default_on_unsupported
@@ -122,7 +122,7 @@ async def confirm_with_schema[T](
         return default_on_unsupported
 
     if isinstance(result, AcceptedElicitation):
-        return result.data
+        return result.data  # type: ignore[return-value]
 
     await ctx.info(f"User {result.action}: {message}")
     return None
@@ -152,7 +152,7 @@ async def select_choice(
         return default
 
     try:
-        result = await ctx.elicit(message, choices)
+        result = await ctx.elicit(message, choices)  # type: ignore[arg-type]
     except McpError:
         logger.debug("Elicitation not supported; using default=%s", default)
         return default
@@ -161,7 +161,7 @@ async def select_choice(
         return default
 
     if isinstance(result, AcceptedElicitation):
-        selected: str = result.data
+        selected: str = result.data  # type: ignore[assignment]
         await ctx.info(f"User selected: {selected}")
         return selected
 

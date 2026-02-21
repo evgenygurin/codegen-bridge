@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from typing import Any
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
@@ -27,9 +28,10 @@ from bridge.icons import (
     ICON_USER,
     ICON_USERS,
 )
+from bridge.models import User
 
 
-def _user_to_dict(user) -> dict:
+def _user_to_dict(user: User) -> dict[str, Any]:
     """Serialize a User model to a dict for JSON responses."""
     return {
         "id": user.id,
@@ -51,7 +53,7 @@ def register_setup_tools(mcp: FastMCP) -> None:
     @mcp.tool(tags={"setup"}, icons=ICON_USER)
     async def codegen_get_current_user(
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),
+        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
     ) -> str:
         """Get current user information from the API token.
 
@@ -68,7 +70,7 @@ def register_setup_tools(mcp: FastMCP) -> None:
         limit: int = DEFAULT_PAGE_SIZE,
         cursor: str | None = None,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),
+        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
     ) -> str:
         """List users in the configured Codegen organization.
 
@@ -97,7 +99,7 @@ def register_setup_tools(mcp: FastMCP) -> None:
     async def codegen_get_user(
         user_id: int,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),
+        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
     ) -> str:
         """Get details for a specific user in the organization.
 
@@ -114,7 +116,7 @@ def register_setup_tools(mcp: FastMCP) -> None:
     @mcp.tool(tags={"setup"}, icons=ICON_ORG)
     async def codegen_list_orgs(
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),
+        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
     ) -> str:
         """List Codegen organizations the authenticated user belongs to."""
         await ctx.info("Listing organizations")
@@ -154,7 +156,7 @@ def register_setup_tools(mcp: FastMCP) -> None:
         limit: int = DEFAULT_PAGE_SIZE,
         cursor: str | None = None,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),
+        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
     ) -> str:
         """List repositories in the configured Codegen organization.
 
@@ -194,7 +196,7 @@ def register_setup_tools(mcp: FastMCP) -> None:
         prompt: str | None = None,
         trigger_source: str = "setup-commands",
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),
+        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
     ) -> str:
         """Generate setup commands for a repository.
 
@@ -226,7 +228,7 @@ def register_setup_tools(mcp: FastMCP) -> None:
     @mcp.tool(tags={"setup"}, icons=ICON_MCP)
     async def codegen_get_mcp_providers(
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),
+        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
     ) -> str:
         """List available MCP-enabled OAuth providers.
 
@@ -257,7 +259,7 @@ def register_setup_tools(mcp: FastMCP) -> None:
     @mcp.tool(tags={"setup"}, icons=ICON_OAUTH)
     async def codegen_get_oauth_status(
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),
+        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
     ) -> str:
         """Get OAuth token status for the current user and organization.
 
@@ -360,7 +362,7 @@ def register_setup_tools(mcp: FastMCP) -> None:
         provider: str,
         confirmed: bool = False,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),
+        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
     ) -> str:
         """Revoke/disconnect an OAuth token for a specific provider.
 

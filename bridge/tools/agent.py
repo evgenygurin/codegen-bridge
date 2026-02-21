@@ -96,9 +96,9 @@ def register_agent_tools(mcp: FastMCP) -> None:
         task_index: int | None = None,
         confirmed: bool = False,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),
-        registry: ContextRegistry = Depends(get_registry),
-        repo_cache: RepoCache = Depends(get_repo_cache),
+        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
+        registry: ContextRegistry = Depends(get_registry),  # type: ignore[arg-type]
+        repo_cache: RepoCache = Depends(get_repo_cache),  # type: ignore[arg-type]
     ) -> str:
         """Create a new Codegen agent run.
 
@@ -226,8 +226,8 @@ def register_agent_tools(mcp: FastMCP) -> None:
         execution_id: str | None = None,
         task_index: int | None = None,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),
-        registry: ContextRegistry = Depends(get_registry),
+        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
+        registry: ContextRegistry = Depends(get_registry),  # type: ignore[arg-type]
     ) -> str:
         """Get agent run status, result, summary, and created PRs.
 
@@ -313,7 +313,9 @@ def register_agent_tools(mcp: FastMCP) -> None:
                         total_steps=parsed.total_steps if parsed else 0,
                     )
 
-                    task_status = "completed" if run.status == "completed" else "failed"
+                    task_status: Literal["completed", "failed"] = (
+                        "completed" if run.status == "completed" else "failed"
+                    )
                     await registry.update_task(
                         execution_id=execution_id,
                         task_index=idx,
@@ -337,7 +339,7 @@ def register_agent_tools(mcp: FastMCP) -> None:
         user_id: int | None = None,
         cursor: str | None = None,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),
+        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
     ) -> str:
         """List recent agent runs with cursor-based pagination.
 
@@ -385,7 +387,7 @@ def register_agent_tools(mcp: FastMCP) -> None:
         model: str | None = None,
         images: list[str] | None = None,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),
+        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
     ) -> str:
         """Resume a paused or blocked agent run with new instructions.
 
@@ -407,7 +409,7 @@ def register_agent_tools(mcp: FastMCP) -> None:
         run_id: int,
         confirmed: bool = False,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),
+        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
     ) -> str:
         """Stop a running agent. Use when a task needs to be cancelled.
 
@@ -443,7 +445,7 @@ def register_agent_tools(mcp: FastMCP) -> None:
         after_card_order_id: str | None = None,
         confirmed: bool = False,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),
+        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
     ) -> str:
         """Ban all checks for a PR and stop all related agents.
 
@@ -491,7 +493,7 @@ def register_agent_tools(mcp: FastMCP) -> None:
         before_card_order_id: str | None = None,
         after_card_order_id: str | None = None,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),
+        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
     ) -> str:
         """Unban all checks for a PR.
 
@@ -528,7 +530,7 @@ def register_agent_tools(mcp: FastMCP) -> None:
         after_card_order_id: str | None = None,
         confirmed: bool = False,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),
+        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
     ) -> str:
         """Remove Codegen from a PR.
 
@@ -581,7 +583,7 @@ def register_agent_tools(mcp: FastMCP) -> None:
         reverse: bool = True,
         cursor: str | None = None,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),
+        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
     ) -> str:
         """Get step-by-step agent execution logs with cursor-based pagination.
 
@@ -617,7 +619,7 @@ def register_agent_tools(mcp: FastMCP) -> None:
                 "run_id": result.id,
                 "status": result.status,
                 "total_logs": result.total_logs,
-                "next_cursor": next_cursor_or_none(offset, limit, result.total_logs),
+                "next_cursor": next_cursor_or_none(offset, limit, result.total_logs or 0),
                 "logs": [
                     {
                         k: v

@@ -103,7 +103,7 @@ TOOL_NAMES: dict[str, str] = {
 }
 
 
-def load_and_patch_spec(org_id: int) -> dict:
+def load_and_patch_spec(org_id: int) -> dict[str, Any]:
     """Load OpenAPI spec from disk and replace {org_id} with the real value.
 
     This removes org_id from tool parameters so the LLM doesn't need to pass it.
@@ -111,7 +111,7 @@ def load_and_patch_spec(org_id: int) -> dict:
     spec = json.loads(SPEC_PATH.read_text())
     spec = copy.deepcopy(spec)
 
-    patched_paths: dict = {}
+    patched_paths: dict[str, Any] = {}
     for path, path_item in spec.get("paths", {}).items():
         new_path = path.replace("{org_id}", str(org_id))
 
@@ -128,7 +128,8 @@ def load_and_patch_spec(org_id: int) -> dict:
         patched_paths[new_path] = path_item
 
     spec["paths"] = patched_paths
-    return spec
+    result: dict[str, Any] = spec
+    return result
 
 
 def build_route_maps() -> list[RouteMap]:

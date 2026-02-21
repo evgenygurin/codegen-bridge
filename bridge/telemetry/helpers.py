@@ -15,7 +15,7 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from typing import Any
 
-from fastmcp.server.telemetry import get_tracer
+from fastmcp.server.telemetry import get_tracer  # type: ignore[attr-defined]
 from opentelemetry import metrics as otel_metrics
 
 from bridge.telemetry.config import TelemetryConfig

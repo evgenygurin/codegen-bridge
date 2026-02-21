@@ -8,6 +8,7 @@ client or a configured fallback handler.
 from __future__ import annotations
 
 import json
+from typing import Any
 
 from fastmcp import FastMCP
 from fastmcp.server.context import Context
@@ -24,7 +25,8 @@ def _get_sampling_config(ctx: Context) -> SamplingConfig:
     """Resolve ``SamplingConfig`` from lifespan context, with a safe default."""
     lc = ctx.lifespan_context
     if lc and "sampling_config" in lc:
-        return lc["sampling_config"]
+        cfg: SamplingConfig = lc["sampling_config"]
+        return cfg
     return SamplingConfig()
 
 
@@ -35,7 +37,7 @@ def register_sampling_tools(mcp: FastMCP) -> None:
     async def codegen_summarise_run(
         run_id: int,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),
+        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
     ) -> str:
         """Generate an AI-powered summary of an agent run.
 
@@ -48,7 +50,7 @@ def register_sampling_tools(mcp: FastMCP) -> None:
         await ctx.info(f"Sampling: summarising run {run_id}")
 
         run = await client.get_run(run_id)
-        run_data: dict = {
+        run_data: dict[str, Any] = {
             "id": run.id,
             "status": run.status,
             "result": run.result,
@@ -89,7 +91,7 @@ def register_sampling_tools(mcp: FastMCP) -> None:
     async def codegen_summarise_execution(
         execution_id: str | None = None,
         ctx: Context = CurrentContext(),
-        registry: ContextRegistry = Depends(get_registry),
+        registry: ContextRegistry = Depends(get_registry),  # type: ignore[arg-type]
     ) -> str:
         """Generate an AI-powered summary of a full execution plan.
 
@@ -101,7 +103,10 @@ def register_sampling_tools(mcp: FastMCP) -> None:
         """
         await ctx.info(f"Sampling: summarising execution {execution_id or 'active'}")
 
-        exec_ctx = registry.get(execution_id) if execution_id else registry.get_active()
+        if execution_id:
+            exec_ctx = await registry.get(execution_id)
+        else:
+            exec_ctx = await registry.get_active()
         if exec_ctx is None:
             return json.dumps({"error": "No execution context found"})
 
@@ -124,7 +129,7 @@ def register_sampling_tools(mcp: FastMCP) -> None:
         architecture: str | None = None,
         execution_id: str | None = None,
         ctx: Context = CurrentContext(),
-        registry: ContextRegistry = Depends(get_registry),
+        registry: ContextRegistry = Depends(get_registry),  # type: ignore[arg-type]
     ) -> str:
         """Use AI to generate a detailed, optimised prompt for a Codegen agent.
 
@@ -141,10 +146,10 @@ def register_sampling_tools(mcp: FastMCP) -> None:
         """
         await ctx.info("Sampling: generating task prompt")
 
-        completed_tasks: list[dict] | None = None
+        completed_tasks: list[dict[str, Any]] | None = None
         if execution_id:
-            exec_ctx = registry.get(execution_id)
-            if exec_ctx:
+            exec_ctx = await registry.get(execution_id)
+            if exec_ctx is not None:
                 completed_tasks = [
                     {
                         "title": t.title,
@@ -178,7 +183,7 @@ def register_sampling_tools(mcp: FastMCP) -> None:
         run_id: int,
         limit: int = 50,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),
+        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
     ) -> str:
         """Analyse agent execution logs with AI to identify patterns and issues.
 

@@ -10,7 +10,7 @@ The public entry point is :func:`configure_transforms`.
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from fastmcp.server.transforms import (
     Namespace,
@@ -54,7 +54,7 @@ def _build_chain(config: TransformsConfig) -> list[Transform]:
     if tt is not None and tt.enabled and tt.tools:
         tool_configs: dict[str, _FMToolTransformConfig] = {}
         for tool_name, entry in tt.tools.items():
-            kwargs: dict = {}
+            kwargs: dict[str, Any] = {}
             if entry.name is not None:
                 kwargs["name"] = entry.name
             if entry.description is not None:

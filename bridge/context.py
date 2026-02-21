@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -120,7 +120,7 @@ class ContextRegistry:
         mode: Literal["plan", "adhoc"],
         goal: str,
         tasks: list[tuple[str, str]] | None = None,
-        **kwargs: object,
+        **kwargs: Any,
     ) -> ExecutionContext:
         """Create and persist a new execution context."""
         task_list: list[TaskContext] = []
@@ -157,9 +157,9 @@ class ContextRegistry:
         for key in await self._storage.keys():
             if key in self._cache:
                 continue  # Already checked above
-            ctx = await self._load(key)
-            if ctx and ctx.status == "active":
-                return ctx
+            loaded = await self._load(key)
+            if loaded is not None and loaded.status == "active":
+                return loaded
         return None
 
     async def update_task(
@@ -167,7 +167,7 @@ class ContextRegistry:
         *,
         execution_id: str,
         task_index: int,
-        status: str | None = None,
+        status: Literal["pending", "running", "completed", "failed", "skipped"] | None = None,
         run_id: int | None = None,
         report: TaskReport | None = None,
     ) -> None:
