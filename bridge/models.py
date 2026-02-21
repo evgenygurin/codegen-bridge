@@ -68,6 +68,13 @@ class AgentLog(BaseModel):
     tool_output: str | dict | None = None
 
 
+class BanActionResponse(BaseModel):
+    """Response from ban / unban / remove-from-pr endpoints."""
+
+    message: str | None = None
+    status_code: int | None = None
+
+
 class AgentRunWithLogs(BaseModel):
     """Agent run with paginated logs.
 
@@ -118,19 +125,6 @@ class OrganizationSettings(BaseModel):
 
     enable_pr_creation: bool = True
     enable_rules_detection: bool = True
-
-
-class User(BaseModel):
-    """Codegen user profile."""
-
-    id: int
-    github_user_id: str
-    github_username: str
-    email: str | None = None
-    avatar_url: str | None = None
-    full_name: str | None = None
-    role: str | None = None
-    is_admin: bool | None = None
 
 
 class Organization(BaseModel):
