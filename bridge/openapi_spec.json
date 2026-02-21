@@ -1,0 +1,4139 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Developer API",
+    "description": "API for application developers",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://api.codegen.com",
+      "description": "Codegen API"
+    }
+  ],
+  "paths": {
+    "/v1/organizations/{org_id}/users": {
+      "get": {
+        "tags": [
+          "users",
+          "users",
+          "users"
+        ],
+        "summary": "Get Users",
+        "description": "Get users for the specified organization.\n\nReturns a paginated list of all users that belong to the specified organization.\nResults include user details such as name, email, GitHub username, and avatar.\nUse pagination parameters to control the number of results returned.\n\nRate limit: 60 requests per 30 seconds.",
+        "operationId": "get_users_v1_organizations__org_id__users_get",
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Org Id"
+            }
+          },
+          {
+            "name": "skip",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Skip"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 100,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_UserResponse_"
+                }
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIRateLimitErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PermissionsErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/organizations/{org_id}/users/{user_id}": {
+      "get": {
+        "tags": [
+          "users",
+          "users",
+          "users"
+        ],
+        "summary": "Get User",
+        "description": "Get details for a specific user in an organization.\n\nReturns detailed information about a user within the specified organization.\nThe requesting user must be a member of the organization to access this endpoint.\n\nRate limit: 60 requests per 30 seconds.",
+        "operationId": "get_user_v1_organizations__org_id__users__user_id__get",
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Org Id"
+            }
+          },
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "User Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIRateLimitErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PermissionsErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserNotFoundErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/users/me": {
+      "get": {
+        "tags": [
+          "users",
+          "users",
+          "users"
+        ],
+        "summary": "Get Current User Info",
+        "description": "Get current user information from API token.\n\nReturns detailed information about the user associated with the provided API token.\nThis is useful for applications that need to identify the current user from their API token.\n\nRate limit: 60 requests per 30 seconds.",
+        "operationId": "get_current_user_info_v1_users_me_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIRateLimitErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PermissionsErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/organizations/{org_id}/agent/run": {
+      "post": {
+        "tags": [
+          "agents",
+          "agents",
+          "agents"
+        ],
+        "summary": "Create Agent Run",
+        "description": "Create a new agent run.\n\nCreates and initiates a long-running agent process based on the provided prompt.\nThe process will complete asynchronously, and the response contains the agent run ID\nwhich can be used to check the status later. The requesting user must be a member\nof the specified organization.\n\nThis endpoint accepts both a text prompt and an optional image file upload.\n\nRate limit: 10 requests per minute.",
+        "operationId": "create_agent_run_v1_organizations__org_id__agent_run_post",
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Org Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAgentRunInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentRunResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIRateLimitErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "402": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentRunLimitReachedErrorResponse"
+                }
+              }
+            },
+            "description": "Payment Required"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PermissionsErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoReposFoundInOrgErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/organizations/{org_id}/agent/run/{agent_run_id}": {
+      "get": {
+        "tags": [
+          "agents",
+          "agents",
+          "agents"
+        ],
+        "summary": "Get Agent Run",
+        "description": "Retrieve the status and result of an agent run.\n\nReturns the current status, progress, and any available results for the specified agent run.\nThe agent run must belong to the specified organization. If the agent run is still in progress,\nthis endpoint can be polled to check for completion.\n\nRate limit: 60 requests per 30 seconds.",
+        "operationId": "get_agent_run_v1_organizations__org_id__agent_run__agent_run_id__get",
+        "parameters": [
+          {
+            "name": "agent_run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Agent Run Id"
+            }
+          },
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Org Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentRunResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIRateLimitErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PermissionsErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentRunNotFoundErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/organizations/{org_id}/agent/runs": {
+      "get": {
+        "tags": [
+          "agents",
+          "agents",
+          "agents"
+        ],
+        "summary": "List Agent Runs",
+        "description": "List agent runs for an organization with optional user filtering.\n\nReturns a paginated list of agent runs for the specified organization.\nOptionally filter by user_id to get only agent runs initiated by a specific user.\nResults are ordered by creation date (newest first).\n\nRate limit: 60 requests per 30 seconds.",
+        "operationId": "list_agent_runs_v1_organizations__org_id__agent_runs_get",
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Org Id"
+            }
+          },
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by user ID who initiated the agent runs",
+              "title": "User Id"
+            },
+            "description": "Filter by user ID who initiated the agent runs"
+          },
+          {
+            "name": "source_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/ApiAgentRunSourceType"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by source type of the agent runs",
+              "title": "Source Type"
+            },
+            "description": "Filter by source type of the agent runs"
+          },
+          {
+            "name": "skip",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Skip"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 100,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_AgentRunResponse_"
+                }
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIRateLimitErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PermissionsErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/organizations/{org_id}/agent/run/resume": {
+      "post": {
+        "tags": [
+          "agents",
+          "agents",
+          "agents"
+        ],
+        "summary": "Resume Agent Run",
+        "description": "Resume a paused agent run.\n\nResumes a paused agent run, allowing it to continue processing.\n\nNote: Setup commands agents are automatically routed to their dedicated resume function.",
+        "operationId": "resume_agent_run_v1_organizations__org_id__agent_run_resume_post",
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Org Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResumeAgentRunInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentRunResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIRateLimitErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PermissionsErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentRunNotFoundErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/organizations/{org_id}/agent/run/ban": {
+      "post": {
+        "tags": [
+          "agents",
+          "agents",
+          "agents"
+        ],
+        "summary": "Ban All Checks For Agent Run",
+        "description": "Ban all checks for a PR and stop all related agents.\n\nThis endpoint:\n1. Flags the PR to prevent future CI/CD check suite events from being processed\n2. Stops all current agents for that PR",
+        "operationId": "ban_all_checks_for_agent_run_v1_organizations__org_id__agent_run_ban_post",
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Org Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StopAgentRunInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIRateLimitErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PermissionsErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentRunNotFoundErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/organizations/{org_id}/agent/run/unban": {
+      "post": {
+        "tags": [
+          "agents",
+          "agents",
+          "agents"
+        ],
+        "summary": "Unban All Checks For Agent Run",
+        "description": "Unban all checks for a PR.\n\nThis endpoint:\n1. Removes the ban flag from the PR to allow future CI/CD check suite events to be processed\n2. Handles both URL-based bans and parent-agent-run-based bans",
+        "operationId": "unban_all_checks_for_agent_run_v1_organizations__org_id__agent_run_unban_post",
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Org Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StopAgentRunInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIRateLimitErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PermissionsErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentRunNotFoundErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/organizations/{org_id}/agent/run/remove-from-pr": {
+      "post": {
+        "tags": [
+          "agents",
+          "agents",
+          "agents"
+        ],
+        "summary": "Remove Codegen From Pr",
+        "description": "Remove Codegen from a PR.\n\nThis endpoint performs the same action as banning all checks but with more user-friendly naming.\nIt:\n1. Flags the PR to prevent future CI/CD check suite events from being processed\n2. Stops all current agents for that PR",
+        "operationId": "remove_codegen_from_pr_v1_organizations__org_id__agent_run_remove_from_pr_post",
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Org Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StopAgentRunInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIRateLimitErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PermissionsErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentRunNotFoundErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/organizations/{org_id}/repos": {
+      "get": {
+        "tags": [
+          "repositories",
+          "repositories",
+          "repositories"
+        ],
+        "summary": "Get Repositories",
+        "description": "Get repositories for the specified organization.\n\nReturns a paginated list of all repositories that belong to the specified organization.\nResults include repository details such as name, ID, description, visibility, and setup status.\nUse pagination parameters to control the number of results returned.\n\nRate limit: 60 requests per 30 seconds.",
+        "operationId": "get_repositories_v1_organizations__org_id__repos_get",
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Org Id"
+            }
+          },
+          {
+            "name": "skip",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Skip"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 100,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_RepoResponse_"
+                }
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIRateLimitErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/organizations/{org_id}/repos/check-suite-settings": {
+      "get": {
+        "tags": [
+          "repositories",
+          "check-suite-settings"
+        ],
+        "summary": "Get Check Suite Settings",
+        "description": "Get check suite settings for a repository.",
+        "operationId": "get_check_suite_settings_v1_organizations__org_id__repos_check_suite_settings_get",
+        "parameters": [
+          {
+            "name": "repo_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "description": "Repository ID",
+              "title": "Repo Id"
+            },
+            "description": "Repository ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckSuiteSettingsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "repositories",
+          "check-suite-settings"
+        ],
+        "summary": "Update Check Suite Settings",
+        "description": "Update check suite settings for a repository.",
+        "operationId": "update_check_suite_settings_v1_organizations__org_id__repos_check_suite_settings_put",
+        "parameters": [
+          {
+            "name": "repo_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "description": "Repository ID",
+              "title": "Repo Id"
+            },
+            "description": "Repository ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CheckSuiteSettingsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Update Check Suite Settings V1 Organizations  Org Id  Repos Check Suite Settings Put"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/organizations/{org_id}/prs/{pr_id}": {
+      "patch": {
+        "tags": [
+          "pull-requests",
+          "pull-requests",
+          "pull-requests"
+        ],
+        "summary": "Edit Pull Request Simple",
+        "description": "Edit pull request properties (simple endpoint).\n\nUpdate the state of a pull request (open, closed, draft, ready_for_review).\nThis endpoint only requires the PR ID, not the repo ID.\nThe requesting user must have write permissions to the repository.\n\nRate limit: 30 requests per minute.",
+        "operationId": "edit_pull_request_simple_v1_organizations__org_id__prs__pr_id__patch",
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Org Id"
+            }
+          },
+          {
+            "name": "pr_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Pr Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EditPRInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EditPRResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIRateLimitErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/organizations/{org_id}/repos/{repo_id}/prs/{pr_id}": {
+      "patch": {
+        "tags": [
+          "pull-requests",
+          "pull-requests",
+          "pull-requests"
+        ],
+        "summary": "Edit Pull Request",
+        "description": "Edit pull request properties (RESTful endpoint).\n\nUpdate the state of a pull request (open, closed, draft, ready_for_review).\nThis endpoint requires both repo_id and pr_id for RESTful compliance.\nThe requesting user must have write permissions to the repository.\n\nRate limit: 30 requests per minute.",
+        "operationId": "edit_pull_request_v1_organizations__org_id__repos__repo_id__prs__pr_id__patch",
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Org Id"
+            }
+          },
+          {
+            "name": "repo_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Repo Id"
+            }
+          },
+          {
+            "name": "pr_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Pr Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EditPRInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EditPRResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIRateLimitErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/organizations/{org_id}/integrations": {
+      "get": {
+        "tags": [
+          "integrations",
+          "integrations",
+          "integrations"
+        ],
+        "summary": "Get Organization Integrations Endpoint",
+        "description": "Get all integration statuses for the given organization.\n\nReturns a comprehensive overview of all integrations configured for the organization,\nincluding:\n- OAuth-based integrations (Slack, Linear, Notion, Figma, ClickUp, Jira, Sentry, Monday.com)\n- GitHub app installations\n- API key-based integrations (CircleCI)\n- Database connections (PostgreSQL)\n\nEach integration includes its current status (active/inactive), associated token/installation IDs,\nand relevant metadata such as app names, organization names, etc.\n\nRate limit: 60 requests per 30 seconds.",
+        "operationId": "get_organization_integrations_endpoint_v1_organizations__org_id__integrations_get",
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Org Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizationIntegrationsResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIRateLimitErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PermissionsErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/organizations/{org_id}/models": {
+      "get": {
+        "tags": [
+          "models",
+          "models",
+          "models"
+        ],
+        "summary": "Get Available Models",
+        "description": "Get available models and providers.\n\nReturns a list of all available AI model providers and their models\nthat can be used when creating agent runs. Also returns the default\nmodel for the organization.\n\nRate limit: 60 requests per 30 seconds.",
+        "operationId": "get_available_models_v1_organizations__org_id__models_get",
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Org Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelsResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIRateLimitErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PermissionsErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/organizations/{org_id}/setup-commands/generate": {
+      "post": {
+        "tags": [
+          "setup-commands",
+          "setup-commands",
+          "setup-commands"
+        ],
+        "summary": "Generate Setup Commands",
+        "description": "Generate setup commands for a repository.\n\nCreates and initiates a setup command generation agent for the specified repository.\nThe agent will analyze the repository structure and generate appropriate setup commands.\n\nRate limit: 5 requests per minute.",
+        "operationId": "generate_setup_commands_v1_organizations__org_id__setup_commands_generate_post",
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Org Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateSetupCommandsInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SetupCommandsResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Repository not found"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "500": {
+            "description": "Internal server error"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/organizations": {
+      "get": {
+        "tags": [
+          "organizations",
+          "organizations",
+          "organizations"
+        ],
+        "summary": "Get Organizations",
+        "description": "Get organizations for the authenticated user.\n\nReturns a paginated list of all organizations that the authenticated user is a member of.\nResults include basic organization details such as name, ID, and membership information.\nUse pagination parameters to control the number of results returned.\n\nRate limit: 60 requests per 30 seconds.",
+        "operationId": "get_organizations_v1_organizations_get",
+        "parameters": [
+          {
+            "name": "skip",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Skip"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 100,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_OrganizationResponse_"
+                }
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIRateLimitErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/mcp-providers": {
+      "get": {
+        "tags": [
+          "organizations",
+          "organizations"
+        ],
+        "summary": "Get Mcp Providers",
+        "description": "Get all MCP providers from oauth_providers table.\n\nReturns only providers with is_mcp=True.",
+        "operationId": "get_mcp_providers_v1_mcp_providers_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OAuthProviderResponse"
+                  },
+                  "title": "Response Get Mcp Providers V1 Mcp Providers Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/oauth/tokens/status": {
+      "get": {
+        "tags": [
+          "organizations",
+          "organizations"
+        ],
+        "summary": "Get Oauth Token Status",
+        "description": "Get list of providers that have active OAuth tokens for the current user and organization.\n\nReturns a list of provider names that are connected.",
+        "operationId": "get_oauth_token_status_v1_oauth_tokens_status_get",
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Org Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/oauth/tokens/revoke": {
+      "post": {
+        "tags": [
+          "organizations",
+          "organizations"
+        ],
+        "summary": "Revoke Oauth Token",
+        "description": "Revoke/disconnect an OAuth token for a specific provider.\n\nMarks ALL tokens as inactive (is_active=False) for the current user and organization.",
+        "operationId": "revoke_oauth_token_v1_oauth_tokens_revoke_post",
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Provider"
+            }
+          },
+          {
+            "name": "org_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Org Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/organizations/{org_id}/webhooks/agent-run": {
+      "get": {
+        "tags": [
+          "organizations",
+          "organizations"
+        ],
+        "summary": "Get Webhook Config",
+        "description": "Get webhook configuration for agent run completion events.\n\nReturns the current webhook URL, enabled status, and whether a secret is configured.\nThe actual secret value is never returned for security reasons.",
+        "operationId": "get_webhook_config_v1_organizations__org_id__webhooks_agent_run_get",
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Org Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookConfigResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "organizations",
+          "organizations"
+        ],
+        "summary": "Set Webhook Config",
+        "description": "Configure webhook for agent run completion events.\n\nSet the URL where webhook notifications will be sent when agent runs complete.\nOptionally configure a secret for HMAC signature verification.",
+        "operationId": "set_webhook_config_v1_organizations__org_id__webhooks_agent_run_post",
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Org Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WebhookConfigRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "organizations",
+          "organizations"
+        ],
+        "summary": "Delete Webhook Config",
+        "description": "Remove webhook configuration for agent run completion events.\n\nDeletes all webhook settings (URL, secret, enabled flag) for the organization.",
+        "operationId": "delete_webhook_config_v1_organizations__org_id__webhooks_agent_run_delete",
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Org Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/organizations/{org_id}/webhooks/agent-run/test": {
+      "post": {
+        "tags": [
+          "organizations",
+          "organizations"
+        ],
+        "summary": "Test Webhook",
+        "description": "Send a test webhook to the provided URL.\n\nSends a test payload to verify the webhook endpoint is reachable and responding.\nRate limit: 10 requests per minute.",
+        "operationId": "test_webhook_v1_organizations__org_id__webhooks_agent_run_test_post",
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Org Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WebhookTestRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/organizations/{org_id}/sandbox/{sandbox_id}/analyze-logs": {
+      "post": {
+        "tags": [
+          "sandbox",
+          "sandbox",
+          "sandbox"
+        ],
+        "summary": "Analyze Sandbox Logs",
+        "description": "Analyze sandbox setup logs using an AI agent.\n\nThis endpoint creates an AI agent that will analyze the setup logs from a sandbox,\nidentify any errors, provide insights about what went wrong, and suggest potential\nsolutions. The analysis runs asynchronously and results can be retrieved using the\nreturned agent run ID.\n\nRate limit: 5 requests per minute.",
+        "operationId": "analyze_sandbox_logs_v1_organizations__org_id__sandbox__sandbox_id__analyze_logs_post",
+        "parameters": [
+          {
+            "name": "sandbox_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Sandbox Id"
+            }
+          },
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Org Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyzeLogsResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIRateLimitErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PermissionsErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Sandbox not found"
+          },
+          "400": {
+            "description": "No logs available for analysis"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/organizations/{org_id}/cli/rules": {
+      "get": {
+        "tags": [
+          "cli-rules",
+          "cli-rules",
+          "cli-rules"
+        ],
+        "summary": "Get Cli Rules",
+        "description": "Get organization and user rules for CLI applications.\n\nThis endpoint is designed for CLI applications that need to fetch both organization-specific\nrules and user-specific custom prompts that are used in prompts. This includes:\n\n- Organization rules: Same as MCP organization_rules prompt and agent prompt builders\n- User custom prompt: Same as MCP user_custom_prompt and agent prompt builders\n\nReturns the rules and prompts that should be followed by AI agents.\n\nRate limit: 30 requests per minute.",
+        "operationId": "get_cli_rules_v1_organizations__org_id__cli_rules_get",
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Org Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CLIRulesResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIRateLimitErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PermissionsErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/slack-connect/generate-token": {
+      "post": {
+        "tags": [
+          "slack-connect",
+          "slack-connect"
+        ],
+        "summary": "Generate Slack Connect Token Endpoint",
+        "description": "Generate a temporary token for Slack account connection.\n\nThis token:\n- Expires in 10 minutes\n- Can only be used once\n- Must be sent to the Codegen bot in a DM with format: \"Connect my account: {token}\"",
+        "operationId": "generate_slack_connect_token_endpoint_v1_slack_connect_generate_token_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateTokenRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenerateTokenResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/alpha/organizations/{org_id}/agent/run/{agent_run_id}/logs": {
+      "get": {
+        "tags": [
+          "agents-alpha",
+          "agents-alpha",
+          "agents-beta"
+        ],
+        "summary": "Get Agent Run Logs",
+        "description": "Retrieve an agent run with its logs using pagination. This endpoint is currently in ALPHA and IS subject to change.\n\nReturns the agent run details along with a paginated list of logs for the specified agent run.\nThe agent run must belong to the specified organization. Logs are returned in chronological order.\nUses standard pagination parameters (skip and limit) and includes pagination metadata in the response.\n\nRate limit: 60 requests per 60 seconds.",
+        "operationId": "get_agent_run_logs_v1_alpha_organizations__org_id__agent_run__agent_run_id__logs_get",
+        "parameters": [
+          {
+            "name": "agent_run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Agent Run Id"
+            }
+          },
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Org Id"
+            }
+          },
+          {
+            "name": "skip",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Skip"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 100,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "reverse",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Reverse"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentRunWithLogsResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIRateLimitErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PermissionsErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentRunNotFoundErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "APIRateLimitErrorResponse": {
+        "properties": {
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "Rate limit exceeded. Please try again later."
+          },
+          "status_code": {
+            "type": "integer",
+            "title": "Status Code",
+            "default": 429
+          }
+        },
+        "type": "object",
+        "title": "APIRateLimitErrorResponse"
+      },
+      "AgentRunLimitReachedErrorResponse": {
+        "properties": {
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "Alloted agent runs for the current billing plan have been reached. Please upgrade your plan to continue."
+          },
+          "status_code": {
+            "type": "integer",
+            "title": "Status Code",
+            "default": 402
+          }
+        },
+        "type": "object",
+        "title": "AgentRunLimitReachedErrorResponse"
+      },
+      "AgentRunLogResponse": {
+        "properties": {
+          "agent_run_id": {
+            "type": "integer",
+            "title": "Agent Run Id"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "tool_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tool Name"
+          },
+          "message_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message Type"
+          },
+          "thought": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Thought"
+          },
+          "observation": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observation"
+          },
+          "tool_input": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tool Input"
+          },
+          "tool_output": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tool Output"
+          }
+        },
+        "type": "object",
+        "required": [
+          "agent_run_id"
+        ],
+        "title": "AgentRunLogResponse",
+        "description": "Represents an agent run log in API responses"
+      },
+      "AgentRunNotFoundErrorResponse": {
+        "properties": {
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "Agent run not found."
+          },
+          "status_code": {
+            "type": "integer",
+            "title": "Status Code",
+            "default": 404
+          }
+        },
+        "type": "object",
+        "title": "AgentRunNotFoundErrorResponse"
+      },
+      "AgentRunResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "organization_id": {
+            "type": "integer",
+            "title": "Organization Id"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "web_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Web Url"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Result"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "source_type": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiAgentRunSourceType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "github_pull_requests": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/GithubPullRequestResponse"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Github Pull Requests"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "organization_id"
+        ],
+        "title": "AgentRunResponse",
+        "description": "Represents an agent run in API responses"
+      },
+      "AgentRunWithLogsResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "organization_id": {
+            "type": "integer",
+            "title": "Organization Id"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "web_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Web Url"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Result"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "logs": {
+            "items": {
+              "$ref": "#/components/schemas/AgentRunLogResponse"
+            },
+            "type": "array",
+            "title": "Logs"
+          },
+          "total_logs": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Logs"
+          },
+          "page": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page"
+          },
+          "size": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size"
+          },
+          "pages": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pages"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "organization_id",
+          "logs"
+        ],
+        "title": "AgentRunWithLogsResponse",
+        "description": "Represents an agent run in API responses"
+      },
+      "AnalyzeLogsResponse": {
+        "properties": {
+          "agent_run_id": {
+            "type": "integer",
+            "title": "Agent Run Id",
+            "description": "The ID of the agent run analyzing the logs"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "The status of the agent run"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "description": "Information about the analysis process"
+          }
+        },
+        "type": "object",
+        "required": [
+          "agent_run_id",
+          "status",
+          "message"
+        ],
+        "title": "AnalyzeLogsResponse"
+      },
+      "ApiAgentRunSourceType": {
+        "type": "string",
+        "enum": [
+          "LOCAL",
+          "SLACK",
+          "GITHUB",
+          "GITHUB_CHECK_SUITE",
+          "GITHUB_PR_REVIEW",
+          "LINEAR",
+          "API",
+          "CHAT",
+          "JIRA",
+          "CLICKUP",
+          "MONDAY",
+          "SETUP_COMMANDS"
+        ],
+        "title": "ApiAgentRunSourceType"
+      },
+      "CLIRulesResponse": {
+        "properties": {
+          "organization_rules": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Organization Rules"
+          },
+          "user_custom_prompt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Custom Prompt"
+          }
+        },
+        "type": "object",
+        "required": [
+          "organization_rules",
+          "user_custom_prompt"
+        ],
+        "title": "CLIRulesResponse",
+        "description": "Response model for CLI rules containing organization and user rules."
+      },
+      "CheckSuiteSettingsRequest": {
+        "properties": {
+          "check_retry_count": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 10.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Check Retry Count",
+            "description": "Global retry count for failed checks"
+          },
+          "ignored_checks": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ignored Checks",
+            "description": "List of check names to ignore"
+          },
+          "check_retry_counts": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "integer"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Check Retry Counts",
+            "description": "Per-check retry counts"
+          },
+          "custom_prompts": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Custom Prompts",
+            "description": "Custom prompts per check"
+          },
+          "high_priority_apps": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "High Priority Apps",
+            "description": "Apps that trigger immediate processing on failure"
+          }
+        },
+        "type": "object",
+        "title": "CheckSuiteSettingsRequest",
+        "description": "Request model for updating check suite settings."
+      },
+      "CheckSuiteSettingsResponse": {
+        "properties": {
+          "check_retry_count": {
+            "type": "integer",
+            "title": "Check Retry Count"
+          },
+          "ignored_checks": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Ignored Checks"
+          },
+          "check_retry_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Check Retry Counts"
+          },
+          "custom_prompts": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Custom Prompts"
+          },
+          "high_priority_apps": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "High Priority Apps"
+          },
+          "available_check_suite_names": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Available Check Suite Names"
+          }
+        },
+        "type": "object",
+        "required": [
+          "check_retry_count",
+          "ignored_checks",
+          "check_retry_counts",
+          "custom_prompts",
+          "high_priority_apps",
+          "available_check_suite_names"
+        ],
+        "title": "CheckSuiteSettingsResponse",
+        "description": "Response model for check suite settings."
+      },
+      "CreateAgentRunInput": {
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "title": "Prompt"
+          },
+          "images": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Images",
+            "description": "List of base64 encoded data URIs representing images to be processed by the agent"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata",
+            "description": "Arbitrary JSON metadata to be stored with the agent run"
+          },
+          "repo_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Repo Id",
+            "description": "ID of the repository to use for the agent run"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model",
+            "description": "Model to use for this agent run (optional, uses org default if not specified)"
+          },
+          "agent_type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "codegen",
+                  "claude_code"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent Type",
+            "description": "Type of agent to use for this agent run (optional, uses org default if not specified)"
+          },
+          "webhooks": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/WebhookOverride"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Webhooks",
+            "description": "Optional list of webhook targets for this run. If provided, overrides the org-level webhook config."
+          }
+        },
+        "type": "object",
+        "required": [
+          "prompt"
+        ],
+        "title": "CreateAgentRunInput"
+      },
+      "EditPRInput": {
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": [
+              "open",
+              "closed",
+              "draft",
+              "ready_for_review"
+            ],
+            "title": "State"
+          }
+        },
+        "type": "object",
+        "required": [
+          "state"
+        ],
+        "title": "EditPRInput",
+        "description": "Input for editing PR properties."
+      },
+      "EditPRResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          },
+          "number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Number"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "State"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success"
+        ],
+        "title": "EditPRResponse",
+        "description": "Response from editing PR properties."
+      },
+      "GenerateSetupCommandsInput": {
+        "properties": {
+          "repo_id": {
+            "type": "integer",
+            "title": "Repo Id"
+          },
+          "prompt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prompt"
+          },
+          "trigger_source": {
+            "type": "string",
+            "title": "Trigger Source",
+            "default": "setup-commands"
+          }
+        },
+        "type": "object",
+        "required": [
+          "repo_id"
+        ],
+        "title": "GenerateSetupCommandsInput",
+        "description": "Input for generating setup commands."
+      },
+      "GenerateTokenRequest": {
+        "properties": {
+          "org_id": {
+            "type": "integer",
+            "title": "Org Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "org_id"
+        ],
+        "title": "GenerateTokenRequest"
+      },
+      "GenerateTokenResponse": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "title": "Token"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "expires_in_minutes": {
+            "type": "integer",
+            "title": "Expires In Minutes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "token",
+          "message",
+          "expires_in_minutes"
+        ],
+        "title": "GenerateTokenResponse"
+      },
+      "GithubPullRequestResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "head_branch_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Head Branch Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "created_at"
+        ],
+        "title": "GithubPullRequestResponse"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "IntegrationStatus": {
+        "properties": {
+          "integration_type": {
+            "type": "string",
+            "title": "Integration Type",
+            "description": "Type of integration (e.g., 'github', 'slack', 'linear', etc.)"
+          },
+          "active": {
+            "type": "boolean",
+            "title": "Active",
+            "description": "Whether the integration is currently active"
+          },
+          "token_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Token Id",
+            "description": "ID of the associated token, if any"
+          },
+          "installation_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Installation Id",
+            "description": "ID of the app installation, if applicable"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata",
+            "description": "Additional metadata about the integration"
+          }
+        },
+        "type": "object",
+        "required": [
+          "integration_type",
+          "active"
+        ],
+        "title": "IntegrationStatus",
+        "description": "Status information for a single integration."
+      },
+      "ModelOption": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "title": "Label",
+            "description": "Human-readable display name for the model"
+          },
+          "value": {
+            "type": "string",
+            "title": "Value",
+            "description": "Model identifier to pass to the agent run endpoint"
+          }
+        },
+        "type": "object",
+        "required": [
+          "label",
+          "value"
+        ],
+        "title": "ModelOption",
+        "description": "A single model option available for use."
+      },
+      "ModelsResponse": {
+        "properties": {
+          "providers": {
+            "items": {
+              "$ref": "#/components/schemas/ProviderModels"
+            },
+            "type": "array",
+            "title": "Providers",
+            "description": "List of providers and their available models"
+          },
+          "default_model": {
+            "type": "string",
+            "title": "Default Model",
+            "description": "Default model used when no model is specified in an agent run"
+          }
+        },
+        "type": "object",
+        "required": [
+          "providers",
+          "default_model"
+        ],
+        "title": "ModelsResponse",
+        "description": "Response containing all available models grouped by provider."
+      },
+      "NoReposFoundInOrgErrorResponse": {
+        "properties": {
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "No repos found in the organization. Please add some repos and try again."
+          },
+          "status_code": {
+            "type": "integer",
+            "title": "Status Code",
+            "default": 404
+          }
+        },
+        "type": "object",
+        "title": "NoReposFoundInOrgErrorResponse"
+      },
+      "OAuthProviderResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "issuer": {
+            "type": "string",
+            "title": "Issuer"
+          },
+          "authorization_endpoint": {
+            "type": "string",
+            "title": "Authorization Endpoint"
+          },
+          "token_endpoint": {
+            "type": "string",
+            "title": "Token Endpoint"
+          },
+          "default_scopes": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Scopes"
+          },
+          "is_mcp": {
+            "type": "boolean",
+            "title": "Is Mcp"
+          },
+          "meta": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "issuer",
+          "authorization_endpoint",
+          "token_endpoint",
+          "default_scopes",
+          "is_mcp"
+        ],
+        "title": "OAuthProviderResponse",
+        "description": "Response model for OAuth provider data."
+      },
+      "OrganizationIntegrationsResponse": {
+        "properties": {
+          "organization_id": {
+            "type": "integer",
+            "title": "Organization Id",
+            "description": "ID of the organization"
+          },
+          "organization_name": {
+            "type": "string",
+            "title": "Organization Name",
+            "description": "Name of the organization"
+          },
+          "integrations": {
+            "items": {
+              "$ref": "#/components/schemas/IntegrationStatus"
+            },
+            "type": "array",
+            "title": "Integrations",
+            "description": "List of integration statuses"
+          },
+          "total_active_integrations": {
+            "type": "integer",
+            "title": "Total Active Integrations",
+            "description": "Total number of active integrations"
+          }
+        },
+        "type": "object",
+        "required": [
+          "organization_id",
+          "organization_name",
+          "integrations",
+          "total_active_integrations"
+        ],
+        "title": "OrganizationIntegrationsResponse",
+        "description": "Response schema for organization integrations."
+      },
+      "OrganizationResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "settings": {
+            "$ref": "#/components/schemas/OrganizationSettings"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "settings"
+        ],
+        "title": "OrganizationResponse",
+        "description": "Represents an organization in API responses"
+      },
+      "OrganizationSettings": {
+        "properties": {
+          "enable_pr_creation": {
+            "type": "boolean",
+            "title": "Enable Pr Creation",
+            "default": true
+          },
+          "enable_rules_detection": {
+            "type": "boolean",
+            "title": "Enable Rules Detection",
+            "default": true
+          }
+        },
+        "type": "object",
+        "title": "OrganizationSettings"
+      },
+      "Page_AgentRunResponse_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AgentRunResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "size": {
+            "type": "integer",
+            "title": "Size"
+          },
+          "pages": {
+            "type": "integer",
+            "title": "Pages"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "size",
+          "pages"
+        ],
+        "title": "Page[AgentRunResponse]"
+      },
+      "Page_OrganizationResponse_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/OrganizationResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "size": {
+            "type": "integer",
+            "title": "Size"
+          },
+          "pages": {
+            "type": "integer",
+            "title": "Pages"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "size",
+          "pages"
+        ],
+        "title": "Page[OrganizationResponse]"
+      },
+      "Page_RepoResponse_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RepoResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "size": {
+            "type": "integer",
+            "title": "Size"
+          },
+          "pages": {
+            "type": "integer",
+            "title": "Pages"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "size",
+          "pages"
+        ],
+        "title": "Page[RepoResponse]"
+      },
+      "Page_UserResponse_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/UserResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "size": {
+            "type": "integer",
+            "title": "Size"
+          },
+          "pages": {
+            "type": "integer",
+            "title": "Pages"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "size",
+          "pages"
+        ],
+        "title": "Page[UserResponse]"
+      },
+      "PermissionsErrorResponse": {
+        "properties": {
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "You do not have access to this organization."
+          },
+          "status_code": {
+            "type": "integer",
+            "title": "Status Code",
+            "default": 403
+          }
+        },
+        "type": "object",
+        "title": "PermissionsErrorResponse"
+      },
+      "ProviderModels": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "Provider name (e.g. Anthropic, OpenAI, XAI, Google)"
+          },
+          "models": {
+            "items": {
+              "$ref": "#/components/schemas/ModelOption"
+            },
+            "type": "array",
+            "title": "Models",
+            "description": "List of models available from this provider"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "models"
+        ],
+        "title": "ProviderModels",
+        "description": "A provider and its available models."
+      },
+      "RepoResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "full_name": {
+            "type": "string",
+            "title": "Full Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "github_id": {
+            "type": "string",
+            "title": "Github Id"
+          },
+          "organization_id": {
+            "type": "integer",
+            "title": "Organization Id"
+          },
+          "visibility": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Visibility"
+          },
+          "archived": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Archived"
+          },
+          "setup_status": {
+            "type": "string",
+            "title": "Setup Status"
+          },
+          "language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "full_name",
+          "description",
+          "github_id",
+          "organization_id",
+          "visibility",
+          "archived",
+          "setup_status",
+          "language"
+        ],
+        "title": "RepoResponse",
+        "description": "Represents a repository in API responses"
+      },
+      "ResumeAgentRunInput": {
+        "properties": {
+          "agent_run_id": {
+            "type": "integer",
+            "title": "Agent Run Id"
+          },
+          "prompt": {
+            "type": "string",
+            "title": "Prompt"
+          },
+          "images": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Images",
+            "description": "List of base64 encoded data URIs representing images to be processed by the agent"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model",
+            "description": "Model to use for the resumed agent run (optional, uses the original run's model if not specified)"
+          },
+          "webhooks": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/WebhookOverride"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Webhooks",
+            "description": "Optional list of webhook targets for this run. If provided, overrides the org-level webhook config."
+          }
+        },
+        "type": "object",
+        "required": [
+          "agent_run_id",
+          "prompt"
+        ],
+        "title": "ResumeAgentRunInput"
+      },
+      "SetupCommandsResponse": {
+        "properties": {
+          "agent_run_id": {
+            "type": "integer",
+            "title": "Agent Run Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "url": {
+            "type": "string",
+            "title": "Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "agent_run_id",
+          "status",
+          "url"
+        ],
+        "title": "SetupCommandsResponse",
+        "description": "Response for setup commands generation."
+      },
+      "StopAgentRunInput": {
+        "properties": {
+          "agent_run_id": {
+            "type": "integer",
+            "title": "Agent Run Id"
+          },
+          "before_card_order_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Before Card Order Id",
+            "description": "Kanban order key of the card that should come before this agent run in the CANCELLED column"
+          },
+          "after_card_order_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "After Card Order Id",
+            "description": "Kanban order key of the card that should come after this agent run in the CANCELLED column"
+          }
+        },
+        "type": "object",
+        "required": [
+          "agent_run_id"
+        ],
+        "title": "StopAgentRunInput"
+      },
+      "UserNotFoundErrorResponse": {
+        "properties": {
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "User not found."
+          },
+          "status_code": {
+            "type": "integer",
+            "title": "Status Code",
+            "default": 404
+          }
+        },
+        "type": "object",
+        "title": "UserNotFoundErrorResponse"
+      },
+      "UserResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id",
+            "description": "Unique user ID"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email",
+            "description": "User's email address"
+          },
+          "github_user_id": {
+            "type": "string",
+            "title": "Github User Id",
+            "description": "GitHub user ID"
+          },
+          "github_username": {
+            "type": "string",
+            "title": "Github Username",
+            "description": "GitHub username"
+          },
+          "avatar_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Url",
+            "description": "URL to user's avatar image"
+          },
+          "full_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Full Name",
+            "description": "User's full name"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role",
+            "description": "User's role in the organization (ADMIN, MANAGER, MEMBER)"
+          },
+          "is_admin": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Admin",
+            "description": "Whether the user is an admin (deprecated, use role instead)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "github_user_id",
+          "github_username"
+        ],
+        "title": "UserResponse",
+        "description": "Represents a user in API responses"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "WebhookConfigRequest": {
+        "properties": {
+          "url": {
+            "type": "string",
+            "maxLength": 2083,
+            "minLength": 1,
+            "format": "uri",
+            "title": "Url"
+          },
+          "secret": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Secret"
+          },
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "url"
+        ],
+        "title": "WebhookConfigRequest",
+        "description": "Request model for configuring agent run webhooks."
+      },
+      "WebhookConfigResponse": {
+        "properties": {
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          },
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          },
+          "has_secret": {
+            "type": "boolean",
+            "title": "Has Secret"
+          }
+        },
+        "type": "object",
+        "required": [
+          "url",
+          "enabled",
+          "has_secret"
+        ],
+        "title": "WebhookConfigResponse",
+        "description": "Response model for webhook configuration."
+      },
+      "WebhookOverride": {
+        "properties": {
+          "url": {
+            "type": "string",
+            "title": "Url",
+            "description": "Webhook endpoint URL"
+          },
+          "secret": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Secret",
+            "description": "Optional HMAC signing secret for this webhook"
+          }
+        },
+        "type": "object",
+        "required": [
+          "url"
+        ],
+        "title": "WebhookOverride",
+        "description": "A webhook target that overrides org-level webhook config for a single agent run."
+      },
+      "WebhookTestRequest": {
+        "properties": {
+          "url": {
+            "type": "string",
+            "maxLength": 2083,
+            "minLength": 1,
+            "format": "uri",
+            "title": "Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "url"
+        ],
+        "title": "WebhookTestRequest",
+        "description": "Request model for testing a webhook."
+      }
+    }
+  }
+}

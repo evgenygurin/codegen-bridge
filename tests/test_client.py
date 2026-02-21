@@ -9,6 +9,13 @@ from httpx import Response
 from bridge.client import CodegenClient
 
 
+@pytest.fixture(autouse=True)
+def _force_test_env(monkeypatch):
+    """Ensure test env vars override real ones."""
+    monkeypatch.setenv("CODEGEN_API_KEY", "test-key")
+    monkeypatch.setenv("CODEGEN_ORG_ID", "42")
+
+
 class TestClientInit:
     def test_creates_with_credentials(self):
         client = CodegenClient(api_key="test-key", org_id=42)
@@ -112,6 +119,22 @@ class TestGetLogs:
 
         assert len(result.logs) == 1
         assert result.logs[0].thought == "Analyzing code"
+
+
+class TestStopRun:
+    @respx.mock
+    async def test_stops_run(self):
+        respx.post("https://api.codegen.com/v1/organizations/42/agent/run/ban").mock(
+            return_value=Response(
+                200, json={"id": 1, "status": "stopped", "web_url": "https://codegen.com/run/1"}
+            )
+        )
+
+        async with CodegenClient(api_key="test", org_id=42) as client:
+            run = await client.stop_run(1)
+
+        assert run.id == 1
+        assert run.status == "stopped"
 
 
 class TestListRepos:

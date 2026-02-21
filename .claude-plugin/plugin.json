@@ -1,20 +1,10 @@
 {
   "name": "codegen-bridge",
   "description": "Bridge to Codegen AI agent platform — execute implementation plans via cloud agents",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "author": {
     "name": "DJ Techno Set Builder"
   },
   "license": "MIT",
-  "keywords": ["codegen", "agent", "execution", "delegation"],
-  "mcpServers": {
-    "codegen": {
-      "command": "uv",
-      "args": ["run", "--directory", "${CLAUDE_PLUGIN_ROOT}", "python", "-m", "bridge.server"],
-      "env": {
-        "CODEGEN_API_KEY": "${CODEGEN_API_KEY}",
-        "CODEGEN_ORG_ID": "${CODEGEN_ORG_ID}"
-      }
-    }
-  }
+  "keywords": ["codegen", "agent", "execution", "delegation"]
 }

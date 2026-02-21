@@ -135,6 +135,12 @@ class CodegenClient:
         )
         return AgentRunWithLogs.model_validate(resp)
 
+    async def stop_run(self, run_id: int) -> AgentRun:
+        """Stop/ban an agent run."""
+        body: dict[str, Any] = {"agent_run_id": run_id}
+        resp = await self._post(f"/organizations/{self.org_id}/agent/run/ban", json=body)
+        return AgentRun.model_validate(resp)
+
     # ── Organizations & Repos ───────────────────────────────
 
     async def list_orgs(self) -> Page[Organization]:
