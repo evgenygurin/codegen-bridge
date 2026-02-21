@@ -20,8 +20,10 @@ from fastmcp import Context, FastMCP
 from fastmcp.exceptions import ToolError
 
 from bridge.client import CodegenClient
-from bridge.context import ContextRegistry
+from bridge.context import ContextRegistry, PRInfo, TaskReport
+from bridge.log_parser import parse_logs
 from bridge.openapi_utils import create_openapi_provider
+from bridge.prompt_builder import build_task_prompt
 
 # ── Lifespan ─────────────────────────────────────────────
 
@@ -42,8 +44,7 @@ async def _lifespan(server: FastMCP):
         org_id = int(org_id_str)
     except ValueError:
         raise ToolError(
-            "CODEGEN_ORG_ID must be a number. "
-            "Set it in your environment or plugin config."
+            "CODEGEN_ORG_ID must be a number. Set it in your environment or plugin config."
         ) from None
     if not api_key:
         raise ToolError("CODEGEN_API_KEY not set.")
@@ -165,6 +166,8 @@ async def codegen_create_run(
     repo_id: int | None = None,
     model: str | None = None,
     agent_type: Literal["codegen", "claude_code"] = "claude_code",
+    execution_id: str | None = None,
+    task_index: int | None = None,
 ) -> str:
     """Create a new Codegen agent run.
 
@@ -175,8 +178,26 @@ async def codegen_create_run(
         repo_id: Repository ID. If not provided, auto-detected from git remote.
         model: LLM model to use. None = organization default.
         agent_type: Agent type — "codegen" or "claude_code".
+        execution_id: Optional execution context ID for prompt enrichment.
+        task_index: Task index within the execution (default: current_task_index).
     """
     client = _get_client(ctx)
+    effective_prompt = prompt
+
+    if execution_id is not None:
+        registry = _get_registry(ctx)
+        exec_ctx = registry.get(execution_id)
+        if exec_ctx is not None:
+            idx = task_index if task_index is not None else exec_ctx.current_task_index
+            if idx < len(exec_ctx.tasks):
+                effective_prompt = build_task_prompt(exec_ctx, idx)
+                registry.update_task(
+                    execution_id=execution_id,
+                    task_index=idx,
+                    status="running",
+                )
+            if repo_id is None and exec_ctx.repo_id is not None:
+                repo_id = exec_ctx.repo_id
 
     if repo_id is None:
         repo_id = await _detect_repo_id(ctx)
@@ -188,23 +209,48 @@ async def codegen_create_run(
             )
 
     run = await client.create_run(
-        prompt,
+        effective_prompt,
         repo_id=repo_id,
         model=model,
         agent_type=agent_type,
     )
-    return json.dumps({
-        "id": run.id,
-        "status": run.status,
-        "web_url": run.web_url,
-    })
+
+    if execution_id is not None:
+        registry = _get_registry(ctx)
+        exec_ctx = registry.get(execution_id)
+        if exec_ctx is not None:
+            idx = task_index if task_index is not None else exec_ctx.current_task_index
+            if idx < len(exec_ctx.tasks):
+                registry.update_task(
+                    execution_id=execution_id,
+                    task_index=idx,
+                    run_id=run.id,
+                )
+
+    return json.dumps(
+        {
+            "id": run.id,
+            "status": run.status,
+            "web_url": run.web_url,
+        }
+    )
 
 
 @mcp.tool(tags={"execution"})
-async def codegen_get_run(ctx: Context, run_id: int) -> str:
+async def codegen_get_run(
+    ctx: Context,
+    run_id: int,
+    execution_id: str | None = None,
+    task_index: int | None = None,
+) -> str:
     """Get agent run status, result, summary, and created PRs.
 
     Use this to poll for completion (check status field).
+
+    Args:
+        run_id: Agent run ID.
+        execution_id: Optional execution context ID for auto-reporting.
+        task_index: Task index within the execution (default: current_task_index).
     """
     client = _get_client(ctx)
     run = await client.get_run(run_id)
@@ -218,11 +264,71 @@ async def codegen_get_run(ctx: Context, run_id: int) -> str:
         result["result"] = run.result
     if run.summary:
         result["summary"] = run.summary
+
+    pr_list: list[dict[str, Any]] = []
     if run.github_pull_requests:
-        result["pull_requests"] = [
+        pr_list = [
             {"url": pr.url, "number": pr.number, "title": pr.title, "state": pr.state}
             for pr in run.github_pull_requests
         ]
+        result["pull_requests"] = pr_list
+
+    # Auto-report back to execution context on terminal status
+    if execution_id is not None and run.status in ("completed", "failed"):
+        registry = _get_registry(ctx)
+        exec_ctx = registry.get(execution_id)
+        if exec_ctx is not None:
+            idx = task_index if task_index is not None else exec_ctx.current_task_index
+            if idx < len(exec_ctx.tasks):
+                # Parse logs for structured data
+                parsed = None
+                try:
+                    logs_result = await client.get_logs(run_id, limit=200)
+                    parsed = parse_logs(logs_result.logs)
+                    result["parsed_logs"] = {
+                        "files_changed": parsed.files_changed,
+                        "key_decisions": parsed.key_decisions,
+                        "test_results": parsed.test_results,
+                        "commands_run": parsed.commands_run,
+                        "total_steps": parsed.total_steps,
+                    }
+                except Exception:
+                    pass  # Log parsing is best-effort
+
+                # Build TaskReport
+                report = TaskReport(
+                    summary=run.summary or run.result or "",
+                    web_url=run.web_url or "",
+                    pull_requests=[
+                        PRInfo(
+                            url=pr.get("url", ""),
+                            number=pr.get("number", 0),
+                            title=pr.get("title", ""),
+                            state=pr.get("state", ""),
+                        )
+                        for pr in pr_list
+                    ],
+                    files_changed=parsed.files_changed if parsed else [],
+                    key_decisions=parsed.key_decisions if parsed else [],
+                    test_results=parsed.test_results if parsed else None,
+                    agent_notes=parsed.agent_notes if parsed else None,
+                    commands_run=parsed.commands_run if parsed else [],
+                    total_steps=parsed.total_steps if parsed else 0,
+                )
+
+                task_status = "completed" if run.status == "completed" else "failed"
+                registry.update_task(
+                    execution_id=execution_id,
+                    task_index=idx,
+                    status=task_status,
+                    report=report,
+                )
+
+                # Advance current_task_index if completed
+                if run.status == "completed":
+                    exec_ctx.current_task_index = idx + 1
+                    registry._save(exec_ctx)
+
     return json.dumps(result)
 
 
@@ -240,19 +346,21 @@ async def codegen_list_runs(
     """
     client = _get_client(ctx)
     page = await client.list_runs(limit=limit, source_type=source_type)
-    return json.dumps({
-        "total": page.total,
-        "runs": [
-            {
-                "id": r.id,
-                "status": r.status,
-                "created_at": r.created_at,
-                "web_url": r.web_url,
-                "summary": r.summary,
-            }
-            for r in page.items
-        ],
-    })
+    return json.dumps(
+        {
+            "total": page.total,
+            "runs": [
+                {
+                    "id": r.id,
+                    "status": r.status,
+                    "created_at": r.created_at,
+                    "web_url": r.web_url,
+                    "summary": r.summary,
+                }
+                for r in page.items
+            ],
+        }
+    )
 
 
 @mcp.tool(tags={"execution"})
@@ -271,11 +379,13 @@ async def codegen_resume_run(
     """
     client = _get_client(ctx)
     run = await client.resume_run(run_id, prompt, model=model)
-    return json.dumps({
-        "id": run.id,
-        "status": run.status,
-        "web_url": run.web_url,
-    })
+    return json.dumps(
+        {
+            "id": run.id,
+            "status": run.status,
+            "web_url": run.web_url,
+        }
+    )
 
 
 @mcp.tool(tags={"execution"})
@@ -287,11 +397,13 @@ async def codegen_stop_run(ctx: Context, run_id: int) -> str:
     """
     client = _get_client(ctx)
     run = await client.stop_run(run_id)
-    return json.dumps({
-        "id": run.id,
-        "status": run.status,
-        "web_url": run.web_url,
-    })
+    return json.dumps(
+        {
+            "id": run.id,
+            "status": run.status,
+            "web_url": run.web_url,
+        }
+    )
 
 
 @mcp.tool(tags={"monitoring"})
@@ -312,27 +424,27 @@ async def codegen_get_logs(
     """
     client = _get_client(ctx)
     result = await client.get_logs(run_id, limit=limit, reverse=reverse)
-    return json.dumps({
-        "run_id": result.id,
-        "status": result.status,
-        "total_logs": result.total_logs,
-        "logs": [
-            {
-                k: v
-                for k, v in {
-                    "thought": log.thought,
-                    "tool_name": log.tool_name,
-                    "tool_input": log.tool_input,
-                    "tool_output": (
-                        str(log.tool_output)[:500] if log.tool_output else None
-                    ),
-                    "created_at": log.created_at,
-                }.items()
-                if v is not None
-            }
-            for log in result.logs
-        ],
-    })
+    return json.dumps(
+        {
+            "run_id": result.id,
+            "status": result.status,
+            "total_logs": result.total_logs,
+            "logs": [
+                {
+                    k: v
+                    for k, v in {
+                        "thought": log.thought,
+                        "tool_name": log.tool_name,
+                        "tool_input": log.tool_input,
+                        "tool_output": (str(log.tool_output)[:500] if log.tool_output else None),
+                        "created_at": log.created_at,
+                    }.items()
+                    if v is not None
+                }
+                for log in result.logs
+            ],
+        }
+    )
 
 
 @mcp.tool(tags={"setup"})
@@ -340,9 +452,11 @@ async def codegen_list_orgs(ctx: Context) -> str:
     """List Codegen organizations the authenticated user belongs to."""
     client = _get_client(ctx)
     page = await client.list_orgs()
-    return json.dumps({
-        "organizations": [{"id": org.id, "name": org.name} for org in page.items],
-    })
+    return json.dumps(
+        {
+            "organizations": [{"id": org.id, "name": org.name} for org in page.items],
+        }
+    )
 
 
 @mcp.tool(tags={"setup"})
@@ -354,19 +468,21 @@ async def codegen_list_repos(ctx: Context, limit: int = 50) -> str:
     """
     client = _get_client(ctx)
     page = await client.list_repos(limit=limit)
-    return json.dumps({
-        "total": page.total,
-        "repos": [
-            {
-                "id": r.id,
-                "name": r.name,
-                "full_name": r.full_name,
-                "language": r.language,
-                "setup_status": r.setup_status,
-            }
-            for r in page.items
-        ],
-    })
+    return json.dumps(
+        {
+            "total": page.total,
+            "repos": [
+                {
+                    "id": r.id,
+                    "name": r.name,
+                    "full_name": r.full_name,
+                    "language": r.language,
+                    "setup_status": r.setup_status,
+                }
+                for r in page.items
+            ],
+        }
+    )
 
 
 def _get_registry(ctx: Context | None = None) -> ContextRegistry:
@@ -450,13 +566,15 @@ async def codegen_start_execution(
         tasks=task_tuples,
         **kwargs,
     )
-    return json.dumps({
-        "execution_id": exec_ctx.id,
-        "mode": exec_ctx.mode,
-        "status": exec_ctx.status,
-        "tasks": len(exec_ctx.tasks),
-        "has_rules": bool(exec_ctx.agent_rules),
-    })
+    return json.dumps(
+        {
+            "execution_id": exec_ctx.id,
+            "mode": exec_ctx.mode,
+            "status": exec_ctx.status,
+            "tasks": len(exec_ctx.tasks),
+            "has_rules": bool(exec_ctx.agent_rules),
+        }
+    )
 
 
 @mcp.tool(tags={"context"})
@@ -501,11 +619,13 @@ def get_config() -> str:
     """Current Codegen Bridge configuration and status."""
     org_id = os.environ.get("CODEGEN_ORG_ID", "not set")
     has_key = bool(os.environ.get("CODEGEN_API_KEY"))
-    return json.dumps({
-        "org_id": org_id,
-        "api_base": "https://api.codegen.com/v1",
-        "has_api_key": has_key,
-    })
+    return json.dumps(
+        {
+            "org_id": org_id,
+            "api_base": "https://api.codegen.com/v1",
+            "has_api_key": has_key,
+        }
+    )
 
 
 # ── Prompts ──────────────────────────────────────────────
