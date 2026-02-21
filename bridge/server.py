@@ -26,6 +26,7 @@ from fastmcp.exceptions import ToolError
 from bridge.client import CodegenClient
 from bridge.context import ContextRegistry
 from bridge.helpers.repo_detection import RepoCache
+from bridge.middleware import configure_middleware
 from bridge.openapi_utils import create_openapi_provider
 from bridge.prompts import register_prompts
 from bridge.resources import register_resources
@@ -92,6 +93,10 @@ mcp = FastMCP(
     "Create agent runs, monitor progress, view logs, and resume blocked runs.",
     lifespan=_lifespan,
 )
+
+# Configure middleware stack (error handling, ping, logging, timing,
+# rate limiting, caching, response limiting)
+configure_middleware(mcp)
 
 # Register tools, resources, and prompts from submodules
 register_agent_tools(mcp)
