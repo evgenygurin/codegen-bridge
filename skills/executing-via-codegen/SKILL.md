@@ -18,7 +18,7 @@ Load plan, delegate each task to a Codegen cloud agent, monitor until done, repo
 
 - `CODEGEN_API_KEY` and `CODEGEN_ORG_ID` environment variables set
 - Repository registered in Codegen organization
-- MCP tools available: `codegen_create_run`, `codegen_get_run`, `codegen_get_logs`, `codegen_resume_run`, `codegen_stop_run`
+- MCP tools available: `codegen_create_run`, `codegen_get_run`, `codegen_get_logs`, `codegen_resume_run`, `codegen_stop_run`, `codegen_start_execution`, `codegen_get_execution_context`, `codegen_get_agent_rules`
 
 ## The Process
 
@@ -44,6 +44,7 @@ Load plan, delegate each task to a Codegen cloud agent, monitor until done, repo
 3. If concerns: raise with user before starting
 4. Parse all tasks from the plan (`### Task N: ...`)
 5. Extract plan header (Goal, Architecture, Tech Stack, any context sections)
+6. Initialize context with `codegen_start_execution(mode="plan", plan_tasks=[...])` — this returns an `execution_id` that tracks all tasks and their state
 
 ### Step 2: Verify Codegen Access
 
@@ -88,10 +89,13 @@ Previously completed tasks:
 ```text
 codegen_create_run(
   prompt=<composed prompt>,
+  execution_id=<ctx_id>,
   repo_id=<detected or explicit>,
   agent_type="claude_code"
 )
 ```
+
+The `execution_id` enables auto-enrichment — the run prompt is automatically enriched with execution context (goal, completed tasks, previous results).
 
 If a model was selected in Step 2b, pass `model=<selected>`.
 
@@ -103,7 +107,7 @@ Poll every 30 seconds:
 sleep 30
 ```
 
-Then call `codegen_get_run(run_id=<id>)`. Check the `status` field:
+Then call `codegen_get_run(run_id=<id>, execution_id=<ctx_id>)`. The `execution_id` enables auto-parsing — run results are automatically parsed and stored in the execution context. Check the `status` field:
 
 | Status | Action |
 |--------|--------|
@@ -118,7 +122,7 @@ Then call `codegen_get_run(run_id=<id>)`. Check the `status` field:
 **d. On completion:**
 
 1. Call `codegen_get_logs(run_id, limit=20)` to review what happened
-2. Call `codegen_get_run(run_id)` to check for PRs
+2. Call `codegen_get_run(run_id, execution_id=<ctx_id>)` to check for PRs
 3. Report to user:
    - What the agent did (from logs summary)
    - PR link (if created)
@@ -144,15 +148,15 @@ Then call `codegen_get_run(run_id=<id>)`. Check the `status` field:
 
 ### Step 4: Report Between Tasks
 
-After each task completes:
+After each task completes, use `codegen_get_execution_context` for a progress report:
 - Show what was done
 - Show PR link if created
-- Show current progress (N/M tasks)
+- Show current progress (N/M tasks completed) from the execution context
 - Say: "Ready for next task, or do you want to review first?"
 
 ### Step 5: Final Summary
 
-After all tasks:
+After all tasks, use the `execution_summary` prompt to generate a final report:
 - List all completed tasks with PR links
 - Show any skipped/failed tasks
 - Total agent runs created
@@ -170,6 +174,7 @@ After all tasks:
 | Batch size | 3 tasks per batch | 1 task = 1 agent run |
 | Monitoring | Direct stdout | codegen_get_logs |
 | Cancel | Ctrl+C | codegen_stop_run |
+| Context | Manual prompt building | Auto-enriched via execution_id |
 
 ## When to Stop and Ask
 
@@ -195,7 +200,9 @@ If polling times out (10 min):
 - One task = one agent run (NOT batching)
 - Include full task text in prompt (not file references)
 - Include previous task summaries for context
+- Use `execution_id` with `codegen_create_run` and `codegen_get_run` for automatic context enrichment and parsing
 - Poll with `sleep 30` between checks
 - Always show PR links when available
 - Use `codegen_stop_run` for cancellation — don't just stop polling
+- Use `codegen_get_execution_context` for progress tracking
 - Stop on blockers, don't guess
