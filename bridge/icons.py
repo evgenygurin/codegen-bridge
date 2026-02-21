@@ -67,6 +67,24 @@ ICON_STOP = _svg_icon(  # stop-circle: stop run
     '<rect x="9" y="9" width="6" height="6"/>'
 )
 
+ICON_BAN = _svg_icon(  # slash: ban checks
+    '<circle cx="12" cy="12" r="10"/>'
+    '<line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>'
+)
+
+ICON_UNBAN = _svg_icon(  # check-circle: unban checks
+    '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>'
+    '<polyline points="22 4 12 14.01 9 11.01"/>'
+)
+
+ICON_REMOVE_FROM_PR = _svg_icon(  # git-pull-request-closed: remove from PR
+    '<line x1="6" y1="3" x2="6" y2="15"/>'
+    '<circle cx="18" cy="6" r="3"/>'
+    '<circle cx="6" cy="18" r="3"/>'
+    '<line x1="16" y1="8" x2="18" y2="10"/>'
+    '<line x1="18" y1="8" x2="16" y2="10"/>'
+)
+
 ICON_LOGS = _svg_icon(  # file-text: logs
     '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>'
     '<polyline points="14 2 14 8 20 8"/>'

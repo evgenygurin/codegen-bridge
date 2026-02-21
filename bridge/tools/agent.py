@@ -1,10 +1,20 @@
-"""Agent run management tools: create, get, list, resume, stop, logs.
+"""Agent run management tools: create, get, list, resume, stop, ban, unban, remove-from-pr, logs.
 
 Long-running tools (``codegen_create_run``, ``codegen_get_logs``) use
 ``TaskConfig(mode="optional")`` so clients that support background tasks
 can offload them, while clients without task support still get the
 result synchronously.  Progress is reported via ``ctx.report_progress``
 so callers can track multi-step operations in real time.
+
+Endpoints coverage (per Codegen API v1):
+- POST /v1/organizations/{org_id}/agent/run           — create
+- GET  /v1/organizations/{org_id}/agent/run/{id}      — get
+- GET  /v1/organizations/{org_id}/agent/runs           — list
+- POST /v1/organizations/{org_id}/agent/run/resume     — resume
+- POST /v1/organizations/{org_id}/agent/run/ban        — ban
+- POST /v1/organizations/{org_id}/agent/run/unban      — unban
+- POST /v1/organizations/{org_id}/agent/run/remove-from-pr — remove from PR
+- GET  /v1/organizations/{org_id}/agent/run/{id}/logs  — logs
 """
 
 from __future__ import annotations
@@ -31,7 +41,17 @@ from bridge.helpers.pagination import (
     next_cursor_or_none,
 )
 from bridge.helpers.repo_detection import RepoCache, detect_repo_id
-from bridge.icons import ICON_GET_RUN, ICON_LIST, ICON_LOGS, ICON_RESUME, ICON_RUN, ICON_STOP
+from bridge.icons import (
+    ICON_BAN,
+    ICON_GET_RUN,
+    ICON_LIST,
+    ICON_LOGS,
+    ICON_REMOVE_FROM_PR,
+    ICON_RESUME,
+    ICON_RUN,
+    ICON_STOP,
+    ICON_UNBAN,
+)
 from bridge.log_parser import parse_logs
 from bridge.prompt_builder import build_task_prompt
 
@@ -63,12 +83,15 @@ async def _report(ctx: Context, progress: float, total: float, message: str) -> 
 def register_agent_tools(mcp: FastMCP) -> None:
     """Register all agent run management tools on the given FastMCP server."""
 
+    # ── Create ───────────────────────────────────────────
+
     @mcp.tool(tags={"execution"}, icons=ICON_RUN, task=CREATE_RUN_TASK)
     async def codegen_create_run(
         prompt: str,
         repo_id: int | None = None,
         model: str | None = None,
         agent_type: Literal["codegen", "claude_code"] = "claude_code",
+        images: list[str] | None = None,
         execution_id: str | None = None,
         task_index: int | None = None,
         confirmed: bool = False,
@@ -89,6 +112,7 @@ def register_agent_tools(mcp: FastMCP) -> None:
             repo_id: Repository ID. If not provided, auto-detected from git remote.
             model: LLM model to use. None = organization default or interactive selection.
             agent_type: Agent type — "codegen" or "claude_code".
+            images: Optional list of base64-encoded data URIs for image input.
             execution_id: Optional execution context ID for prompt enrichment.
             task_index: Task index within the execution (default: current_task_index).
             confirmed: Skip interactive repo confirmation when True (for programmatic use).
@@ -167,6 +191,7 @@ def register_agent_tools(mcp: FastMCP) -> None:
             repo_id=repo_id,
             model=model,
             agent_type=agent_type,
+            images=images,
         )
         await ctx.info(f"Agent run created: id={run.id}, status={run.status}")
         step += 1
@@ -192,6 +217,8 @@ def register_agent_tools(mcp: FastMCP) -> None:
                 "web_url": run.web_url,
             }
         )
+
+    # ── Get ───────────────────────────────────────────────
 
     @mcp.tool(tags={"execution"}, icons=ICON_GET_RUN)
     async def codegen_get_run(
@@ -223,11 +250,23 @@ def register_agent_tools(mcp: FastMCP) -> None:
             result["result"] = run.result
         if run.summary:
             result["summary"] = run.summary
+        if run.source_type:
+            result["source_type"] = run.source_type
 
         pr_list: list[dict[str, Any]] = []
         if run.github_pull_requests:
             pr_list = [
-                {"url": pr.url, "number": pr.number, "title": pr.title, "state": pr.state}
+                {
+                    k: v
+                    for k, v in {
+                        "url": pr.url,
+                        "title": pr.title,
+                        "head_branch_name": pr.head_branch_name,
+                        "number": pr.number,
+                        "state": pr.state,
+                    }.items()
+                    if v is not None
+                }
                 for pr in run.github_pull_requests
             ]
             result["pull_requests"] = pr_list
@@ -241,7 +280,7 @@ def register_agent_tools(mcp: FastMCP) -> None:
                     # Parse logs for structured data
                     parsed = None
                     try:
-                        logs_result = await client.get_logs(run_id, limit=200)
+                        logs_result = await client.get_logs(run_id, limit=100)
                         parsed = parse_logs(logs_result.logs)
                         result["parsed_logs"] = {
                             "files_changed": parsed.files_changed,
@@ -289,10 +328,13 @@ def register_agent_tools(mcp: FastMCP) -> None:
 
         return json.dumps(result)
 
+    # ── List ──────────────────────────────────────────────
+
     @mcp.tool(tags={"execution"}, icons=ICON_LIST)
     async def codegen_list_runs(
         limit: int = DEFAULT_PAGE_SIZE,
         source_type: str | None = None,
+        user_id: int | None = None,
         cursor: str | None = None,
         ctx: Context = CurrentContext(),
         client: CodegenClient = Depends(get_client),
@@ -302,6 +344,7 @@ def register_agent_tools(mcp: FastMCP) -> None:
         Args:
             limit: Maximum number of runs per page (default 20).
             source_type: Filter by source — API, LOCAL, GITHUB, etc.
+            user_id: Filter by user ID who initiated the agent runs.
             cursor: Opaque cursor from a previous response's ``next_cursor``
                 field.  Omit or pass ``null`` for the first page.
         """
@@ -309,7 +352,9 @@ def register_agent_tools(mcp: FastMCP) -> None:
         await ctx.info(
             f"Listing runs: limit={limit}, offset={offset}, source_type={source_type}"
         )
-        page = await client.list_runs(skip=offset, limit=limit, source_type=source_type)
+        page = await client.list_runs(
+            skip=offset, limit=limit, source_type=source_type, user_id=user_id
+        )
         await ctx.info(f"Listed {len(page.items)} of {page.total} runs")
         return json.dumps(
             build_paginated_response(
@@ -320,6 +365,7 @@ def register_agent_tools(mcp: FastMCP) -> None:
                         "created_at": r.created_at,
                         "web_url": r.web_url,
                         "summary": r.summary,
+                        "source_type": r.source_type,
                     }
                     for r in page.items
                 ],
@@ -330,11 +376,14 @@ def register_agent_tools(mcp: FastMCP) -> None:
             )
         )
 
+    # ── Resume ────────────────────────────────────────────
+
     @mcp.tool(tags={"execution"}, icons=ICON_RESUME)
     async def codegen_resume_run(
         run_id: int,
         prompt: str,
         model: str | None = None,
+        images: list[str] | None = None,
         ctx: Context = CurrentContext(),
         client: CodegenClient = Depends(get_client),
     ) -> str:
@@ -344,11 +393,14 @@ def register_agent_tools(mcp: FastMCP) -> None:
             run_id: Agent run ID to resume.
             prompt: New instructions or clarification for the agent.
             model: Optionally switch model for the resumed run.
+            images: Optional list of base64-encoded data URIs for image input.
         """
         await ctx.info(f"Resuming run: id={run_id}")
-        run = await client.resume_run(run_id, prompt, model=model)
+        run = await client.resume_run(run_id, prompt, model=model, images=images)
         await ctx.info(f"Run resumed: id={run.id}, status={run.status}")
         return format_run_basic(run)
+
+    # ── Stop (legacy alias for ban) ──────────────────────
 
     @mcp.tool(tags={"execution", "dangerous"}, icons=ICON_STOP)
     async def codegen_stop_run(
@@ -360,6 +412,7 @@ def register_agent_tools(mcp: FastMCP) -> None:
         """Stop a running agent. Use when a task needs to be cancelled.
 
         Asks for user confirmation before stopping unless ``confirmed=True``.
+        This is a convenience alias for ``codegen_ban_run``.
 
         Args:
             run_id: Agent run ID to stop.
@@ -378,8 +431,148 @@ def register_agent_tools(mcp: FastMCP) -> None:
 
         await ctx.warning(f"Stopping run: id={run_id}")
         run = await client.stop_run(run_id)
-        await ctx.info(f"Run stopped: id={run.id}, status={run.status}")
+        await ctx.info(f"Run stopped: id={run_id}")
         return format_run_basic(run)
+
+    # ── Ban ───────────────────────────────────────────────
+
+    @mcp.tool(tags={"execution", "dangerous"}, icons=ICON_BAN)
+    async def codegen_ban_run(
+        run_id: int,
+        before_card_order_id: str | None = None,
+        after_card_order_id: str | None = None,
+        confirmed: bool = False,
+        ctx: Context = CurrentContext(),
+        client: CodegenClient = Depends(get_client),
+    ) -> str:
+        """Ban all checks for a PR and stop all related agents.
+
+        Flags the PR to prevent future CI/CD check suite events from
+        being processed and stops all current agents for that PR.
+
+        Args:
+            run_id: Agent run ID associated with the PR.
+            before_card_order_id: Kanban order key for the card before this run.
+            after_card_order_id: Kanban order key for the card after this run.
+            confirmed: Skip interactive confirmation when True.
+        """
+        if not confirmed:
+            user_confirmed = await confirm_action(
+                ctx,
+                f"Ban all checks for agent run {run_id}? "
+                "This will stop all current agents on the PR and prevent "
+                "future CI/CD check events from being processed.",
+            )
+            if not user_confirmed:
+                return json.dumps(
+                    {"run_id": run_id, "action": "cancelled", "reason": "User declined to ban"}
+                )
+
+        await ctx.warning(f"Banning checks for run: id={run_id}")
+        result = await client.ban_run(
+            run_id,
+            before_card_order_id=before_card_order_id,
+            after_card_order_id=after_card_order_id,
+        )
+        await ctx.info(f"Checks banned for run: id={run_id}")
+        return json.dumps(
+            {
+                "run_id": run_id,
+                "action": "banned",
+                "message": result.message,
+            }
+        )
+
+    # ── Unban ─────────────────────────────────────────────
+
+    @mcp.tool(tags={"execution"}, icons=ICON_UNBAN)
+    async def codegen_unban_run(
+        run_id: int,
+        before_card_order_id: str | None = None,
+        after_card_order_id: str | None = None,
+        ctx: Context = CurrentContext(),
+        client: CodegenClient = Depends(get_client),
+    ) -> str:
+        """Unban all checks for a PR.
+
+        Removes the ban flag from the PR to allow future CI/CD check suite
+        events to be processed.  Handles both URL-based bans and
+        parent-agent-run-based bans.
+
+        Args:
+            run_id: Agent run ID associated with the PR.
+            before_card_order_id: Kanban order key for the card before this run.
+            after_card_order_id: Kanban order key for the card after this run.
+        """
+        await ctx.info(f"Unbanning checks for run: id={run_id}")
+        result = await client.unban_run(
+            run_id,
+            before_card_order_id=before_card_order_id,
+            after_card_order_id=after_card_order_id,
+        )
+        await ctx.info(f"Checks unbanned for run: id={run_id}")
+        return json.dumps(
+            {
+                "run_id": run_id,
+                "action": "unbanned",
+                "message": result.message,
+            }
+        )
+
+    # ── Remove from PR ────────────────────────────────────
+
+    @mcp.tool(tags={"execution", "dangerous"}, icons=ICON_REMOVE_FROM_PR)
+    async def codegen_remove_from_pr(
+        run_id: int,
+        before_card_order_id: str | None = None,
+        after_card_order_id: str | None = None,
+        confirmed: bool = False,
+        ctx: Context = CurrentContext(),
+        client: CodegenClient = Depends(get_client),
+    ) -> str:
+        """Remove Codegen from a PR.
+
+        Performs the same action as banning all checks but with more
+        user-friendly naming.  Flags the PR to prevent future CI/CD check
+        suite events and stops all current agents for that PR.
+
+        Args:
+            run_id: Agent run ID associated with the PR.
+            before_card_order_id: Kanban order key for the card before this run.
+            after_card_order_id: Kanban order key for the card after this run.
+            confirmed: Skip interactive confirmation when True.
+        """
+        if not confirmed:
+            user_confirmed = await confirm_action(
+                ctx,
+                f"Remove Codegen from the PR associated with run {run_id}? "
+                "This will stop all current agents and prevent future CI/CD checks.",
+            )
+            if not user_confirmed:
+                return json.dumps(
+                    {
+                        "run_id": run_id,
+                        "action": "cancelled",
+                        "reason": "User declined to remove from PR",
+                    }
+                )
+
+        await ctx.warning(f"Removing Codegen from PR for run: id={run_id}")
+        result = await client.remove_from_pr(
+            run_id,
+            before_card_order_id=before_card_order_id,
+            after_card_order_id=after_card_order_id,
+        )
+        await ctx.info(f"Codegen removed from PR for run: id={run_id}")
+        return json.dumps(
+            {
+                "run_id": run_id,
+                "action": "removed_from_pr",
+                "message": result.message,
+            }
+        )
+
+    # ── Logs ──────────────────────────────────────────────
 
     @mcp.tool(tags={"monitoring"}, icons=ICON_LOGS, task=GET_LOGS_TASK)
     async def codegen_get_logs(
@@ -435,6 +628,7 @@ def register_agent_tools(mcp: FastMCP) -> None:
                             "tool_output": (
                                 str(log.tool_output)[:500] if log.tool_output else None
                             ),
+                            "message_type": log.message_type,
                             "created_at": log.created_at,
                         }.items()
                         if v is not None
