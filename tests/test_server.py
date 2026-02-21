@@ -437,3 +437,28 @@ class TestGetRunWithExecution:
         assert ctx_data["tasks"][0]["status"] == "completed"
         assert ctx_data["tasks"][0]["report"]["summary"] == "Built the feature"
         assert ctx_data["current_task_index"] == 1
+
+
+# ── New Prompts ──────────────────────────────────────────
+
+
+class TestNewPrompts:
+    async def test_build_task_prompt_template_registered(self, client: Client):
+        prompts = await client.list_prompts()
+        names = {p.name for p in prompts}
+        assert "build_task_prompt_template" in names
+
+    async def test_execution_summary_registered(self, client: Client):
+        prompts = await client.list_prompts()
+        names = {p.name for p in prompts}
+        assert "execution_summary" in names
+
+
+# ── Execution Resource ───────────────────────────────────
+
+
+class TestExecutionResource:
+    async def test_execution_resource_registered(self, client: Client):
+        resources = await client.list_resources()
+        uris = {str(r.uri) for r in resources}
+        assert "codegen://config" in uris
