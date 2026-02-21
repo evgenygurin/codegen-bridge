@@ -200,6 +200,11 @@ ICON_SUMMARY = _svg_icon(  # clipboard: execution summary
     '<rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>'
 )
 
+ICON_BEST_PRACTICES = _svg_icon(  # book-open: best practices guide
+    '<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>'
+    '<path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>'
+)
+
 # ── Sampling Icons ───────────────────────────────────────────
 
 ICON_SAMPLING_SUMMARY = _svg_icon(  # sparkles: AI-powered summary
