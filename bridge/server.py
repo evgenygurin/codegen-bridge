@@ -29,7 +29,9 @@ from __future__ import annotations
 
 import logging
 import os
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from typing import Any
 
 import httpx
 from fastmcp import FastMCP
@@ -61,7 +63,7 @@ logger = logging.getLogger("bridge.server")
 
 
 @asynccontextmanager
-async def _lifespan(server: FastMCP):
+async def _lifespan(server: FastMCP) -> AsyncIterator[dict[str, Any]]:
     """Manage lifecycle of HTTP clients and OpenAPI provider.
 
     Yields a dict that becomes ``ctx.lifespan_context`` in tools/resources.

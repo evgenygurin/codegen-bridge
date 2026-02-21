@@ -83,16 +83,19 @@ class MemoryStorage:
         logger.debug("MemoryStorage initialised")
 
     async def get(self, key: str) -> dict[str, Any] | None:
-        return await self._store.get(key, collection=_COLLECTION)
+        result: dict[str, Any] | None = await self._store.get(key, collection=_COLLECTION)
+        return result
 
     async def put(self, key: str, value: dict[str, Any]) -> None:
         await self._store.put(key, value, collection=_COLLECTION)
 
     async def delete(self, key: str) -> bool:
-        return await self._store.delete(key, collection=_COLLECTION)
+        result: bool = await self._store.delete(key, collection=_COLLECTION)
+        return result
 
     async def keys(self) -> list[str]:
-        return await self._store.keys(collection=_COLLECTION)
+        result: list[str] = await self._store.keys(collection=_COLLECTION)
+        return result
 
 
 # ── FileStorage ─────────────────────────────────────────────
@@ -131,14 +134,15 @@ class FileStorage:
         )
 
     async def get(self, key: str) -> dict[str, Any] | None:
-        return await self._store.get(key, collection=_COLLECTION)
+        result: dict[str, Any] | None = await self._store.get(key, collection=_COLLECTION)
+        return result
 
     async def put(self, key: str, value: dict[str, Any]) -> None:
         await self._store.put(key, value, collection=_COLLECTION)
         self._key_index.add(key)
 
     async def delete(self, key: str) -> bool:
-        result = await self._store.delete(key, collection=_COLLECTION)
+        result: bool = await self._store.delete(key, collection=_COLLECTION)
         self._key_index.discard(key)
         return result
 

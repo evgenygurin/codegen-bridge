@@ -31,7 +31,7 @@ def register_pr_tools(mcp: FastMCP) -> None:
         pr_id: int,
         state: PRState,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),
+        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
     ) -> str:
         """Edit pull request properties (RESTful endpoint).
 
@@ -49,7 +49,7 @@ def register_pr_tools(mcp: FastMCP) -> None:
         result = await client.edit_pr(repo_id=repo_id, pr_id=pr_id, state=state)
         await ctx.info(f"PR edited: success={result.success}, state={result.state}")
 
-        response: dict = {"success": result.success}
+        response: dict[str, object] = {"success": result.success}
         if result.url is not None:
             response["url"] = result.url
         if result.number is not None:
@@ -67,7 +67,7 @@ def register_pr_tools(mcp: FastMCP) -> None:
         pr_id: int,
         state: PRState,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),
+        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
     ) -> str:
         """Edit pull request properties (simple endpoint).
 
@@ -83,7 +83,7 @@ def register_pr_tools(mcp: FastMCP) -> None:
         result = await client.edit_pr_simple(pr_id=pr_id, state=state)
         await ctx.info(f"PR edited: success={result.success}, state={result.state}")
 
-        response: dict = {"success": result.success}
+        response: dict[str, object] = {"success": result.success}
         if result.url is not None:
             response["url"] = result.url
         if result.number is not None:

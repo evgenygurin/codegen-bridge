@@ -22,6 +22,7 @@ dev = [
     "pytest-asyncio>=0.24",
     "respx>=0.22",
     "ruff>=0.15.2",
+    "mypy>=1.15",
     "opentelemetry-sdk>=1.20.0",
 ]
 
@@ -41,3 +42,28 @@ select = ["E", "F", "W", "I", "N", "UP", "B", "SIM", "RUF"]
 "bridge/tools/*.py" = ["B008"]
 "bridge/resources/*.py" = ["B008"]
 "bridge/sampling/tools.py" = ["B008"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+warn_unreachable = true
+show_error_codes = true
+enable_error_code = ["ignore-without-code", "redundant-cast", "truthy-bool"]
+# plugins = ["pydantic.mypy"]  # Enable when pydantic[mypy] extra is installed
+
+[[tool.mypy.overrides]]
+module = [
+    "key_value.*",
+    "opentelemetry.*",
+    "mcp.*",
+    "fastmcp.*",
+    "respx.*",
+]
+ignore_missing_imports = true
+
+# [tool.pydantic-mypy]
+# init_forbid_extra = true
+# init_typed = true
+# warn_required_dynamic_aliases = true

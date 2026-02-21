@@ -330,18 +330,18 @@ class CodegenClient:
         *,
         secret: str | None = None,
         enabled: bool = True,
-    ) -> dict:
+    ) -> dict[str, Any]:
         """Set agent-run webhook configuration."""
         body: dict[str, Any] = {"url": url, "enabled": enabled}
         if secret is not None:
             body["secret"] = secret
         return await self._post(f"/organizations/{self.org_id}/webhooks/agent-run", json=body)
 
-    async def delete_webhook_config(self) -> dict:
+    async def delete_webhook_config(self) -> dict[str, Any]:
         """Delete agent-run webhook configuration."""
         return await self._delete(f"/organizations/{self.org_id}/webhooks/agent-run")
 
-    async def test_webhook(self, url: str) -> dict:
+    async def test_webhook(self, url: str) -> dict[str, Any]:
         """Send a test event to a webhook URL."""
         body: dict[str, Any] = {"url": url}
         return await self._post(
@@ -451,19 +451,23 @@ class CodegenClient:
 
     # ── Rules ────────────────────────────────────────────────
 
-    async def get_rules(self) -> dict[str, str]:
+    async def get_rules(self) -> dict[str, Any]:
         """Get organization and user agent rules."""
-        resp = await self._get(f"/organizations/{self.org_id}/cli/rules")
-        return resp
+        return await self._get(f"/organizations/{self.org_id}/cli/rules")
 
     # ── HTTP Helpers ────────────────────────────────────────
 
-    async def _get(self, path: str, *, params: dict | None = None) -> dict:
+    async def _get(
+        self, path: str, *, params: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         resp = await self._client.get(path, params=params)
         resp.raise_for_status()
-        return resp.json()
+        result: dict[str, Any] = resp.json()
+        return result
 
-    async def _get_raw(self, path: str, *, params: dict | None = None) -> Any:
+    async def _get_raw(
+        self, path: str, *, params: dict[str, Any] | None = None
+    ) -> Any:
         """GET that returns the raw JSON value (may be a list or dict)."""
         resp = await self._client.get(path, params=params)
         resp.raise_for_status()
@@ -473,30 +477,35 @@ class CodegenClient:
         self,
         path: str,
         *,
-        json: dict | None = None,
-        params: dict | None = None,
-    ) -> dict:
+        json: dict[str, Any] | None = None,
+        params: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         resp = await self._client.post(path, json=json, params=params)
         resp.raise_for_status()
-        return resp.json()
+        result: dict[str, Any] = resp.json()
+        return result
 
     async def _put(
         self,
         path: str,
         *,
-        json: dict | None = None,
-        params: dict | None = None,
-    ) -> dict:
+        json: dict[str, Any] | None = None,
+        params: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         resp = await self._client.put(path, json=json, params=params)
         resp.raise_for_status()
-        return resp.json()
+        return resp.json()  # type: ignore[no-any-return]
 
-    async def _patch(self, path: str, *, json: dict | None = None) -> dict:
+    async def _patch(
+        self, path: str, *, json: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         resp = await self._client.patch(path, json=json)
         resp.raise_for_status()
-        return resp.json()
+        result: dict[str, Any] = resp.json()
+        return result
 
-    async def _delete(self, path: str) -> dict:
+    async def _delete(self, path: str) -> dict[str, Any]:
         resp = await self._client.delete(path)
         resp.raise_for_status()
-        return resp.json()
+        result: dict[str, Any] = resp.json()
+        return result
