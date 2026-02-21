@@ -14,7 +14,7 @@ from httpx import Response
 os.environ.setdefault("CODEGEN_API_KEY", "test-key")
 os.environ.setdefault("CODEGEN_ORG_ID", "42")
 
-from bridge.server import mcp  # noqa: E402
+from bridge.server import mcp
 
 
 @pytest.fixture
