@@ -523,6 +523,92 @@ class TestAnalyzeSandboxLogs:
         assert result.message == "Analysis started"
 
 
+class TestGetCheckSuiteSettings:
+    @respx.mock
+    async def test_gets_check_suite_settings(self):
+        respx.get(
+            "https://api.codegen.com/v1/organizations/42/repos/check-suite-settings"
+        ).mock(
+            return_value=Response(
+                200,
+                json={
+                    "check_retry_count": 3,
+                    "ignored_checks": ["lint"],
+                    "check_retry_counts": {"ci": 2},
+                    "custom_prompts": {"ci": "Fix CI"},
+                    "high_priority_apps": ["GitHub Actions"],
+                    "available_check_suite_names": ["ci", "lint", "test"],
+                },
+            )
+        )
+
+        async with CodegenClient(api_key="test", org_id=42) as client:
+            settings = await client.get_check_suite_settings(10)
+
+        assert settings.check_retry_count == 3
+        assert settings.ignored_checks == ["lint"]
+        assert settings.check_retry_counts == {"ci": 2}
+        assert settings.custom_prompts == {"ci": "Fix CI"}
+        assert settings.high_priority_apps == ["GitHub Actions"]
+        assert settings.available_check_suite_names == ["ci", "lint", "test"]
+
+    @respx.mock
+    async def test_passes_repo_id_query_param(self):
+        route = respx.get(
+            "https://api.codegen.com/v1/organizations/42/repos/check-suite-settings"
+        ).mock(
+            return_value=Response(
+                200,
+                json={
+                    "check_retry_count": 0,
+                    "ignored_checks": [],
+                    "check_retry_counts": {},
+                    "custom_prompts": {},
+                    "high_priority_apps": [],
+                    "available_check_suite_names": [],
+                },
+            )
+        )
+
+        async with CodegenClient(api_key="test", org_id=42) as client:
+            await client.get_check_suite_settings(10)
+
+        assert route.called
+        assert route.calls[0].request.url.params["repo_id"] == "10"
+
+
+class TestUpdateCheckSuiteSettings:
+    @respx.mock
+    async def test_updates_settings(self):
+        route = respx.put(
+            "https://api.codegen.com/v1/organizations/42/repos/check-suite-settings"
+        ).mock(return_value=Response(200, json={"status": "ok"}))
+
+        async with CodegenClient(api_key="test", org_id=42) as client:
+            result = await client.update_check_suite_settings(
+                10, {"check_retry_count": 5, "ignored_checks": ["lint"]}
+            )
+
+        assert result["status"] == "ok"
+        assert route.called
+        assert route.calls[0].request.url.params["repo_id"] == "10"
+        body = route.calls[0].request.content
+        assert b"check_retry_count" in body
+        assert b"ignored_checks" in body
+
+    @respx.mock
+    async def test_updates_with_empty_body(self):
+        route = respx.put(
+            "https://api.codegen.com/v1/organizations/42/repos/check-suite-settings"
+        ).mock(return_value=Response(200, json={"status": "ok"}))
+
+        async with CodegenClient(api_key="test", org_id=42) as client:
+            result = await client.update_check_suite_settings(10, {})
+
+        assert result["status"] == "ok"
+        assert route.called
+
+
 class TestGenerateSlackConnectToken:
     @respx.mock
     async def test_generates_slack_token(self):
