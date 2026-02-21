@@ -1,7 +1,7 @@
 """FastMCP server for Codegen AI agent platform.
 
 Hybrid architecture:
-- 8 manual core tools with business logic (auto-detect repo_id, response formatting)
+- 15 manual core tools with business logic (auto-detect repo_id, response formatting)
 - ~21 auto-generated tools from OpenAPI spec via OpenAPIProvider
 - 3 resources for monitoring + command resources via CommandsProvider
 - Agent skills via SkillsDirectoryProvider
@@ -16,7 +16,8 @@ Tools, resources, and prompts are defined in submodules:
 - bridge.tools.agent — agent run management
 - bridge.tools.execution — execution context management
 - bridge.tools.pr — pull request management
-- bridge.tools.setup — organization and repository setup
+- bridge.tools.setup — organization and repository setup + setup commands
+- bridge.tools.integrations — integrations, webhooks, sandbox, Slack connect
 - bridge.resources.config — configuration and execution state
 - bridge.prompts.templates — prompt templates
 - bridge.providers — custom and built-in MCP providers
@@ -45,6 +46,7 @@ from bridge.storage import FileStorage
 from bridge.tools import (
     register_agent_tools,
     register_execution_tools,
+    register_integration_tools,
     register_pr_tools,
     register_setup_tools,
 )
@@ -142,6 +144,7 @@ register_agent_tools(mcp)
 register_execution_tools(mcp)
 register_pr_tools(mcp)
 register_setup_tools(mcp)
+register_integration_tools(mcp)
 register_resources(mcp)
 register_prompts(mcp)
 register_sampling_tools(mcp)
