@@ -25,7 +25,6 @@ from fastmcp.exceptions import ToolError
 
 from bridge.client import CodegenClient
 from bridge.context import ContextRegistry
-from bridge.dependencies import set_global_client, set_global_registry
 from bridge.openapi_utils import create_openapi_provider
 from bridge.prompts import register_prompts
 from bridge.resources import register_resources
@@ -33,14 +32,14 @@ from bridge.tools import register_agent_tools, register_execution_tools, registe
 
 # ── Lifespan ─────────────────────────────────────────────
 
-_http_client: httpx.AsyncClient | None = None
-
 
 @asynccontextmanager
 async def _lifespan(server: FastMCP):
-    """Manage lifecycle of HTTP clients and OpenAPI provider."""
-    global _http_client
+    """Manage lifecycle of HTTP clients and OpenAPI provider.
 
+    Yields a dict that becomes ``ctx.lifespan_context`` in tools/resources.
+    The DI providers in ``bridge.dependencies`` read from this dict.
+    """
     api_key = os.environ.get("CODEGEN_API_KEY", "")
     org_id_str = os.environ.get("CODEGEN_ORG_ID", "0")
     try:
@@ -55,9 +54,8 @@ async def _lifespan(server: FastMCP):
         raise ToolError("CODEGEN_ORG_ID not set.")
 
     client = CodegenClient(api_key=api_key, org_id=org_id)
-    set_global_client(client)
 
-    _http_client = httpx.AsyncClient(
+    http_client = httpx.AsyncClient(
         base_url="https://api.codegen.com",
         headers={"Authorization": f"Bearer {api_key}"},
         timeout=30.0,
@@ -65,23 +63,18 @@ async def _lifespan(server: FastMCP):
 
     # Add OpenAPI provider for auto-generated tools
     try:
-        provider = create_openapi_provider(_http_client, org_id)
+        provider = create_openapi_provider(http_client, org_id)
         server.add_provider(provider)
     except Exception:
         pass  # OpenAPI provider is optional; manual tools always work
 
     registry = ContextRegistry()
-    set_global_registry(registry)
 
     try:
         yield {"client": client, "org_id": org_id, "registry": registry}
     finally:
         await client.close()
-        set_global_client(None)
-        if _http_client is not None:
-            await _http_client.aclose()
-            _http_client = None
-        set_global_registry(None)
+        await http_client.aclose()
 
 
 # ── Server ───────────────────────────────────────────────

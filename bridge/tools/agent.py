@@ -5,11 +5,12 @@ from __future__ import annotations
 import json
 from typing import Any, Literal
 
-from fastmcp import Context, FastMCP
+from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 
-from bridge.context import PRInfo, TaskReport
-from bridge.dependencies import get_client, get_registry
+from bridge.client import CodegenClient
+from bridge.context import ContextRegistry, PRInfo, TaskReport
+from bridge.dependencies import Depends, get_client, get_registry
 from bridge.helpers.formatting import format_logs, format_run_basic, format_run_list
 from bridge.helpers.repo_detection import detect_repo_id
 from bridge.log_parser import parse_logs
@@ -21,13 +22,14 @@ def register_agent_tools(mcp: FastMCP) -> None:
 
     @mcp.tool(tags={"execution"})
     async def codegen_create_run(
-        ctx: Context,
         prompt: str,
         repo_id: int | None = None,
         model: str | None = None,
         agent_type: Literal["codegen", "claude_code"] = "claude_code",
         execution_id: str | None = None,
         task_index: int | None = None,
+        client: CodegenClient = Depends(get_client),
+        registry: ContextRegistry = Depends(get_registry),
     ) -> str:
         """Create a new Codegen agent run.
 
@@ -41,11 +43,9 @@ def register_agent_tools(mcp: FastMCP) -> None:
             execution_id: Optional execution context ID for prompt enrichment.
             task_index: Task index within the execution (default: current_task_index).
         """
-        client = get_client(ctx)
         effective_prompt = prompt
 
         if execution_id is not None:
-            registry = get_registry(ctx)
             exec_ctx = registry.get(execution_id)
             if exec_ctx is not None:
                 idx = task_index if task_index is not None else exec_ctx.current_task_index
@@ -60,7 +60,7 @@ def register_agent_tools(mcp: FastMCP) -> None:
                     repo_id = exec_ctx.repo_id
 
         if repo_id is None:
-            repo_id = await detect_repo_id(ctx)
+            repo_id = await detect_repo_id(client)
             if repo_id is None:
                 raise ToolError(
                     "Could not auto-detect repository. "
@@ -76,7 +76,6 @@ def register_agent_tools(mcp: FastMCP) -> None:
         )
 
         if execution_id is not None:
-            registry = get_registry(ctx)
             exec_ctx = registry.get(execution_id)
             if exec_ctx is not None:
                 idx = task_index if task_index is not None else exec_ctx.current_task_index
@@ -97,10 +96,11 @@ def register_agent_tools(mcp: FastMCP) -> None:
 
     @mcp.tool(tags={"execution"})
     async def codegen_get_run(
-        ctx: Context,
         run_id: int,
         execution_id: str | None = None,
         task_index: int | None = None,
+        client: CodegenClient = Depends(get_client),
+        registry: ContextRegistry = Depends(get_registry),
     ) -> str:
         """Get agent run status, result, summary, and created PRs.
 
@@ -111,7 +111,6 @@ def register_agent_tools(mcp: FastMCP) -> None:
             execution_id: Optional execution context ID for auto-reporting.
             task_index: Task index within the execution (default: current_task_index).
         """
-        client = get_client(ctx)
         run = await client.get_run(run_id)
 
         result: dict[str, Any] = {
@@ -134,7 +133,6 @@ def register_agent_tools(mcp: FastMCP) -> None:
 
         # Auto-report back to execution context on terminal status
         if execution_id is not None and run.status in ("completed", "failed"):
-            registry = get_registry(ctx)
             exec_ctx = registry.get(execution_id)
             if exec_ctx is not None:
                 idx = task_index if task_index is not None else exec_ctx.current_task_index
@@ -192,9 +190,9 @@ def register_agent_tools(mcp: FastMCP) -> None:
 
     @mcp.tool(tags={"execution"})
     async def codegen_list_runs(
-        ctx: Context,
         limit: int = 10,
         source_type: str | None = None,
+        client: CodegenClient = Depends(get_client),
     ) -> str:
         """List recent agent runs.
 
@@ -202,16 +200,15 @@ def register_agent_tools(mcp: FastMCP) -> None:
             limit: Maximum number of runs to return (default 10).
             source_type: Filter by source — API, LOCAL, GITHUB, etc.
         """
-        client = get_client(ctx)
         page = await client.list_runs(limit=limit, source_type=source_type)
         return format_run_list(page.items, page.total)
 
     @mcp.tool(tags={"execution"})
     async def codegen_resume_run(
-        ctx: Context,
         run_id: int,
         prompt: str,
         model: str | None = None,
+        client: CodegenClient = Depends(get_client),
     ) -> str:
         """Resume a paused or blocked agent run with new instructions.
 
@@ -220,27 +217,28 @@ def register_agent_tools(mcp: FastMCP) -> None:
             prompt: New instructions or clarification for the agent.
             model: Optionally switch model for the resumed run.
         """
-        client = get_client(ctx)
         run = await client.resume_run(run_id, prompt, model=model)
         return format_run_basic(run)
 
     @mcp.tool(tags={"execution"})
-    async def codegen_stop_run(ctx: Context, run_id: int) -> str:
+    async def codegen_stop_run(
+        run_id: int,
+        client: CodegenClient = Depends(get_client),
+    ) -> str:
         """Stop a running agent. Use when a task needs to be cancelled.
 
         Args:
             run_id: Agent run ID to stop.
         """
-        client = get_client(ctx)
         run = await client.stop_run(run_id)
         return format_run_basic(run)
 
     @mcp.tool(tags={"monitoring"})
     async def codegen_get_logs(
-        ctx: Context,
         run_id: int,
         limit: int = 50,
         reverse: bool = True,
+        client: CodegenClient = Depends(get_client),
     ) -> str:
         """Get step-by-step agent execution logs.
 
@@ -251,6 +249,5 @@ def register_agent_tools(mcp: FastMCP) -> None:
             limit: Max log entries (default 50).
             reverse: If true, newest entries first.
         """
-        client = get_client(ctx)
         result = await client.get_logs(run_id, limit=limit, reverse=reverse)
         return format_logs(result)

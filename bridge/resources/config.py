@@ -5,9 +5,10 @@ from __future__ import annotations
 import json
 import os
 
-from fastmcp import Context, FastMCP
+from fastmcp import FastMCP
 
-from bridge.dependencies import get_registry
+from bridge.context import ContextRegistry
+from bridge.dependencies import Depends, get_registry
 
 
 def register_resources(mcp: FastMCP) -> None:
@@ -27,9 +28,10 @@ def register_resources(mcp: FastMCP) -> None:
         )
 
     @mcp.resource("codegen://execution/current")
-    async def get_current_execution(ctx: Context) -> str:
+    async def get_current_execution(
+        registry: ContextRegistry = Depends(get_registry),
+    ) -> str:
         """Current execution progress — plan status, task list, active run."""
-        registry = get_registry(ctx)
         exec_ctx = registry.get_active()
         if exec_ctx is None:
             return json.dumps({"status": "no_active_execution"})
