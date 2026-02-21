@@ -1,13 +1,23 @@
-"""Agent run management tools: create, get, list, resume, stop, logs."""
+"""Agent run management tools: create, get, list, resume, stop, logs.
+
+Long-running tools (``codegen_create_run``, ``codegen_get_logs``) use
+``TaskConfig(mode="optional")`` so clients that support background tasks
+can offload them, while clients without task support still get the
+result synchronously.  Progress is reported via ``ctx.report_progress``
+so callers can track multi-step operations in real time.
+"""
 
 from __future__ import annotations
 
 import json
+from contextlib import suppress as _suppress
+from datetime import timedelta
 from typing import Any, Literal
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from fastmcp.server.context import Context
+from fastmcp.server.tasks import TaskConfig
 
 from bridge.client import CodegenClient
 from bridge.context import ContextRegistry, PRInfo, TaskReport
@@ -24,11 +34,35 @@ from bridge.icons import ICON_GET_RUN, ICON_LIST, ICON_LOGS, ICON_RESUME, ICON_R
 from bridge.log_parser import parse_logs
 from bridge.prompt_builder import build_task_prompt
 
+# ── Task configurations for long-running operations ──────
+
+CREATE_RUN_TASK = TaskConfig(
+    mode="optional",
+    poll_interval=timedelta(seconds=5),
+)
+"""Create-run is multi-step (validate → enrich → detect repo → API call → track)."""
+
+GET_LOGS_TASK = TaskConfig(
+    mode="optional",
+    poll_interval=timedelta(seconds=3),
+)
+"""Get-logs does a single API fetch + formatting — faster poll."""
+
+# Total progress steps for each operation
+_CREATE_RUN_STEPS = 5
+_GET_LOGS_STEPS = 3
+
+
+async def _report(ctx: Context, progress: float, total: float, message: str) -> None:
+    """Best-effort progress report — never raises."""
+    with _suppress(Exception):
+        await ctx.report_progress(progress=progress, total=total, message=message)
+
 
 def register_agent_tools(mcp: FastMCP) -> None:
     """Register all agent run management tools on the given FastMCP server."""
 
-    @mcp.tool(tags={"execution"}, icons=ICON_RUN)
+    @mcp.tool(tags={"execution"}, icons=ICON_RUN, task=CREATE_RUN_TASK)
     async def codegen_create_run(
         prompt: str,
         repo_id: int | None = None,
@@ -44,6 +78,7 @@ def register_agent_tools(mcp: FastMCP) -> None:
         """Create a new Codegen agent run.
 
         The agent will execute the task in a cloud sandbox and may create a PR.
+        Supports background execution with progress reporting.
 
         Args:
             prompt: Task description for the agent (natural language, full context).
@@ -53,10 +88,18 @@ def register_agent_tools(mcp: FastMCP) -> None:
             execution_id: Optional execution context ID for prompt enrichment.
             task_index: Task index within the execution (default: current_task_index).
         """
+        total = _CREATE_RUN_STEPS
+        step = 0
+
+        # Step 1: Validate input
         has_exec = execution_id is not None
+        await _report(ctx, step, total, "Validating input")
         await ctx.info(f"Creating agent run: agent_type={agent_type}, has_execution={has_exec}")
         effective_prompt = prompt
+        step += 1
 
+        # Step 2: Enrich prompt from execution context
+        await _report(ctx, step, total, "Enriching prompt")
         if execution_id is not None:
             exec_ctx = registry.get(execution_id)
             if exec_ctx is not None:
@@ -70,7 +113,10 @@ def register_agent_tools(mcp: FastMCP) -> None:
                     )
                 if repo_id is None and exec_ctx.repo_id is not None:
                     repo_id = exec_ctx.repo_id
+        step += 1
 
+        # Step 3: Detect repository
+        await _report(ctx, step, total, "Detecting repository")
         if repo_id is None:
             repo_id = await detect_repo_id(client, repo_cache)
             if repo_id is None:
@@ -80,7 +126,10 @@ def register_agent_tools(mcp: FastMCP) -> None:
                     "Provide repo_id explicitly or run from a git repository "
                     "that is registered in your Codegen organization."
                 )
+        step += 1
 
+        # Step 4: Create the agent run
+        await _report(ctx, step, total, "Creating agent run")
         run = await client.create_run(
             effective_prompt,
             repo_id=repo_id,
@@ -88,7 +137,10 @@ def register_agent_tools(mcp: FastMCP) -> None:
             agent_type=agent_type,
         )
         await ctx.info(f"Agent run created: id={run.id}, status={run.status}")
+        step += 1
 
+        # Step 5: Track in execution context
+        await _report(ctx, step, total, "Tracking in execution context")
         if execution_id is not None:
             exec_ctx = registry.get(execution_id)
             if exec_ctx is not None:
@@ -100,6 +152,7 @@ def register_agent_tools(mcp: FastMCP) -> None:
                         run_id=run.id,
                     )
 
+        await _report(ctx, total, total, "Agent run created")
         return json.dumps(
             {
                 "id": run.id,
@@ -281,7 +334,7 @@ def register_agent_tools(mcp: FastMCP) -> None:
         await ctx.info(f"Run stopped: id={run.id}, status={run.status}")
         return format_run_basic(run)
 
-    @mcp.tool(tags={"monitoring"}, icons=ICON_LOGS)
+    @mcp.tool(tags={"monitoring"}, icons=ICON_LOGS, task=GET_LOGS_TASK)
     async def codegen_get_logs(
         run_id: int,
         limit: int = DEFAULT_PAGE_SIZE,
@@ -293,6 +346,7 @@ def register_agent_tools(mcp: FastMCP) -> None:
         """Get step-by-step agent execution logs with cursor-based pagination.
 
         Shows agent thoughts, tool calls, and outputs for debugging.
+        Supports background execution with progress reporting.
 
         Args:
             run_id: Agent run ID.
@@ -301,11 +355,24 @@ def register_agent_tools(mcp: FastMCP) -> None:
             cursor: Opaque cursor from a previous response's ``next_cursor``
                 field.  Omit or pass ``null`` for the first page.
         """
+        total = _GET_LOGS_STEPS
+        step = 0
+
+        # Step 1: Parse pagination
+        await _report(ctx, step, total, "Preparing log request")
         offset = cursor_to_offset(cursor)
         await ctx.info(f"Fetching logs: run_id={run_id}, limit={limit}, offset={offset}")
+        step += 1
+
+        # Step 2: Fetch from API
+        await _report(ctx, step, total, f"Fetching logs for run {run_id}")
         result = await client.get_logs(run_id, skip=offset, limit=limit, reverse=reverse)
         await ctx.info(f"Fetched {len(result.logs)} log entries for run {run_id}")
-        return json.dumps(
+        step += 1
+
+        # Step 3: Format response
+        await _report(ctx, step, total, "Formatting log entries")
+        response = json.dumps(
             {
                 "run_id": result.id,
                 "status": result.status,
@@ -329,3 +396,6 @@ def register_agent_tools(mcp: FastMCP) -> None:
                 ],
             }
         )
+
+        await _report(ctx, total, total, "Logs retrieved")
+        return response
