@@ -265,7 +265,7 @@ def register_agent_tools(mcp: FastMCP) -> None:
         await ctx.info(f"Run resumed: id={run.id}, status={run.status}")
         return format_run_basic(run)
 
-    @mcp.tool(tags={"execution"}, icons=ICON_STOP)
+    @mcp.tool(tags={"execution", "dangerous"}, icons=ICON_STOP)
     async def codegen_stop_run(
         run_id: int,
         ctx: Context = CurrentContext(),

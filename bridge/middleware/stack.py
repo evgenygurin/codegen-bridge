@@ -27,6 +27,7 @@ from fastmcp.server.middleware.rate_limiting import RateLimitingMiddleware
 from fastmcp.server.middleware.response_limiting import ResponseLimitingMiddleware
 from fastmcp.server.middleware.timing import TimingMiddleware
 
+from bridge.middleware.authorization import DangerousToolGuardMiddleware
 from bridge.middleware.config import MiddlewareConfig
 from bridge.telemetry import TelemetryMiddleware, configure_telemetry
 
@@ -60,7 +61,11 @@ def _build_stack(config: MiddlewareConfig) -> list[Middleware]:
     if config.ping.enabled:
         stack.append(PingMiddleware(interval_ms=config.ping.interval_ms))
 
-    # 3. Logging — structured request/response logging
+    # 3. Authorization — block dangerous tools unless explicitly allowed
+    if config.authorization.enabled:
+        stack.append(DangerousToolGuardMiddleware(config=config.authorization))
+
+    # 4. Logging — structured request/response logging
     if config.logging.enabled:
         stack.append(
             LoggingMiddleware(
@@ -72,16 +77,16 @@ def _build_stack(config: MiddlewareConfig) -> list[Middleware]:
             )
         )
 
-    # 4. Telemetry — OpenTelemetry tracing and metrics
+    # 5. Telemetry — OpenTelemetry tracing and metrics
     if config.telemetry.enabled:
         configure_telemetry(config.telemetry)
         stack.append(TelemetryMiddleware(config=config.telemetry))
 
-    # 5. Timing — execution duration per operation
+    # 6. Timing — execution duration per operation
     if config.timing.enabled:
         stack.append(TimingMiddleware(logger=logger))
 
-    # 6. Rate limiting — token-bucket throttling
+    # 7. Rate limiting — token-bucket throttling
     if config.rate_limiting.enabled:
         stack.append(
             RateLimitingMiddleware(
@@ -91,7 +96,7 @@ def _build_stack(config: MiddlewareConfig) -> list[Middleware]:
             )
         )
 
-    # 7. Caching — TTL-based response caching
+    # 8. Caching — TTL-based response caching
     if config.caching.enabled:
         stack.append(
             ResponseCachingMiddleware(
@@ -103,7 +108,7 @@ def _build_stack(config: MiddlewareConfig) -> list[Middleware]:
             )
         )
 
-    # 8. Response limiting — truncate oversized tool output
+    # 9. Response limiting — truncate oversized tool output
     if config.response_limiting.enabled:
         stack.append(
             ResponseLimitingMiddleware(

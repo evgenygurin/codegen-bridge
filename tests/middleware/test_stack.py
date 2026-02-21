@@ -11,9 +11,7 @@ from fastmcp.server.middleware.rate_limiting import RateLimitingMiddleware
 from fastmcp.server.middleware.response_limiting import ResponseLimitingMiddleware
 from fastmcp.server.middleware.timing import TimingMiddleware
 
-from bridge.telemetry.config import TelemetryConfig
-from bridge.telemetry.middleware import TelemetryMiddleware
-
+from bridge.middleware.authorization import AuthorizationConfig, DangerousToolGuardMiddleware
 from bridge.middleware.config import (
     CachingConfig,
     ErrorHandlingConfig,
@@ -25,25 +23,31 @@ from bridge.middleware.config import (
     TimingConfig,
 )
 from bridge.middleware.stack import _build_stack, configure_middleware
+from bridge.telemetry.config import TelemetryConfig
+from bridge.telemetry.middleware import TelemetryMiddleware
 
 # FastMCP adds a built-in DereferenceRefsMiddleware by default.
 _FASTMCP_DEFAULT_MIDDLEWARE_COUNT = len(FastMCP("_probe").middleware)
+
+# Total middleware in the default stack (including authorization).
+_DEFAULT_STACK_SIZE = 9
 
 
 class TestBuildStack:
     """Unit tests for _build_stack (no server needed)."""
 
-    def test_default_config_creates_all_eight(self):
+    def test_default_config_creates_all_nine(self):
         stack = _build_stack(MiddlewareConfig())
-        assert len(stack) == 8
+        assert len(stack) == _DEFAULT_STACK_SIZE
 
     def test_default_order(self):
-        """Middleware are ordered outermost → innermost."""
+        """Middleware are ordered outermost -> innermost."""
         stack = _build_stack(MiddlewareConfig())
         types = [type(mw) for mw in stack]
         assert types == [
             ErrorHandlingMiddleware,
             PingMiddleware,
+            DangerousToolGuardMiddleware,
             LoggingMiddleware,
             TelemetryMiddleware,
             TimingMiddleware,
@@ -57,12 +61,20 @@ class TestBuildStack:
         stack = _build_stack(cfg)
         types = [type(mw) for mw in stack]
         assert RateLimitingMiddleware not in types
-        assert len(stack) == 7
+        assert len(stack) == _DEFAULT_STACK_SIZE - 1
+
+    def test_disable_authorization_middleware(self):
+        cfg = MiddlewareConfig(authorization=AuthorizationConfig(enabled=False))
+        stack = _build_stack(cfg)
+        types = [type(mw) for mw in stack]
+        assert DangerousToolGuardMiddleware not in types
+        assert len(stack) == _DEFAULT_STACK_SIZE - 1
 
     def test_disable_all_middleware(self):
         cfg = MiddlewareConfig(
             error_handling=ErrorHandlingConfig(enabled=False),
             ping=PingConfig(enabled=False),
+            authorization=AuthorizationConfig(enabled=False),
             logging=LoggingConfig(enabled=False),
             telemetry=TelemetryConfig(enabled=False),
             timing=TimingConfig(enabled=False),
@@ -76,6 +88,7 @@ class TestBuildStack:
     def test_only_error_handling_enabled(self):
         cfg = MiddlewareConfig(
             ping=PingConfig(enabled=False),
+            authorization=AuthorizationConfig(enabled=False),
             logging=LoggingConfig(enabled=False),
             telemetry=TelemetryConfig(enabled=False),
             timing=TimingConfig(enabled=False),
@@ -91,6 +104,7 @@ class TestBuildStack:
         cfg = MiddlewareConfig(
             error_handling=ErrorHandlingConfig(enabled=False),
             ping=PingConfig(enabled=False),
+            authorization=AuthorizationConfig(enabled=False),
             logging=LoggingConfig(enabled=False),
             telemetry=TelemetryConfig(enabled=False),
             timing=TimingConfig(enabled=False),
@@ -112,6 +126,7 @@ class TestBuildStack:
         cfg = MiddlewareConfig(
             error_handling=ErrorHandlingConfig(enabled=False),
             ping=PingConfig(enabled=False),
+            authorization=AuthorizationConfig(enabled=False),
             logging=LoggingConfig(enabled=False),
             telemetry=TelemetryConfig(enabled=False),
             timing=TimingConfig(enabled=False),
@@ -136,8 +151,8 @@ class TestConfigureMiddleware:
     def test_registers_middleware_on_server(self):
         server = FastMCP("test")
         stack = configure_middleware(server)
-        assert len(server.middleware) == _FASTMCP_DEFAULT_MIDDLEWARE_COUNT + 8
-        assert len(stack) == 8
+        assert len(server.middleware) == _FASTMCP_DEFAULT_MIDDLEWARE_COUNT + _DEFAULT_STACK_SIZE
+        assert len(stack) == _DEFAULT_STACK_SIZE
 
     def test_returns_instances_registered_on_server(self):
         server = FastMCP("test")
@@ -149,7 +164,7 @@ class TestConfigureMiddleware:
     def test_default_config_when_none(self):
         server = FastMCP("test")
         stack = configure_middleware(server, config=None)
-        assert len(stack) == 8
+        assert len(stack) == _DEFAULT_STACK_SIZE
 
     def test_custom_config(self):
         server = FastMCP("test")
@@ -158,7 +173,7 @@ class TestConfigureMiddleware:
             caching=CachingConfig(enabled=False),
         )
         stack = configure_middleware(server, config=cfg)
-        assert len(stack) == 6
+        assert len(stack) == _DEFAULT_STACK_SIZE - 2
         types = [type(mw) for mw in stack]
         assert PingMiddleware not in types
         assert ResponseCachingMiddleware not in types
@@ -169,6 +184,7 @@ class TestConfigureMiddleware:
         cfg = MiddlewareConfig(
             error_handling=ErrorHandlingConfig(enabled=False),
             ping=PingConfig(enabled=False),
+            authorization=AuthorizationConfig(enabled=False),
             logging=LoggingConfig(enabled=False),
             telemetry=TelemetryConfig(enabled=False),
             timing=TimingConfig(enabled=False),
@@ -185,7 +201,7 @@ class TestConfigureMiddleware:
         server = FastMCP("test")
         baseline = len(server.middleware)
         configure_middleware(server)
-        assert len(server.middleware) == baseline + 8
+        assert len(server.middleware) == baseline + _DEFAULT_STACK_SIZE
         # Calling again adds more (this is expected FastMCP behaviour)
         configure_middleware(server)
-        assert len(server.middleware) == baseline + 16
+        assert len(server.middleware) == baseline + _DEFAULT_STACK_SIZE * 2
