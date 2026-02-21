@@ -3,7 +3,7 @@
 Hybrid architecture:
 - 15 manual core tools with business logic (auto-detect repo_id, response formatting)
 - ~21 auto-generated tools from OpenAPI spec via OpenAPIProvider
-- 3 resources for monitoring + command resources via CommandsProvider
+- 5 resources for monitoring, platform docs + command resources via CommandsProvider
 - Agent skills via SkillsDirectoryProvider
 - 4 prompts for common workflows
 
@@ -19,6 +19,7 @@ Tools, resources, and prompts are defined in submodules:
 - bridge.tools.setup — organization and repository setup + setup commands
 - bridge.tools.integrations — integrations, webhooks, sandbox, Slack connect
 - bridge.resources.config — configuration and execution state
+- bridge.resources.platform — platform integrations guide and CLI/SDK docs
 - bridge.prompts.templates — prompt templates
 - bridge.providers — custom and built-in MCP providers
 """
