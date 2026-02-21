@@ -20,6 +20,7 @@ from bridge.helpers.pagination import (
     next_cursor_or_none,
 )
 from bridge.helpers.repo_detection import RepoCache, detect_repo_id
+from bridge.icons import ICON_GET_RUN, ICON_LIST, ICON_LOGS, ICON_RESUME, ICON_RUN, ICON_STOP
 from bridge.log_parser import parse_logs
 from bridge.prompt_builder import build_task_prompt
 
@@ -27,7 +28,7 @@ from bridge.prompt_builder import build_task_prompt
 def register_agent_tools(mcp: FastMCP) -> None:
     """Register all agent run management tools on the given FastMCP server."""
 
-    @mcp.tool(tags={"execution"})
+    @mcp.tool(tags={"execution"}, icons=ICON_RUN)
     async def codegen_create_run(
         prompt: str,
         repo_id: int | None = None,
@@ -107,7 +108,7 @@ def register_agent_tools(mcp: FastMCP) -> None:
             }
         )
 
-    @mcp.tool(tags={"execution"})
+    @mcp.tool(tags={"execution"}, icons=ICON_GET_RUN)
     async def codegen_get_run(
         run_id: int,
         execution_id: str | None = None,
@@ -203,7 +204,7 @@ def register_agent_tools(mcp: FastMCP) -> None:
 
         return json.dumps(result)
 
-    @mcp.tool(tags={"execution"})
+    @mcp.tool(tags={"execution"}, icons=ICON_LIST)
     async def codegen_list_runs(
         limit: int = DEFAULT_PAGE_SIZE,
         source_type: str | None = None,
@@ -244,7 +245,7 @@ def register_agent_tools(mcp: FastMCP) -> None:
             )
         )
 
-    @mcp.tool(tags={"execution"})
+    @mcp.tool(tags={"execution"}, icons=ICON_RESUME)
     async def codegen_resume_run(
         run_id: int,
         prompt: str,
@@ -264,7 +265,7 @@ def register_agent_tools(mcp: FastMCP) -> None:
         await ctx.info(f"Run resumed: id={run.id}, status={run.status}")
         return format_run_basic(run)
 
-    @mcp.tool(tags={"execution"})
+    @mcp.tool(tags={"execution"}, icons=ICON_STOP)
     async def codegen_stop_run(
         run_id: int,
         ctx: Context = CurrentContext(),
@@ -280,7 +281,7 @@ def register_agent_tools(mcp: FastMCP) -> None:
         await ctx.info(f"Run stopped: id={run.id}, status={run.status}")
         return format_run_basic(run)
 
-    @mcp.tool(tags={"monitoring"})
+    @mcp.tool(tags={"monitoring"}, icons=ICON_LOGS)
     async def codegen_get_logs(
         run_id: int,
         limit: int = DEFAULT_PAGE_SIZE,

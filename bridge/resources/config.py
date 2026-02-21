@@ -9,12 +9,13 @@ from fastmcp import FastMCP
 
 from bridge.context import ContextRegistry
 from bridge.dependencies import Depends, get_registry
+from bridge.icons import ICON_CONFIG, ICON_DASHBOARD
 
 
 def register_resources(mcp: FastMCP) -> None:
     """Register all MCP resources on the given FastMCP server."""
 
-    @mcp.resource("codegen://config")
+    @mcp.resource("codegen://config", icons=ICON_CONFIG)
     def get_config() -> str:
         """Current Codegen Bridge configuration and status."""
         org_id = os.environ.get("CODEGEN_ORG_ID", "not set")
@@ -27,7 +28,7 @@ def register_resources(mcp: FastMCP) -> None:
             }
         )
 
-    @mcp.resource("codegen://execution/current")
+    @mcp.resource("codegen://execution/current", icons=ICON_DASHBOARD)
     async def get_current_execution(
         registry: ContextRegistry = Depends(get_registry),
     ) -> str:
