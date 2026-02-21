@@ -1,0 +1,5 @@
+{
+  "default_model": null,
+  "auto_monitor": true,
+  "poll_interval": 30
+}

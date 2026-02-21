@@ -198,13 +198,15 @@ class TestCommandsProvider:
 
         provider = CommandsProvider(commands_dir)
         resources = await provider._list_resources()
-        assert len(resources) >= 3
+        assert len(resources) >= 5
 
         # Check known commands
         names = {r.name for r in resources}
         assert "command_codegen" in names
         assert "command_cg-status" in names
         assert "command_cg-logs" in names
+        assert "command_cg-merge" in names
+        assert "command_cg-settings" in names
 
         # Check descriptions are set
         for r in resources:
