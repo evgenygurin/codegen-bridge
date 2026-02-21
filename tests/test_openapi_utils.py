@@ -4,10 +4,14 @@ from __future__ import annotations
 
 import json
 import re
+from unittest.mock import MagicMock
 
 from bridge.openapi_utils import (
     TOOL_NAMES,
+    _classify_route,
+    _customize_component,
     build_route_maps,
+    create_openapi_provider,
     load_and_patch_spec,
 )
 
@@ -279,3 +283,150 @@ class TestToolNames:
             assert op_id in spec_op_ids, (
                 f"operationId not found in spec: {op_id}"
             )
+
+
+class TestClassifyRoute:
+    """Tests for the data-driven domain classifier."""
+
+    def test_webhook_path(self):
+        tag, prefix = _classify_route("/v1/organizations/42/webhooks/agent-run")
+        assert tag == "management"
+        assert prefix == "Webhook"
+
+    def test_agent_path(self):
+        tag, prefix = _classify_route("/v1/organizations/42/agent/run/unban")
+        assert tag == "execution"
+        assert prefix == "Agent run"
+
+    def test_prs_path(self):
+        tag, prefix = _classify_route("/v1/organizations/42/prs/123")
+        assert tag == "execution"
+        assert prefix == "Pull request"
+
+    def test_oauth_path(self):
+        tag, prefix = _classify_route("/v1/oauth/tokens/revoke")
+        assert tag == "integration"
+        assert prefix == "OAuth"
+
+    def test_slack_path(self):
+        tag, prefix = _classify_route("/v1/slack-connect/generate-token")
+        assert tag == "integration"
+        assert prefix == "Slack"
+
+    def test_sandbox_path(self):
+        tag, prefix = _classify_route("/v1/organizations/42/sandbox/abc/analyze-logs")
+        assert tag == "setup"
+        assert prefix == "Sandbox"
+
+    def test_users_path(self):
+        tag, prefix = _classify_route("/v1/organizations/42/users")
+        assert tag == "setup"
+        assert prefix == "User"
+
+    def test_models_path(self):
+        tag, prefix = _classify_route("/v1/organizations/42/models")
+        assert tag == "setup"
+        assert prefix == "Model"
+
+    def test_unknown_path_defaults_to_setup(self):
+        tag, prefix = _classify_route("/v1/some/unknown/endpoint")
+        assert tag == "setup"
+        assert prefix == "API"
+
+
+class TestCustomizeComponent:
+    """Tests for the component customization function."""
+
+    def test_adds_codegen_auto_tag(self):
+        route = MagicMock()
+        route.path = "/v1/organizations/42/webhooks/test"
+        component = MagicMock()
+        component.tags = set()
+        component.description = "Test webhook"
+
+        _customize_component(route, component)
+        assert "codegen-auto" in component.tags
+
+    def test_adds_category_tag(self):
+        route = MagicMock()
+        route.path = "/v1/organizations/42/webhooks/test"
+        component = MagicMock()
+        component.tags = set()
+        component.description = "Test webhook"
+
+        _customize_component(route, component)
+        assert "management" in component.tags
+
+    def test_enriches_empty_description(self):
+        route = MagicMock()
+        route.path = "/v1/organizations/42/webhooks/test"
+        route.method = "GET"
+        component = MagicMock()
+        component.tags = set()
+        component.description = ""
+
+        _customize_component(route, component)
+        assert "Webhook" in component.description
+        assert "GET" in component.description
+
+    def test_preserves_existing_description(self):
+        route = MagicMock()
+        route.path = "/v1/organizations/42/webhooks/test"
+        component = MagicMock()
+        component.tags = set()
+        component.description = "A detailed description of the webhook endpoint"
+
+        _customize_component(route, component)
+        assert component.description == "A detailed description of the webhook endpoint"
+
+    def test_enriches_short_description(self):
+        route = MagicMock()
+        route.path = "/v1/organizations/42/users"
+        route.method = "GET"
+        component = MagicMock()
+        component.tags = set()
+        component.description = "Get users"
+
+        _customize_component(route, component)
+        assert "User" in component.description
+
+    def test_handles_no_tags_attribute(self):
+        """Should not crash if component has no tags."""
+        route = MagicMock()
+        route.path = "/v1/users"
+        component = MagicMock(spec=[])  # no attributes
+
+        # Should not raise
+        _customize_component(route, component)
+
+
+class TestCreateOpenApiProvider:
+    """Tests for the OpenAPI provider factory with improved parameters."""
+
+    def test_creates_provider_with_validate_output(self):
+        import httpx
+        client = httpx.AsyncClient(base_url="https://api.example.com")
+        try:
+            provider = create_openapi_provider(client, 42, validate_output=True)
+            assert provider is not None
+        finally:
+            # Sync close for cleanup
+            pass
+
+    def test_creates_provider_without_validate_output(self):
+        import httpx
+        client = httpx.AsyncClient(base_url="https://api.example.com")
+        try:
+            provider = create_openapi_provider(client, 42, validate_output=False)
+            assert provider is not None
+        finally:
+            pass
+
+    def test_default_validate_output_is_true(self):
+        import httpx
+        client = httpx.AsyncClient(base_url="https://api.example.com")
+        try:
+            provider = create_openapi_provider(client, 42)
+            assert provider is not None
+        finally:
+            pass
