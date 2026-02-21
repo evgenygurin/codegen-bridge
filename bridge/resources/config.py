@@ -9,7 +9,8 @@ from fastmcp import FastMCP
 
 from bridge.context import ContextRegistry
 from bridge.dependencies import Depends, get_registry
-from bridge.icons import ICON_CONFIG, ICON_DASHBOARD
+from bridge.icons import ICON_BEST_PRACTICES, ICON_CONFIG, ICON_DASHBOARD
+from bridge.prompt_builder import build_best_practices
 
 
 def register_resources(mcp: FastMCP) -> None:
@@ -37,3 +38,8 @@ def register_resources(mcp: FastMCP) -> None:
         if exec_ctx is None:
             return json.dumps({"status": "no_active_execution"})
         return exec_ctx.model_dump_json(indent=2)
+
+    @mcp.resource("codegen://prompts/best-practices", icons=ICON_BEST_PRACTICES)
+    def get_best_practices() -> str:
+        """Codegen agent best practices — prompt construction, execution patterns, and tips."""
+        return build_best_practices()
