@@ -14,7 +14,7 @@ from bridge.helpers.pagination import (
     build_paginated_response,
     cursor_to_offset,
 )
-from bridge.icons import ICON_ORG, ICON_REPO, ICON_USER, ICON_USERS
+from bridge.icons import ICON_ORG, ICON_REPO, ICON_SETUP_CMD, ICON_USER, ICON_USERS
 
 
 def _user_to_dict(user) -> dict:
@@ -151,4 +151,39 @@ def register_setup_tools(mcp: FastMCP) -> None:
                 page_size=limit,
                 items_key="repos",
             )
+        )
+
+    @mcp.tool(tags={"setup"}, icons=ICON_SETUP_CMD)
+    async def codegen_generate_setup_commands(
+        repo_id: int,
+        prompt: str | None = None,
+        trigger_source: str = "setup-commands",
+        ctx: Context = CurrentContext(),
+        client: CodegenClient = Depends(get_client),
+    ) -> str:
+        """Generate setup commands for a repository.
+
+        Creates an agent that analyzes the repository structure and generates
+        appropriate setup commands. The generation runs asynchronously —
+        use the returned agent_run_id to check results.
+
+        Args:
+            repo_id: Repository ID to generate setup commands for.
+            prompt: Optional custom prompt to guide generation.
+            trigger_source: Source trigger identifier (default "setup-commands").
+        """
+        await ctx.info(f"Generating setup commands: repo_id={repo_id}")
+        result = await client.generate_setup_commands(
+            repo_id, prompt=prompt, trigger_source=trigger_source
+        )
+        await ctx.info(
+            f"Setup commands generation started: agent_run_id={result.agent_run_id}, "
+            f"status={result.status}"
+        )
+        return json.dumps(
+            {
+                "agent_run_id": result.agent_run_id,
+                "status": result.status,
+                "url": result.url,
+            }
         )

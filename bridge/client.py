@@ -12,10 +12,15 @@ from bridge.models import (
     BanActionResponse,
     EditPRResponse,
     Organization,
+    OrganizationIntegrations,
     Page,
     PRState,
     Repository,
+    SandboxLog,
+    SetupCommand,
+    SlackToken,
     User,
+    WebhookConfig,
 )
 
 BASE_URL = "https://api.codegen.com/v1"
@@ -293,6 +298,81 @@ class CodegenClient:
         )
         return EditPRResponse.model_validate(resp)
 
+    # ── Integrations ─────────────────────────────────────────
+
+    async def get_integrations(self) -> OrganizationIntegrations:
+        """Get all integrations for the organization."""
+        resp = await self._get(f"/organizations/{self.org_id}/integrations")
+        return OrganizationIntegrations.model_validate(resp)
+
+    # ── Webhooks ─────────────────────────────────────────────
+
+    async def get_webhook_config(self) -> WebhookConfig:
+        """Get agent-run webhook configuration."""
+        resp = await self._get(f"/organizations/{self.org_id}/webhooks/agent-run")
+        return WebhookConfig.model_validate(resp)
+
+    async def set_webhook_config(
+        self,
+        url: str,
+        *,
+        secret: str | None = None,
+        enabled: bool = True,
+    ) -> dict:
+        """Set agent-run webhook configuration."""
+        body: dict[str, Any] = {"url": url, "enabled": enabled}
+        if secret is not None:
+            body["secret"] = secret
+        return await self._post(f"/organizations/{self.org_id}/webhooks/agent-run", json=body)
+
+    async def delete_webhook_config(self) -> dict:
+        """Delete agent-run webhook configuration."""
+        return await self._delete(f"/organizations/{self.org_id}/webhooks/agent-run")
+
+    async def test_webhook(self, url: str) -> dict:
+        """Send a test event to a webhook URL."""
+        body: dict[str, Any] = {"url": url}
+        return await self._post(
+            f"/organizations/{self.org_id}/webhooks/agent-run/test", json=body
+        )
+
+    # ── Setup Commands ───────────────────────────────────────
+
+    async def generate_setup_commands(
+        self,
+        repo_id: int,
+        *,
+        prompt: str | None = None,
+        trigger_source: str | None = None,
+    ) -> SetupCommand:
+        """Generate setup commands for a repository."""
+        body: dict[str, Any] = {"repo_id": repo_id}
+        if prompt is not None:
+            body["prompt"] = prompt
+        if trigger_source is not None:
+            body["trigger_source"] = trigger_source
+        resp = await self._post(
+            f"/organizations/{self.org_id}/setup-commands/generate", json=body
+        )
+        return SetupCommand.model_validate(resp)
+
+    # ── Sandbox ──────────────────────────────────────────────
+
+    async def analyze_sandbox_logs(self, run_id: int) -> SandboxLog:
+        """Analyze sandbox logs for an agent run."""
+        resp = await self._post(
+            f"/organizations/{self.org_id}/sandbox/{run_id}/analyze-logs"
+        )
+        return SandboxLog.model_validate(resp)
+
+    # ── Slack ────────────────────────────────────────────────
+
+    async def generate_slack_connect_token(self) -> SlackToken:
+        """Generate a short-lived Slack connect token."""
+        body: dict[str, Any] = {"org_id": self.org_id}
+        resp = await self._post("/slack-connect/generate-token", json=body)
+        return SlackToken.model_validate(resp)
+
     # ── Rules ────────────────────────────────────────────────
 
     async def get_rules(self) -> dict[str, str]:
@@ -314,5 +394,10 @@ class CodegenClient:
 
     async def _patch(self, path: str, *, json: dict | None = None) -> dict:
         resp = await self._client.patch(path, json=json)
+        resp.raise_for_status()
+        return resp.json()
+
+    async def _delete(self, path: str) -> dict:
+        resp = await self._client.delete(path)
         resp.raise_for_status()
         return resp.json()

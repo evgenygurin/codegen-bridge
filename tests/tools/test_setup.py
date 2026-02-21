@@ -1,4 +1,4 @@
-"""Tests for setup tools (list_orgs, list_repos, users)."""
+"""Tests for setup tools (list_orgs, list_repos, users, generate_setup_commands)."""
 
 from __future__ import annotations
 
@@ -175,3 +175,56 @@ class TestListRepos:
         data = json.loads(result.data)
         assert data["total"] == 1
         assert data["repos"][0]["full_name"] == "org/myrepo"
+
+
+class TestGenerateSetupCommands:
+    async def test_tool_registered(self, client: Client):
+        tools = await client.list_tools()
+        names = {t.name for t in tools}
+        assert "codegen_generate_setup_commands" in names
+
+    @respx.mock
+    async def test_generates_setup_commands(self, client: Client):
+        respx.post(
+            "https://api.codegen.com/v1/organizations/42/setup-commands/generate"
+        ).mock(
+            return_value=Response(
+                200,
+                json={
+                    "agent_run_id": 99,
+                    "status": "queued",
+                    "url": "https://codegen.com/run/99",
+                },
+            )
+        )
+
+        result = await client.call_tool(
+            "codegen_generate_setup_commands",
+            {"repo_id": 10},
+        )
+        data = json.loads(result.data)
+        assert data["agent_run_id"] == 99
+        assert data["status"] == "queued"
+        assert data["url"] == "https://codegen.com/run/99"
+
+    @respx.mock
+    async def test_generates_with_custom_prompt(self, client: Client):
+        respx.post(
+            "https://api.codegen.com/v1/organizations/42/setup-commands/generate"
+        ).mock(
+            return_value=Response(
+                200,
+                json={
+                    "agent_run_id": 100,
+                    "status": "queued",
+                    "url": "https://codegen.com/run/100",
+                },
+            )
+        )
+
+        result = await client.call_tool(
+            "codegen_generate_setup_commands",
+            {"repo_id": 10, "prompt": "Include Docker setup"},
+        )
+        data = json.loads(result.data)
+        assert data["agent_run_id"] == 100

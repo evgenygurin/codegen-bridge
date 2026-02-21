@@ -218,3 +218,191 @@ class TestGetRules:
             rules = await client.get_rules()
 
         assert "conventional commits" in rules["organization_rules"]
+
+
+class TestGetIntegrations:
+    @respx.mock
+    async def test_gets_integrations(self):
+        respx.get("https://api.codegen.com/v1/organizations/42/integrations").mock(
+            return_value=Response(
+                200,
+                json={
+                    "organization_id": 42,
+                    "organization_name": "My Org",
+                    "integrations": [
+                        {
+                            "integration_type": "github",
+                            "active": True,
+                            "installation_id": 100,
+                        },
+                        {
+                            "integration_type": "slack",
+                            "active": False,
+                            "token_id": 200,
+                        },
+                    ],
+                    "total_active_integrations": 1,
+                },
+            )
+        )
+
+        async with CodegenClient(api_key="test", org_id=42) as client:
+            result = await client.get_integrations()
+
+        assert result.organization_id == 42
+        assert result.total_active_integrations == 1
+        assert len(result.integrations) == 2
+        assert result.integrations[0].integration_type == "github"
+        assert result.integrations[0].active is True
+        assert result.integrations[1].active is False
+
+
+class TestWebhookConfig:
+    @respx.mock
+    async def test_gets_webhook_config(self):
+        respx.get("https://api.codegen.com/v1/organizations/42/webhooks/agent-run").mock(
+            return_value=Response(
+                200,
+                json={"url": "https://example.com/hook", "enabled": True, "has_secret": True},
+            )
+        )
+
+        async with CodegenClient(api_key="test", org_id=42) as client:
+            config = await client.get_webhook_config()
+
+        assert config.url == "https://example.com/hook"
+        assert config.enabled is True
+        assert config.has_secret is True
+
+    @respx.mock
+    async def test_sets_webhook_config(self):
+        route = respx.post(
+            "https://api.codegen.com/v1/organizations/42/webhooks/agent-run"
+        ).mock(return_value=Response(200, json={"status": "ok"}))
+
+        async with CodegenClient(api_key="test", org_id=42) as client:
+            result = await client.set_webhook_config(
+                "https://example.com/hook", secret="s3cret", enabled=True
+            )
+
+        assert result["status"] == "ok"
+        body = route.calls[0].request.content
+        assert b"https://example.com/hook" in body
+        assert b"s3cret" in body
+
+    @respx.mock
+    async def test_deletes_webhook_config(self):
+        respx.delete(
+            "https://api.codegen.com/v1/organizations/42/webhooks/agent-run"
+        ).mock(return_value=Response(200, json={"status": "deleted"}))
+
+        async with CodegenClient(api_key="test", org_id=42) as client:
+            result = await client.delete_webhook_config()
+
+        assert result["status"] == "deleted"
+
+    @respx.mock
+    async def test_tests_webhook(self):
+        route = respx.post(
+            "https://api.codegen.com/v1/organizations/42/webhooks/agent-run/test"
+        ).mock(return_value=Response(200, json={"status": "sent"}))
+
+        async with CodegenClient(api_key="test", org_id=42) as client:
+            result = await client.test_webhook("https://example.com/hook")
+
+        assert result["status"] == "sent"
+        assert route.called
+
+
+class TestGenerateSetupCommands:
+    @respx.mock
+    async def test_generates_setup_commands(self):
+        route = respx.post(
+            "https://api.codegen.com/v1/organizations/42/setup-commands/generate"
+        ).mock(
+            return_value=Response(
+                200,
+                json={
+                    "agent_run_id": 99,
+                    "status": "queued",
+                    "url": "https://codegen.com/run/99",
+                },
+            )
+        )
+
+        async with CodegenClient(api_key="test", org_id=42) as client:
+            result = await client.generate_setup_commands(10, prompt="Custom setup")
+
+        assert result.agent_run_id == 99
+        assert result.status == "queued"
+        body = route.calls[0].request.content
+        assert b"repo_id" in body
+
+    @respx.mock
+    async def test_generates_setup_commands_minimal(self):
+        respx.post(
+            "https://api.codegen.com/v1/organizations/42/setup-commands/generate"
+        ).mock(
+            return_value=Response(
+                200,
+                json={
+                    "agent_run_id": 100,
+                    "status": "queued",
+                    "url": "https://codegen.com/run/100",
+                },
+            )
+        )
+
+        async with CodegenClient(api_key="test", org_id=42) as client:
+            result = await client.generate_setup_commands(10)
+
+        assert result.agent_run_id == 100
+
+
+class TestAnalyzeSandboxLogs:
+    @respx.mock
+    async def test_analyzes_sandbox_logs(self):
+        respx.post(
+            "https://api.codegen.com/v1/organizations/42/sandbox/55/analyze-logs"
+        ).mock(
+            return_value=Response(
+                200,
+                json={
+                    "agent_run_id": 77,
+                    "status": "queued",
+                    "message": "Analysis started",
+                },
+            )
+        )
+
+        async with CodegenClient(api_key="test", org_id=42) as client:
+            result = await client.analyze_sandbox_logs(55)
+
+        assert result.agent_run_id == 77
+        assert result.status == "queued"
+        assert result.message == "Analysis started"
+
+
+class TestGenerateSlackConnectToken:
+    @respx.mock
+    async def test_generates_slack_token(self):
+        route = respx.post(
+            "https://api.codegen.com/v1/slack-connect/generate-token"
+        ).mock(
+            return_value=Response(
+                200,
+                json={
+                    "token": "abc123",
+                    "message": "Send this to the bot",
+                    "expires_in_minutes": 10,
+                },
+            )
+        )
+
+        async with CodegenClient(api_key="test", org_id=42) as client:
+            result = await client.generate_slack_connect_token()
+
+        assert result.token == "abc123"
+        assert result.expires_in_minutes == 10
+        body = route.calls[0].request.content
+        assert b"org_id" in body
