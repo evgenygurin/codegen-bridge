@@ -11,7 +11,7 @@ from fastmcp import Client
 os.environ["CODEGEN_API_KEY"] = "test-key"
 os.environ["CODEGEN_ORG_ID"] = "42"
 
-from bridge.server import mcp  # noqa: E402
+from bridge.server import mcp
 
 
 @pytest.fixture(autouse=True)
