@@ -9,10 +9,11 @@ Ordering (outermost → innermost):
 1. ErrorHandling — catches all exceptions, logs them, returns MCP errors
 2. Ping          — keeps long-lived connections alive with periodic pings
 3. Logging       — structured request/response logging
-4. Timing        — records execution duration per operation
-5. RateLimiting  — token-bucket throttling per client
-6. Caching       — TTL-based response caching for idempotent operations
-7. ResponseLimit — truncates oversized tool responses
+4. Telemetry     — OpenTelemetry tracing spans and metrics
+5. Timing        — records execution duration per operation
+6. RateLimiting  — token-bucket throttling per client
+7. Caching       — TTL-based response caching for idempotent operations
+8. ResponseLimit — truncates oversized tool responses
 
 Usage::
 

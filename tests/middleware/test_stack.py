@@ -11,6 +11,9 @@ from fastmcp.server.middleware.rate_limiting import RateLimitingMiddleware
 from fastmcp.server.middleware.response_limiting import ResponseLimitingMiddleware
 from fastmcp.server.middleware.timing import TimingMiddleware
 
+from bridge.telemetry.config import TelemetryConfig
+from bridge.telemetry.middleware import TelemetryMiddleware
+
 from bridge.middleware.config import (
     CachingConfig,
     ErrorHandlingConfig,
@@ -30,9 +33,9 @@ _FASTMCP_DEFAULT_MIDDLEWARE_COUNT = len(FastMCP("_probe").middleware)
 class TestBuildStack:
     """Unit tests for _build_stack (no server needed)."""
 
-    def test_default_config_creates_all_seven(self):
+    def test_default_config_creates_all_eight(self):
         stack = _build_stack(MiddlewareConfig())
-        assert len(stack) == 7
+        assert len(stack) == 8
 
     def test_default_order(self):
         """Middleware are ordered outermost → innermost."""
@@ -42,6 +45,7 @@ class TestBuildStack:
             ErrorHandlingMiddleware,
             PingMiddleware,
             LoggingMiddleware,
+            TelemetryMiddleware,
             TimingMiddleware,
             RateLimitingMiddleware,
             ResponseCachingMiddleware,
@@ -53,13 +57,14 @@ class TestBuildStack:
         stack = _build_stack(cfg)
         types = [type(mw) for mw in stack]
         assert RateLimitingMiddleware not in types
-        assert len(stack) == 6
+        assert len(stack) == 7
 
     def test_disable_all_middleware(self):
         cfg = MiddlewareConfig(
             error_handling=ErrorHandlingConfig(enabled=False),
             ping=PingConfig(enabled=False),
             logging=LoggingConfig(enabled=False),
+            telemetry=TelemetryConfig(enabled=False),
             timing=TimingConfig(enabled=False),
             rate_limiting=RateLimitingConfig(enabled=False),
             caching=CachingConfig(enabled=False),
@@ -72,6 +77,7 @@ class TestBuildStack:
         cfg = MiddlewareConfig(
             ping=PingConfig(enabled=False),
             logging=LoggingConfig(enabled=False),
+            telemetry=TelemetryConfig(enabled=False),
             timing=TimingConfig(enabled=False),
             rate_limiting=RateLimitingConfig(enabled=False),
             caching=CachingConfig(enabled=False),
@@ -86,6 +92,7 @@ class TestBuildStack:
             error_handling=ErrorHandlingConfig(enabled=False),
             ping=PingConfig(enabled=False),
             logging=LoggingConfig(enabled=False),
+            telemetry=TelemetryConfig(enabled=False),
             timing=TimingConfig(enabled=False),
             rate_limiting=RateLimitingConfig(
                 max_requests_per_second=5.0,
@@ -106,6 +113,7 @@ class TestBuildStack:
             error_handling=ErrorHandlingConfig(enabled=False),
             ping=PingConfig(enabled=False),
             logging=LoggingConfig(enabled=False),
+            telemetry=TelemetryConfig(enabled=False),
             timing=TimingConfig(enabled=False),
             rate_limiting=RateLimitingConfig(enabled=False),
             caching=CachingConfig(enabled=False),
@@ -128,8 +136,8 @@ class TestConfigureMiddleware:
     def test_registers_middleware_on_server(self):
         server = FastMCP("test")
         stack = configure_middleware(server)
-        assert len(server.middleware) == _FASTMCP_DEFAULT_MIDDLEWARE_COUNT + 7
-        assert len(stack) == 7
+        assert len(server.middleware) == _FASTMCP_DEFAULT_MIDDLEWARE_COUNT + 8
+        assert len(stack) == 8
 
     def test_returns_instances_registered_on_server(self):
         server = FastMCP("test")
@@ -141,7 +149,7 @@ class TestConfigureMiddleware:
     def test_default_config_when_none(self):
         server = FastMCP("test")
         stack = configure_middleware(server, config=None)
-        assert len(stack) == 7
+        assert len(stack) == 8
 
     def test_custom_config(self):
         server = FastMCP("test")
@@ -150,7 +158,7 @@ class TestConfigureMiddleware:
             caching=CachingConfig(enabled=False),
         )
         stack = configure_middleware(server, config=cfg)
-        assert len(stack) == 5
+        assert len(stack) == 6
         types = [type(mw) for mw in stack]
         assert PingMiddleware not in types
         assert ResponseCachingMiddleware not in types
@@ -162,6 +170,7 @@ class TestConfigureMiddleware:
             error_handling=ErrorHandlingConfig(enabled=False),
             ping=PingConfig(enabled=False),
             logging=LoggingConfig(enabled=False),
+            telemetry=TelemetryConfig(enabled=False),
             timing=TimingConfig(enabled=False),
             rate_limiting=RateLimitingConfig(enabled=False),
             caching=CachingConfig(enabled=False),
@@ -176,7 +185,7 @@ class TestConfigureMiddleware:
         server = FastMCP("test")
         baseline = len(server.middleware)
         configure_middleware(server)
-        assert len(server.middleware) == baseline + 7
+        assert len(server.middleware) == baseline + 8
         # Calling again adds more (this is expected FastMCP behaviour)
         configure_middleware(server)
-        assert len(server.middleware) == baseline + 14
+        assert len(server.middleware) == baseline + 16

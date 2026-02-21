@@ -13,6 +13,8 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
+from bridge.telemetry.config import TelemetryConfig
+
 
 class ErrorHandlingConfig(BaseModel):
     """Configuration for :class:`ErrorHandlingMiddleware`."""
@@ -97,6 +99,7 @@ class MiddlewareConfig(BaseModel):
     error_handling: ErrorHandlingConfig = Field(default_factory=ErrorHandlingConfig)
     ping: PingConfig = Field(default_factory=PingConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
+    telemetry: TelemetryConfig = Field(default_factory=TelemetryConfig)
     timing: TimingConfig = Field(default_factory=TimingConfig)
     rate_limiting: RateLimitingConfig = Field(default_factory=RateLimitingConfig)
     caching: CachingConfig = Field(default_factory=CachingConfig)

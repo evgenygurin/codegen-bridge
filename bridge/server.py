@@ -100,8 +100,8 @@ mcp = FastMCP(
     lifespan=_lifespan,
 )
 
-# Configure middleware stack (error handling, ping, logging, timing,
-# rate limiting, caching, response limiting)
+# Configure middleware stack (error handling, ping, logging, telemetry,
+# timing, rate limiting, caching, response limiting)
 configure_middleware(mcp)
 
 # Register tools, resources, and prompts from submodules

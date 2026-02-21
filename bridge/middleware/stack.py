@@ -28,6 +28,7 @@ from fastmcp.server.middleware.response_limiting import ResponseLimitingMiddlewa
 from fastmcp.server.middleware.timing import TimingMiddleware
 
 from bridge.middleware.config import MiddlewareConfig
+from bridge.telemetry import TelemetryMiddleware, configure_telemetry
 
 if TYPE_CHECKING:
     from fastmcp import FastMCP
@@ -71,11 +72,16 @@ def _build_stack(config: MiddlewareConfig) -> list[Middleware]:
             )
         )
 
-    # 4. Timing — execution duration per operation
+    # 4. Telemetry — OpenTelemetry tracing and metrics
+    if config.telemetry.enabled:
+        configure_telemetry(config.telemetry)
+        stack.append(TelemetryMiddleware(config=config.telemetry))
+
+    # 5. Timing — execution duration per operation
     if config.timing.enabled:
         stack.append(TimingMiddleware(logger=logger))
 
-    # 5. Rate limiting — token-bucket throttling
+    # 6. Rate limiting — token-bucket throttling
     if config.rate_limiting.enabled:
         stack.append(
             RateLimitingMiddleware(
@@ -85,7 +91,7 @@ def _build_stack(config: MiddlewareConfig) -> list[Middleware]:
             )
         )
 
-    # 6. Caching — TTL-based response caching
+    # 7. Caching — TTL-based response caching
     if config.caching.enabled:
         stack.append(
             ResponseCachingMiddleware(
@@ -97,7 +103,7 @@ def _build_stack(config: MiddlewareConfig) -> list[Middleware]:
             )
         )
 
-    # 7. Response limiting — truncate oversized tool output
+    # 8. Response limiting — truncate oversized tool output
     if config.response_limiting.enabled:
         stack.append(
             ResponseLimitingMiddleware(
