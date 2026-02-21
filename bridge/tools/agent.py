@@ -12,7 +12,13 @@ from fastmcp.server.context import Context
 from bridge.client import CodegenClient
 from bridge.context import ContextRegistry, PRInfo, TaskReport
 from bridge.dependencies import CurrentContext, Depends, get_client, get_registry, get_repo_cache
-from bridge.helpers.formatting import format_logs, format_run_basic, format_run_list
+from bridge.helpers.formatting import format_run_basic
+from bridge.helpers.pagination import (
+    DEFAULT_PAGE_SIZE,
+    build_paginated_response,
+    cursor_to_offset,
+    next_cursor_or_none,
+)
 from bridge.helpers.repo_detection import RepoCache, detect_repo_id
 from bridge.log_parser import parse_logs
 from bridge.prompt_builder import build_task_prompt
@@ -199,21 +205,44 @@ def register_agent_tools(mcp: FastMCP) -> None:
 
     @mcp.tool(tags={"execution"})
     async def codegen_list_runs(
-        limit: int = 10,
+        limit: int = DEFAULT_PAGE_SIZE,
         source_type: str | None = None,
+        cursor: str | None = None,
         ctx: Context = CurrentContext(),
         client: CodegenClient = Depends(get_client),
     ) -> str:
-        """List recent agent runs.
+        """List recent agent runs with cursor-based pagination.
 
         Args:
-            limit: Maximum number of runs to return (default 10).
+            limit: Maximum number of runs per page (default 20).
             source_type: Filter by source — API, LOCAL, GITHUB, etc.
+            cursor: Opaque cursor from a previous response's ``next_cursor``
+                field.  Omit or pass ``null`` for the first page.
         """
-        await ctx.info(f"Listing runs: limit={limit}, source_type={source_type}")
-        page = await client.list_runs(limit=limit, source_type=source_type)
+        offset = cursor_to_offset(cursor)
+        await ctx.info(
+            f"Listing runs: limit={limit}, offset={offset}, source_type={source_type}"
+        )
+        page = await client.list_runs(skip=offset, limit=limit, source_type=source_type)
         await ctx.info(f"Listed {len(page.items)} of {page.total} runs")
-        return format_run_list(page.items, page.total)
+        return json.dumps(
+            build_paginated_response(
+                items=[
+                    {
+                        "id": r.id,
+                        "status": r.status,
+                        "created_at": r.created_at,
+                        "web_url": r.web_url,
+                        "summary": r.summary,
+                    }
+                    for r in page.items
+                ],
+                total=page.total,
+                offset=offset,
+                page_size=limit,
+                items_key="runs",
+            )
+        )
 
     @mcp.tool(tags={"execution"})
     async def codegen_resume_run(
@@ -254,21 +283,48 @@ def register_agent_tools(mcp: FastMCP) -> None:
     @mcp.tool(tags={"monitoring"})
     async def codegen_get_logs(
         run_id: int,
-        limit: int = 50,
+        limit: int = DEFAULT_PAGE_SIZE,
         reverse: bool = True,
+        cursor: str | None = None,
         ctx: Context = CurrentContext(),
         client: CodegenClient = Depends(get_client),
     ) -> str:
-        """Get step-by-step agent execution logs.
+        """Get step-by-step agent execution logs with cursor-based pagination.
 
         Shows agent thoughts, tool calls, and outputs for debugging.
 
         Args:
             run_id: Agent run ID.
-            limit: Max log entries (default 50).
+            limit: Max log entries per page (default 20).
             reverse: If true, newest entries first.
+            cursor: Opaque cursor from a previous response's ``next_cursor``
+                field.  Omit or pass ``null`` for the first page.
         """
-        await ctx.info(f"Fetching logs: run_id={run_id}, limit={limit}")
-        result = await client.get_logs(run_id, limit=limit, reverse=reverse)
+        offset = cursor_to_offset(cursor)
+        await ctx.info(f"Fetching logs: run_id={run_id}, limit={limit}, offset={offset}")
+        result = await client.get_logs(run_id, skip=offset, limit=limit, reverse=reverse)
         await ctx.info(f"Fetched {len(result.logs)} log entries for run {run_id}")
-        return format_logs(result)
+        return json.dumps(
+            {
+                "run_id": result.id,
+                "status": result.status,
+                "total_logs": result.total_logs,
+                "next_cursor": next_cursor_or_none(offset, limit, result.total_logs),
+                "logs": [
+                    {
+                        k: v
+                        for k, v in {
+                            "thought": log.thought,
+                            "tool_name": log.tool_name,
+                            "tool_input": log.tool_input,
+                            "tool_output": (
+                                str(log.tool_output)[:500] if log.tool_output else None
+                            ),
+                            "created_at": log.created_at,
+                        }.items()
+                        if v is not None
+                    }
+                    for log in result.logs
+                ],
+            }
+        )

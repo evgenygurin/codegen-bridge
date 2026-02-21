@@ -9,6 +9,11 @@ from fastmcp.server.context import Context
 
 from bridge.client import CodegenClient
 from bridge.dependencies import CurrentContext, Depends, get_client
+from bridge.helpers.pagination import (
+    DEFAULT_PAGE_SIZE,
+    build_paginated_response,
+    cursor_to_offset,
+)
 
 
 def register_setup_tools(mcp: FastMCP) -> None:
@@ -31,22 +36,27 @@ def register_setup_tools(mcp: FastMCP) -> None:
 
     @mcp.tool(tags={"setup"})
     async def codegen_list_repos(
-        limit: int = 50,
+        limit: int = DEFAULT_PAGE_SIZE,
+        cursor: str | None = None,
         ctx: Context = CurrentContext(),
         client: CodegenClient = Depends(get_client),
     ) -> str:
         """List repositories in the configured Codegen organization.
 
+        Supports cursor-based pagination for large repository lists.
+
         Args:
-            limit: Maximum repos to return (default 50).
+            limit: Maximum repos per page (default 20).
+            cursor: Opaque cursor from a previous response's ``next_cursor``
+                field.  Omit or pass ``null`` for the first page.
         """
-        await ctx.info(f"Listing repos: limit={limit}")
-        page = await client.list_repos(limit=limit)
+        offset = cursor_to_offset(cursor)
+        await ctx.info(f"Listing repos: limit={limit}, offset={offset}")
+        page = await client.list_repos(skip=offset, limit=limit)
         await ctx.info(f"Listed {len(page.items)} of {page.total} repos")
         return json.dumps(
-            {
-                "total": page.total,
-                "repos": [
+            build_paginated_response(
+                items=[
                     {
                         "id": r.id,
                         "name": r.name,
@@ -56,5 +66,9 @@ def register_setup_tools(mcp: FastMCP) -> None:
                     }
                     for r in page.items
                 ],
-            }
+                total=page.total,
+                offset=offset,
+                page_size=limit,
+                items_key="repos",
+            )
         )
