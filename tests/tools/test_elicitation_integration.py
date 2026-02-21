@@ -36,8 +36,8 @@ EMPTY_REPOS = {"items": [], "total": 0}
 EMPTY_RULES = {"organization_rules": "", "user_custom_prompt": ""}
 
 
-def _stopped(run_id: int) -> dict:
-    return {"id": run_id, "status": "stopped", "web_url": f"https://codegen.com/run/{run_id}"}
+def _banned(run_id: int) -> dict:
+    return {"message": "ok", "status_code": 200}
 
 
 def _queued(run_id: int) -> dict:
@@ -92,12 +92,12 @@ class TestStopRunWithElicitation:
 
     async def test_stop_proceeds_when_user_confirms(self):
         async with respx.MockRouter(assert_all_called=False) as router:
-            router.post(BAN_URL).mock(return_value=Response(200, json=_stopped(201)))
+            router.post(BAN_URL).mock(return_value=Response(200, json=_banned(201)))
             async with Client(mcp, elicitation_handler=_accept()) as c:
                 result = await c.call_tool("codegen_stop_run", {"run_id": 201})
                 data = json.loads(result.data)
-                assert data["id"] == 201
-                assert data["status"] == "stopped"
+                assert data["run_id"] == 201
+                assert data["action"] == "banned"
 
     async def test_stop_cancelled_when_user_declines(self):
         async with respx.MockRouter(assert_all_called=False), Client(
@@ -122,20 +122,20 @@ class TestStopRunWithoutElicitation:
 
     @respx.mock
     async def test_stop_skips_elicitation_when_confirmed(self, client: Client):
-        respx.post(BAN_URL).mock(return_value=Response(200, json=_stopped(211)))
+        respx.post(BAN_URL).mock(return_value=Response(200, json=_banned(211)))
         result = await client.call_tool(
             "codegen_stop_run", {"run_id": 211, "confirmed": True}
         )
         data = json.loads(result.data)
-        assert data["status"] == "stopped"
+        assert data["action"] == "banned"
 
     @respx.mock
     async def test_stop_graceful_degradation(self, client: Client):
         """Without elicitation handler, stop proceeds (default=True)."""
-        respx.post(BAN_URL).mock(return_value=Response(200, json=_stopped(212)))
+        respx.post(BAN_URL).mock(return_value=Response(200, json=_banned(212)))
         result = await client.call_tool("codegen_stop_run", {"run_id": 212})
         data = json.loads(result.data)
-        assert data["status"] == "stopped"
+        assert data["action"] == "banned"
 
 
 # ── Create Run Elicitation ──────────────────────────────────

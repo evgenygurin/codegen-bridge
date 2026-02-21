@@ -9,6 +9,7 @@ import httpx
 from bridge.models import (
     AgentRun,
     AgentRunWithLogs,
+    BanActionResponse,
     Organization,
     Page,
     Repository,
@@ -64,6 +65,7 @@ class CodegenClient:
         repo_id: int | None = None,
         model: str | None = None,
         agent_type: str = "claude_code",
+        images: list[str] | None = None,
         metadata: dict[str, Any] | None = None,
     ) -> AgentRun:
         """Create a new agent run."""
@@ -74,6 +76,8 @@ class CodegenClient:
             body["model"] = model
         if agent_type:
             body["agent_type"] = agent_type
+        if images is not None:
+            body["images"] = images
         if metadata is not None:
             body["metadata"] = metadata
 
@@ -89,13 +93,16 @@ class CodegenClient:
         self,
         *,
         skip: int = 0,
-        limit: int = 10,
+        limit: int = 100,
         source_type: str | None = None,
+        user_id: int | None = None,
     ) -> Page[AgentRun]:
         """List agent runs with pagination."""
         params: dict[str, Any] = {"skip": skip, "limit": limit}
         if source_type:
             params["source_type"] = source_type
+        if user_id is not None:
+            params["user_id"] = user_id
 
         resp = await self._get(f"/organizations/{self.org_id}/agent/runs", params=params)
         return Page[AgentRun].model_validate(resp)
@@ -106,11 +113,14 @@ class CodegenClient:
         prompt: str,
         *,
         model: str | None = None,
+        images: list[str] | None = None,
     ) -> AgentRun:
         """Resume a paused agent run."""
         body: dict[str, Any] = {"agent_run_id": run_id, "prompt": prompt}
         if model is not None:
             body["model"] = model
+        if images is not None:
+            body["images"] = images
 
         resp = await self._post(f"/organizations/{self.org_id}/agent/run/resume", json=body)
         return AgentRun.model_validate(resp)
@@ -120,26 +130,93 @@ class CodegenClient:
         run_id: int,
         *,
         skip: int = 0,
-        limit: int = 50,
+        limit: int = 100,
         reverse: bool = True,
     ) -> AgentRunWithLogs:
-        """Get agent run logs."""
+        """Get agent run logs.
+
+        Endpoint: ``GET /v1/organizations/{org_id}/agent/run/{agent_run_id}/logs``
+        """
         params: dict[str, Any] = {
             "skip": skip,
             "limit": limit,
             "reverse": reverse,
         }
         resp = await self._get(
-            f"/alpha/organizations/{self.org_id}/agent/run/{run_id}/logs",
+            f"/organizations/{self.org_id}/agent/run/{run_id}/logs",
             params=params,
         )
         return AgentRunWithLogs.model_validate(resp)
 
-    async def stop_run(self, run_id: int) -> AgentRun:
-        """Stop/ban an agent run."""
+    async def ban_run(
+        self,
+        run_id: int,
+        *,
+        before_card_order_id: str | None = None,
+        after_card_order_id: str | None = None,
+    ) -> BanActionResponse:
+        """Ban all checks for a PR and stop all related agents.
+
+        Flags the PR to prevent future CI/CD check suite events from being
+        processed and stops all current agents for that PR.
+        """
         body: dict[str, Any] = {"agent_run_id": run_id}
+        if before_card_order_id is not None:
+            body["before_card_order_id"] = before_card_order_id
+        if after_card_order_id is not None:
+            body["after_card_order_id"] = after_card_order_id
+
         resp = await self._post(f"/organizations/{self.org_id}/agent/run/ban", json=body)
-        return AgentRun.model_validate(resp)
+        return BanActionResponse.model_validate(resp)
+
+    async def unban_run(
+        self,
+        run_id: int,
+        *,
+        before_card_order_id: str | None = None,
+        after_card_order_id: str | None = None,
+    ) -> BanActionResponse:
+        """Unban all checks for a PR.
+
+        Removes the ban flag from the PR to allow future CI/CD check suite
+        events to be processed.
+        """
+        body: dict[str, Any] = {"agent_run_id": run_id}
+        if before_card_order_id is not None:
+            body["before_card_order_id"] = before_card_order_id
+        if after_card_order_id is not None:
+            body["after_card_order_id"] = after_card_order_id
+
+        resp = await self._post(f"/organizations/{self.org_id}/agent/run/unban", json=body)
+        return BanActionResponse.model_validate(resp)
+
+    async def remove_from_pr(
+        self,
+        run_id: int,
+        *,
+        before_card_order_id: str | None = None,
+        after_card_order_id: str | None = None,
+    ) -> BanActionResponse:
+        """Remove Codegen from a PR.
+
+        Performs the same action as banning all checks — flags the PR to
+        prevent future CI/CD check suite events and stops all current agents.
+        """
+        body: dict[str, Any] = {"agent_run_id": run_id}
+        if before_card_order_id is not None:
+            body["before_card_order_id"] = before_card_order_id
+        if after_card_order_id is not None:
+            body["after_card_order_id"] = after_card_order_id
+
+        resp = await self._post(
+            f"/organizations/{self.org_id}/agent/run/remove-from-pr", json=body
+        )
+        return BanActionResponse.model_validate(resp)
+
+    # Legacy alias — preserved for backward compatibility
+    async def stop_run(self, run_id: int) -> BanActionResponse:
+        """Stop/ban an agent run (legacy alias for ``ban_run``)."""
+        return await self.ban_run(run_id)
 
     # ── Organizations & Repos ───────────────────────────────
 

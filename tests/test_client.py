@@ -96,7 +96,7 @@ class TestGetRun:
 class TestGetLogs:
     @respx.mock
     async def test_gets_logs(self):
-        respx.get("https://api.codegen.com/v1/alpha/organizations/42/agent/run/1/logs").mock(
+        respx.get("https://api.codegen.com/v1/organizations/42/agent/run/1/logs").mock(
             return_value=Response(
                 200,
                 json={
@@ -125,16 +125,53 @@ class TestStopRun:
     @respx.mock
     async def test_stops_run(self):
         respx.post("https://api.codegen.com/v1/organizations/42/agent/run/ban").mock(
-            return_value=Response(
-                200, json={"id": 1, "status": "stopped", "web_url": "https://codegen.com/run/1"}
-            )
+            return_value=Response(200, json={})
         )
 
         async with CodegenClient(api_key="test", org_id=42) as client:
-            run = await client.stop_run(1)
+            result = await client.stop_run(1)
 
-        assert run.id == 1
-        assert run.status == "stopped"
+        # stop_run is now a legacy alias for ban_run, returns BanActionResponse
+        assert result.message is None  # empty response from API
+
+
+class TestBanRun:
+    @respx.mock
+    async def test_bans_run(self):
+        respx.post("https://api.codegen.com/v1/organizations/42/agent/run/ban").mock(
+            return_value=Response(200, json={"message": "Banned"})
+        )
+
+        async with CodegenClient(api_key="test", org_id=42) as client:
+            result = await client.ban_run(1)
+
+        assert result.message == "Banned"
+
+
+class TestUnbanRun:
+    @respx.mock
+    async def test_unbans_run(self):
+        respx.post("https://api.codegen.com/v1/organizations/42/agent/run/unban").mock(
+            return_value=Response(200, json={})
+        )
+
+        async with CodegenClient(api_key="test", org_id=42) as client:
+            result = await client.unban_run(1)
+
+        assert result.message is None
+
+
+class TestRemoveFromPr:
+    @respx.mock
+    async def test_removes_from_pr(self):
+        respx.post(
+            "https://api.codegen.com/v1/organizations/42/agent/run/remove-from-pr"
+        ).mock(return_value=Response(200, json={"message": "Removed"}))
+
+        async with CodegenClient(api_key="test", org_id=42) as client:
+            result = await client.remove_from_pr(1)
+
+        assert result.message == "Removed"
 
 
 class TestListRepos:

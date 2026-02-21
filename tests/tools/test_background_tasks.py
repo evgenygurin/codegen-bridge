@@ -219,7 +219,7 @@ class TestSynchronousFallback:
     async def test_get_logs_works_synchronously(self, client: Client):
         """Calling without task=True should work normally (synchronous)."""
         respx.get(
-            "https://api.codegen.com/v1/alpha/organizations/42/agent/run/50/logs"
+            "https://api.codegen.com/v1/organizations/42/agent/run/50/logs"
         ).mock(
             return_value=Response(
                 200,
@@ -269,7 +269,7 @@ class TestSynchronousFallback:
     async def test_get_logs_returns_correct_structure(self, client: Client):
         """Verify task-enabled get_logs returns the expected JSON keys."""
         respx.get(
-            "https://api.codegen.com/v1/alpha/organizations/42/agent/run/77/logs"
+            "https://api.codegen.com/v1/organizations/42/agent/run/77/logs"
         ).mock(
             return_value=Response(
                 200,

@@ -199,7 +199,7 @@ class TestListReposPagination:
 class TestGetLogsPagination:
     @respx.mock
     async def test_first_page_returns_next_cursor(self, client: Client):
-        respx.get("https://api.codegen.com/v1/alpha/organizations/42/agent/run/99/logs").mock(
+        respx.get("https://api.codegen.com/v1/organizations/42/agent/run/99/logs").mock(
             return_value=Response(
                 200,
                 json={
@@ -227,7 +227,7 @@ class TestGetLogsPagination:
     async def test_cursor_passes_skip_to_api(self, client: Client):
         cursor = offset_to_cursor(6)
         route = respx.get(
-            "https://api.codegen.com/v1/alpha/organizations/42/agent/run/99/logs"
+            "https://api.codegen.com/v1/organizations/42/agent/run/99/logs"
         ).mock(
             return_value=Response(
                 200,
@@ -266,7 +266,7 @@ class TestGetLogsPagination:
             )
 
         respx.get(
-            "https://api.codegen.com/v1/alpha/organizations/42/agent/run/99/logs"
+            "https://api.codegen.com/v1/organizations/42/agent/run/99/logs"
         ).mock(side_effect=handler)
 
         # Use a unique limit to avoid cache collisions with other tests
@@ -279,7 +279,7 @@ class TestGetLogsPagination:
     async def test_reverse_preserved_with_cursor(self, client: Client):
         cursor = offset_to_cursor(5)
         route = respx.get(
-            "https://api.codegen.com/v1/alpha/organizations/42/agent/run/99/logs"
+            "https://api.codegen.com/v1/organizations/42/agent/run/99/logs"
         ).mock(
             return_value=Response(
                 200,
