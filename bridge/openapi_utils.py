@@ -15,6 +15,8 @@ from fastmcp.server.providers.openapi import (
 )
 from fastmcp.utilities.openapi import HTTPRoute
 
+from bridge.middleware.authorization import DEFAULT_DANGEROUS_TOOLS
+
 SPEC_PATH = Path(__file__).parent / "openapi_spec.json"
 
 # operationId -> human-readable MCP tool name
@@ -203,6 +205,12 @@ def build_route_maps() -> list[RouteMap]:
     ]
 
 
+# Reverse-map MCP tool names to detect dangerous OpenAPI tools.
+_DANGEROUS_OPENAPI_NAMES: set[str] = {
+    name for name in TOOL_NAMES.values() if name in DEFAULT_DANGEROUS_TOOLS
+}
+
+
 def _customize_component(
     route: HTTPRoute,
     component: Any,
@@ -222,6 +230,12 @@ def _customize_component(
             component.tags.add("setup")
         else:
             component.tags.add("setup")
+
+        # Tag dangerous OpenAPI tools so the authorization middleware
+        # can identify them by both name and tag.
+        comp_name = getattr(component, "name", "")
+        if comp_name in _DANGEROUS_OPENAPI_NAMES:
+            component.tags.add("dangerous")
 
 
 def create_openapi_provider(

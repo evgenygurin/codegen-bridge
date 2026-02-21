@@ -24,6 +24,7 @@ class TestMiddlewareConfig:
         cfg = MiddlewareConfig()
         assert cfg.error_handling.enabled is True
         assert cfg.ping.enabled is True
+        assert cfg.authorization.enabled is True
         assert cfg.logging.enabled is True
         assert cfg.telemetry.enabled is True
         assert cfg.timing.enabled is True

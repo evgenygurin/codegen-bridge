@@ -166,12 +166,12 @@ class TestTelemetryMiddlewareInStack:
         types = [type(mw).__name__ for mw in stack]
         assert "TelemetryMiddleware" in types
 
-    def test_stack_has_eight_middleware(self):
+    def test_stack_has_nine_middleware(self):
         from bridge.middleware.config import MiddlewareConfig
         from bridge.middleware.stack import _build_stack
 
         stack = _build_stack(MiddlewareConfig())
-        assert len(stack) == 8
+        assert len(stack) == 9
 
     def test_telemetry_position_in_stack(self):
         """Telemetry should be after logging but before timing."""
@@ -193,4 +193,4 @@ class TestTelemetryMiddlewareInStack:
         stack = _build_stack(cfg)
         types = [type(mw).__name__ for mw in stack]
         assert "TelemetryMiddleware" not in types
-        assert len(stack) == 7  # Back to original 7
+        assert len(stack) == 8  # All except telemetry

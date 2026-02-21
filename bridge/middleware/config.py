@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
+from bridge.middleware.authorization import AuthorizationConfig
 from bridge.telemetry.config import TelemetryConfig
 
 
@@ -99,6 +100,7 @@ class MiddlewareConfig(BaseModel):
     error_handling: ErrorHandlingConfig = Field(default_factory=ErrorHandlingConfig)
     ping: PingConfig = Field(default_factory=PingConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
+    authorization: AuthorizationConfig = Field(default_factory=AuthorizationConfig)
     telemetry: TelemetryConfig = Field(default_factory=TelemetryConfig)
     timing: TimingConfig = Field(default_factory=TimingConfig)
     rate_limiting: RateLimitingConfig = Field(default_factory=RateLimitingConfig)
