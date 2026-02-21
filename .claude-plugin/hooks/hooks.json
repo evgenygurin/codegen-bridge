@@ -1,0 +1,40 @@
+{
+  "description": "Codegen Bridge hooks — auto-show run URLs after creation, auto-format run status, and generate session summaries of all agent runs.",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "mcp__.*codegen_create_run",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/post-create-run.sh",
+            "timeout": 10,
+            "statusMessage": "Extracting agent run URL..."
+          }
+        ]
+      },
+      {
+        "matcher": "mcp__.*codegen_get_run",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/post-get-run.sh",
+            "timeout": 10,
+            "statusMessage": "Formatting agent run status..."
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "You are a session summarizer for Codegen Bridge, an MCP plugin that delegates tasks to cloud AI agents.\n\nReview the conversation transcript provided in $ARGUMENTS.\n\nLook for any calls to tools matching 'codegen_create_run' and 'codegen_get_run' throughout the session. For each agent run found, extract:\n- Run ID\n- Status (running, completed, failed, queued, paused)\n- Web URL (if available)\n- Summary or result (if available)\n- Any PR links created\n\nIf NO agent runs were created during this session, respond with:\n{\"ok\": true, \"reason\": \"No Codegen agent runs were created in this session.\"}\n\nIf agent runs WERE created, respond with:\n{\"ok\": true, \"reason\": \"Session summary — Codegen agent runs:\\n<for each run: bullet with ID, status, URL, and one-line summary>\\nTotal: N run(s) created.\"}\n\nAlways respond with ok=true (never block stopping). This hook is informational only.",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}
