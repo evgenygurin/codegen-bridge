@@ -128,6 +128,14 @@ ICON_REPO = _svg_icon(  # git-branch: repository
     '<path d="M18 9a9 9 0 0 1-9 9"/>'
 )
 
+# Pull request management
+ICON_PR_EDIT = _svg_icon(  # git-pull-request: edit PR
+    '<circle cx="18" cy="18" r="3"/>'
+    '<circle cx="6" cy="6" r="3"/>'
+    '<path d="M13 6h3a2 2 0 0 1 2 2v7"/>'
+    '<line x1="6" y1="9" x2="6" y2="21"/>'
+)
+
 # ── Resource Icons ────────────────────────────────────────
 
 ICON_CONFIG = _svg_icon(  # settings: configuration

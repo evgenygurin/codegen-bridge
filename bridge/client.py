@@ -9,8 +9,10 @@ import httpx
 from bridge.models import (
     AgentRun,
     AgentRunWithLogs,
+    EditPRResponse,
     Organization,
     Page,
+    PRState,
     Repository,
     User,
 )
@@ -183,6 +185,35 @@ class CodegenClient:
         resp = await self._get(f"/organizations/{self.org_id}/repos", params=params)
         return Page[Repository].model_validate(resp)
 
+    # ── Pull Requests ───────────────────────────────────────
+
+    async def edit_pr(
+        self,
+        repo_id: int,
+        pr_id: int,
+        state: PRState,
+    ) -> EditPRResponse:
+        """Edit PR properties (RESTful — requires repo_id)."""
+        body = {"state": state}
+        resp = await self._patch(
+            f"/organizations/{self.org_id}/repos/{repo_id}/prs/{pr_id}",
+            json=body,
+        )
+        return EditPRResponse.model_validate(resp)
+
+    async def edit_pr_simple(
+        self,
+        pr_id: int,
+        state: PRState,
+    ) -> EditPRResponse:
+        """Edit PR properties (simple — only requires pr_id)."""
+        body = {"state": state}
+        resp = await self._patch(
+            f"/organizations/{self.org_id}/prs/{pr_id}",
+            json=body,
+        )
+        return EditPRResponse.model_validate(resp)
+
     # ── Rules ────────────────────────────────────────────────
 
     async def get_rules(self) -> dict[str, str]:
@@ -199,5 +230,10 @@ class CodegenClient:
 
     async def _post(self, path: str, *, json: dict | None = None) -> dict:
         resp = await self._client.post(path, json=json)
+        resp.raise_for_status()
+        return resp.json()
+
+    async def _patch(self, path: str, *, json: dict | None = None) -> dict:
+        resp = await self._client.patch(path, json=json)
         resp.raise_for_status()
         return resp.json()

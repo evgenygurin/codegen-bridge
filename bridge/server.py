@@ -15,6 +15,7 @@ Providers registered during lifespan:
 Tools, resources, and prompts are defined in submodules:
 - bridge.tools.agent — agent run management
 - bridge.tools.execution — execution context management
+- bridge.tools.pr — pull request management
 - bridge.tools.setup — organization and repository setup
 - bridge.resources.config — configuration and execution state
 - bridge.prompts.templates — prompt templates
@@ -41,7 +42,12 @@ from bridge.providers import create_all_providers
 from bridge.resources import register_resources
 from bridge.sampling import SamplingConfig, register_sampling_tools
 from bridge.storage import FileStorage
-from bridge.tools import register_agent_tools, register_execution_tools, register_setup_tools
+from bridge.tools import (
+    register_agent_tools,
+    register_execution_tools,
+    register_pr_tools,
+    register_setup_tools,
+)
 from bridge.transforms import configure_transforms
 
 logger = logging.getLogger("bridge.server")
@@ -134,6 +140,7 @@ configure_middleware(mcp)
 # Register tools, resources, and prompts from submodules
 register_agent_tools(mcp)
 register_execution_tools(mcp)
+register_pr_tools(mcp)
 register_setup_tools(mcp)
 register_resources(mcp)
 register_prompts(mcp)
