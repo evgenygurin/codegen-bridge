@@ -2,9 +2,15 @@
 
 Hybrid architecture:
 - 8 manual core tools with business logic (auto-detect repo_id, response formatting)
-- ~13 auto-generated tools from OpenAPI spec via OpenAPIProvider
-- 3 resources for monitoring
+- ~21 auto-generated tools from OpenAPI spec via OpenAPIProvider
+- 3 resources for monitoring + command resources via CommandsProvider
+- Agent skills via SkillsDirectoryProvider
 - 4 prompts for common workflows
+
+Providers registered during lifespan:
+- OpenAPIProvider — auto-generated tools from Codegen REST API
+- SkillsDirectoryProvider — agent skills from skills/ directory
+- CommandsProvider — slash-command resources from commands/ directory
 
 Tools, resources, and prompts are defined in submodules:
 - bridge.tools.agent — agent run management
@@ -12,6 +18,7 @@ Tools, resources, and prompts are defined in submodules:
 - bridge.tools.setup — organization and repository setup
 - bridge.resources.config — configuration and execution state
 - bridge.prompts.templates — prompt templates
+- bridge.providers — custom and built-in MCP providers
 """
 
 from __future__ import annotations
@@ -30,6 +37,7 @@ from bridge.helpers.repo_detection import RepoCache
 from bridge.middleware import configure_middleware
 from bridge.openapi_utils import create_openapi_provider
 from bridge.prompts import register_prompts
+from bridge.providers import create_all_providers
 from bridge.resources import register_resources
 from bridge.sampling import SamplingConfig, register_sampling_tools
 from bridge.tools import register_agent_tools, register_execution_tools, register_setup_tools
@@ -75,6 +83,18 @@ async def _lifespan(server: FastMCP):
         server.add_provider(provider)
     except Exception:
         logger.warning("OpenAPI provider unavailable; manual tools only", exc_info=True)
+
+    # Add filesystem-based providers (skills + commands)
+    for fs_provider in create_all_providers():
+        try:
+            server.add_provider(fs_provider)
+            logger.info("Registered provider: %s", type(fs_provider).__name__)
+        except Exception:
+            logger.warning(
+                "Failed to register provider: %s",
+                type(fs_provider).__name__,
+                exc_info=True,
+            )
 
     registry = ContextRegistry()
     repo_cache = RepoCache()
