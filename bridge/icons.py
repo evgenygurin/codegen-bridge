@@ -148,3 +148,31 @@ ICON_SUMMARY = _svg_icon(  # clipboard: execution summary
     '<path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>'
     '<rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>'
 )
+
+# ── Sampling Icons ───────────────────────────────────────────
+
+ICON_SAMPLING_SUMMARY = _svg_icon(  # sparkles: AI-powered summary
+    '<path d="M12 3l1.912 5.813a2 2 0 0 0 1.275 1.275L21 12'
+    'l-5.813 1.912a2 2 0 0 0-1.275 1.275L12 21'
+    'l-1.912-5.813a2 2 0 0 0-1.275-1.275L3 12'
+    'l5.813-1.912a2 2 0 0 0 1.275-1.275L12 3z"/>'
+)
+
+ICON_SAMPLING_PROMPT = _svg_icon(  # wand: AI-generated prompt
+    '<path d="M15 4V2"/>'
+    '<path d="M15 16v-2"/>'
+    '<path d="M8 9h2"/>'
+    '<path d="M20 9h2"/>'
+    '<path d="M17.8 11.8L19 13"/>'
+    '<path d="M15 9h.01"/>'
+    '<path d="M17.8 6.2L19 5"/>'
+    '<path d="m3 21 9-9"/>'
+    '<path d="M12.2 6.2L11 5"/>'
+)
+
+ICON_SAMPLING_ANALYSIS = _svg_icon(  # search-code: AI log analysis
+    '<path d="m9 9-2 2 2 2"/>'
+    '<path d="m13 13 2-2-2-2"/>'
+    '<circle cx="11" cy="11" r="8"/>'
+    '<path d="m21 21-4.3-4.3"/>'
+)

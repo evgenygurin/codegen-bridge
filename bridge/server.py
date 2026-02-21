@@ -31,6 +31,7 @@ from bridge.middleware import configure_middleware
 from bridge.openapi_utils import create_openapi_provider
 from bridge.prompts import register_prompts
 from bridge.resources import register_resources
+from bridge.sampling import SamplingConfig, register_sampling_tools
 from bridge.tools import register_agent_tools, register_execution_tools, register_setup_tools
 
 logger = logging.getLogger("bridge.server")
@@ -76,6 +77,7 @@ async def _lifespan(server: FastMCP):
 
     registry = ContextRegistry()
     repo_cache = RepoCache()
+    sampling_config = SamplingConfig()
 
     logger.info("Codegen Bridge ready")
     try:
@@ -84,6 +86,7 @@ async def _lifespan(server: FastMCP):
             "org_id": org_id,
             "registry": registry,
             "repo_cache": repo_cache,
+            "sampling_config": sampling_config,
         }
     finally:
         logger.info("Shutting down Codegen Bridge")
@@ -110,6 +113,7 @@ register_execution_tools(mcp)
 register_setup_tools(mcp)
 register_resources(mcp)
 register_prompts(mcp)
+register_sampling_tools(mcp)
 
 # ── Entry Point ─────────────────────────────────────────
 
