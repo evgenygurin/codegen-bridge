@@ -21,6 +21,7 @@ from bridge.icons import (
     ICON_MCP,
     ICON_OAUTH,
     ICON_ORG,
+    ICON_ORG_SETTINGS,
     ICON_REPO,
     ICON_SETUP_CMD,
     ICON_USER,
@@ -122,6 +123,29 @@ def register_setup_tools(mcp: FastMCP) -> None:
         return json.dumps(
             {
                 "organizations": [{"id": org.id, "name": org.name} for org in page.items],
+            }
+        )
+
+    @mcp.tool(tags={"setup"}, icons=ICON_ORG_SETTINGS)
+    async def codegen_get_organization_settings(
+        ctx: Context = CurrentContext(),
+        client: CodegenClient = Depends(get_client),
+    ) -> str:
+        """Get organization feature-flag settings.
+
+        Returns the current feature flags for the configured organization,
+        such as whether PR creation and rules detection are enabled.
+        """
+        await ctx.info("Fetching organization settings")
+        settings = await client.get_organization_settings()
+        await ctx.info(
+            f"Organization settings: pr_creation={settings.enable_pr_creation}, "
+            f"rules_detection={settings.enable_rules_detection}"
+        )
+        return json.dumps(
+            {
+                "enable_pr_creation": settings.enable_pr_creation,
+                "enable_rules_detection": settings.enable_rules_detection,
             }
         )
 

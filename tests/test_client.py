@@ -175,6 +175,38 @@ class TestRemoveFromPr:
         assert result.message == "Removed"
 
 
+class TestGetOrganizationSettings:
+    @respx.mock
+    async def test_returns_settings(self):
+        respx.get("https://api.codegen.com/v1/organizations/42/settings").mock(
+            return_value=Response(
+                200,
+                json={
+                    "enable_pr_creation": True,
+                    "enable_rules_detection": False,
+                },
+            )
+        )
+
+        async with CodegenClient(api_key="test", org_id=42) as client:
+            settings = await client.get_organization_settings()
+
+        assert settings.enable_pr_creation is True
+        assert settings.enable_rules_detection is False
+
+    @respx.mock
+    async def test_returns_defaults(self):
+        respx.get("https://api.codegen.com/v1/organizations/42/settings").mock(
+            return_value=Response(200, json={})
+        )
+
+        async with CodegenClient(api_key="test", org_id=42) as client:
+            settings = await client.get_organization_settings()
+
+        assert settings.enable_pr_creation is True
+        assert settings.enable_rules_detection is True
+
+
 class TestListRepos:
     @respx.mock
     async def test_lists_repos(self):
