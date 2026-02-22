@@ -1,10 +1,20 @@
 """MCP tool definitions for the Codegen Bridge server.
 
-Tools are split by domain:
-- agent: Agent run management (create, get, list, resume, stop, logs)
+Tools are split by domain, with large modules further decomposed into
+focused SOLID submodules:
+
+- agent/ — Agent run management (9 tools in 4 submodules):
+  - lifecycle: create, resume, stop
+  - queries: get, list
+  - moderation: ban, unban, remove-from-pr
+  - logs: get_logs
 - execution: Execution context management (start, get context, rules)
 - pr: Pull request management (edit PR, edit PR simple)
-- setup: Organization and repository setup (list orgs, list repos, setup commands)
+- setup/ — Organization and repository setup (12 tools in 4 submodules):
+  - users: get current user, list users, get user
+  - organizations: list orgs, get org settings, list repos, generate setup commands
+  - oauth: get MCP providers, get OAuth status, revoke OAuth
+  - check_suite: get/update check suite settings
 - integrations: Integrations, webhooks, sandbox analysis, Slack connect
 - settings: Plugin settings management (get, update)
 """
