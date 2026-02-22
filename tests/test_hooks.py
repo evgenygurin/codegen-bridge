@@ -78,8 +78,7 @@ class TestHooksJsonStructure:
         data = json.loads(HOOKS_JSON.read_text())
         for event_name in data["hooks"]:
             assert event_name in VALID_HOOK_EVENTS, (
-                f"Unknown hook event '{event_name}'. "
-                f"Valid events: {sorted(VALID_HOOK_EVENTS)}"
+                f"Unknown hook event '{event_name}'. Valid events: {sorted(VALID_HOOK_EVENTS)}"
             )
 
     def test_event_values_are_lists(self):
@@ -93,25 +92,17 @@ class TestHooksJsonStructure:
         data = json.loads(HOOKS_JSON.read_text())
         for event_name, matchers in data["hooks"].items():
             for i, group in enumerate(matchers):
-                assert isinstance(group, dict), (
-                    f"{event_name}[{i}] must be a dict (matcher group)"
-                )
-                assert "hooks" in group, (
-                    f"{event_name}[{i}] must have a 'hooks' key"
-                )
+                assert isinstance(group, dict), f"{event_name}[{i}] must be a dict (matcher group)"
+                assert "hooks" in group, f"{event_name}[{i}] must have a 'hooks' key"
                 assert isinstance(group["hooks"], list)
-                assert len(group["hooks"]) > 0, (
-                    f"{event_name}[{i}]['hooks'] must not be empty"
-                )
+                assert len(group["hooks"]) > 0, f"{event_name}[{i}]['hooks'] must not be empty"
 
     def test_all_hook_handlers_have_type(self):
         data = json.loads(HOOKS_JSON.read_text())
         for event_name, matchers in data["hooks"].items():
             for i, group in enumerate(matchers):
                 for j, handler in enumerate(group["hooks"]):
-                    assert "type" in handler, (
-                        f"{event_name}[{i}].hooks[{j}] must have 'type'"
-                    )
+                    assert "type" in handler, f"{event_name}[{i}].hooks[{j}] must have 'type'"
                     assert handler["type"] in VALID_HOOK_TYPES, (
                         f"{event_name}[{i}].hooks[{j}] has invalid type "
                         f"'{handler['type']}'. Valid: {VALID_HOOK_TYPES}"
@@ -176,9 +167,7 @@ class TestPostToolUseHooks:
     def test_has_get_run_matcher(self, hooks_data):
         matchers = [g.get("matcher", "") for g in hooks_data["hooks"]["PostToolUse"]]
         get_run_found = any("codegen_get_run" in m for m in matchers)
-        assert get_run_found, (
-            f"No PostToolUse matcher for codegen_get_run. Found: {matchers}"
-        )
+        assert get_run_found, f"No PostToolUse matcher for codegen_get_run. Found: {matchers}"
 
     def test_create_run_matcher_is_valid_regex(self, hooks_data):
         for group in hooks_data["hooks"]["PostToolUse"]:
@@ -256,9 +245,7 @@ class TestStopHook:
             for handler in group["hooks"]:
                 if handler["type"] == "prompt":
                     prompt = handler["prompt"].lower()
-                    assert "codegen" in prompt, (
-                        "Stop prompt should mention Codegen context"
-                    )
+                    assert "codegen" in prompt, "Stop prompt should mention Codegen context"
 
     def test_stop_hook_prompt_mentions_agent_runs(self, hooks_data):
         for group in hooks_data["hooks"]["Stop"]:
@@ -347,16 +334,20 @@ class TestPostCreateRunScript:
 
     def test_successful_run_creation(self):
         """Script should output additionalContext with run URL."""
-        tool_response = json.dumps({
-            "id": 12345,
-            "status": "running",
-            "web_url": "https://app.codegen.com/runs/12345",
-        })
-        hook_input = json.dumps({
-            "tool_name": "mcp__codegen_bridge__codegen_create_run",
-            "tool_input": {"prompt": "Fix the bug"},
-            "tool_response": tool_response,
-        })
+        tool_response = json.dumps(
+            {
+                "id": 12345,
+                "status": "running",
+                "web_url": "https://app.codegen.com/runs/12345",
+            }
+        )
+        hook_input = json.dumps(
+            {
+                "tool_name": "mcp__codegen_bridge__codegen_create_run",
+                "tool_input": {"prompt": "Fix the bug"},
+                "tool_response": tool_response,
+            }
+        )
         result = _run_script(POST_CREATE_RUN_SCRIPT, hook_input)
         assert result.returncode == 0
         output = json.loads(result.stdout)
@@ -368,15 +359,19 @@ class TestPostCreateRunScript:
 
     def test_run_creation_without_web_url(self):
         """Script should handle missing web_url gracefully."""
-        tool_response = json.dumps({
-            "id": 99,
-            "status": "queued",
-        })
-        hook_input = json.dumps({
-            "tool_name": "mcp__codegen_bridge__codegen_create_run",
-            "tool_input": {"prompt": "Deploy"},
-            "tool_response": tool_response,
-        })
+        tool_response = json.dumps(
+            {
+                "id": 99,
+                "status": "queued",
+            }
+        )
+        hook_input = json.dumps(
+            {
+                "tool_name": "mcp__codegen_bridge__codegen_create_run",
+                "tool_input": {"prompt": "Deploy"},
+                "tool_response": tool_response,
+            }
+        )
         result = _run_script(POST_CREATE_RUN_SCRIPT, hook_input)
         assert result.returncode == 0
         output = json.loads(result.stdout)
@@ -386,41 +381,51 @@ class TestPostCreateRunScript:
 
     def test_empty_tool_response(self):
         """Script should exit 0 silently on empty tool_response."""
-        hook_input = json.dumps({
-            "tool_name": "mcp__codegen_bridge__codegen_create_run",
-            "tool_input": {"prompt": "Test"},
-            "tool_response": "",
-        })
+        hook_input = json.dumps(
+            {
+                "tool_name": "mcp__codegen_bridge__codegen_create_run",
+                "tool_input": {"prompt": "Test"},
+                "tool_response": "",
+            }
+        )
         result = _run_script(POST_CREATE_RUN_SCRIPT, hook_input)
         assert result.returncode == 0
 
     def test_cancelled_run(self):
         """Script should exit 0 silently when run was cancelled."""
-        tool_response = json.dumps({
-            "action": "cancelled",
-            "reason": "User declined to create run",
-        })
-        hook_input = json.dumps({
-            "tool_name": "mcp__codegen_bridge__codegen_create_run",
-            "tool_input": {"prompt": "Test"},
-            "tool_response": tool_response,
-        })
+        tool_response = json.dumps(
+            {
+                "action": "cancelled",
+                "reason": "User declined to create run",
+            }
+        )
+        hook_input = json.dumps(
+            {
+                "tool_name": "mcp__codegen_bridge__codegen_create_run",
+                "tool_input": {"prompt": "Test"},
+                "tool_response": tool_response,
+            }
+        )
         result = _run_script(POST_CREATE_RUN_SCRIPT, hook_input)
         # Should exit 0 — no run_id means silent exit
         assert result.returncode == 0
 
     def test_contains_monitoring_hint(self):
         """Output should hint at how to check run status."""
-        tool_response = json.dumps({
-            "id": 42,
-            "status": "running",
-            "web_url": "https://app.codegen.com/runs/42",
-        })
-        hook_input = json.dumps({
-            "tool_name": "mcp__codegen_bridge__codegen_create_run",
-            "tool_input": {"prompt": "Build feature"},
-            "tool_response": tool_response,
-        })
+        tool_response = json.dumps(
+            {
+                "id": 42,
+                "status": "running",
+                "web_url": "https://app.codegen.com/runs/42",
+            }
+        )
+        hook_input = json.dumps(
+            {
+                "tool_name": "mcp__codegen_bridge__codegen_create_run",
+                "tool_input": {"prompt": "Build feature"},
+                "tool_response": tool_response,
+            }
+        )
         result = _run_script(POST_CREATE_RUN_SCRIPT, hook_input)
         assert result.returncode == 0
         output = json.loads(result.stdout)
@@ -433,17 +438,21 @@ class TestPostGetRunScript:
 
     def test_completed_run(self):
         """Script should format completed run with checkmark."""
-        tool_response = json.dumps({
-            "id": 100,
-            "status": "completed",
-            "web_url": "https://app.codegen.com/runs/100",
-            "summary": "Fixed the authentication bug",
-        })
-        hook_input = json.dumps({
-            "tool_name": "mcp__codegen_bridge__codegen_get_run",
-            "tool_input": {"run_id": 100},
-            "tool_response": tool_response,
-        })
+        tool_response = json.dumps(
+            {
+                "id": 100,
+                "status": "completed",
+                "web_url": "https://app.codegen.com/runs/100",
+                "summary": "Fixed the authentication bug",
+            }
+        )
+        hook_input = json.dumps(
+            {
+                "tool_name": "mcp__codegen_bridge__codegen_get_run",
+                "tool_input": {"run_id": 100},
+                "tool_response": tool_response,
+            }
+        )
         result = _run_script(POST_GET_RUN_SCRIPT, hook_input)
         assert result.returncode == 0
         output = json.loads(result.stdout)
@@ -455,16 +464,20 @@ class TestPostGetRunScript:
 
     def test_failed_run_suggests_logs(self):
         """Failed run should suggest checking logs."""
-        tool_response = json.dumps({
-            "id": 200,
-            "status": "failed",
-            "web_url": "https://app.codegen.com/runs/200",
-        })
-        hook_input = json.dumps({
-            "tool_name": "mcp__codegen_bridge__codegen_get_run",
-            "tool_input": {"run_id": 200},
-            "tool_response": tool_response,
-        })
+        tool_response = json.dumps(
+            {
+                "id": 200,
+                "status": "failed",
+                "web_url": "https://app.codegen.com/runs/200",
+            }
+        )
+        hook_input = json.dumps(
+            {
+                "tool_name": "mcp__codegen_bridge__codegen_get_run",
+                "tool_input": {"run_id": 200},
+                "tool_response": tool_response,
+            }
+        )
         result = _run_script(POST_GET_RUN_SCRIPT, hook_input)
         assert result.returncode == 0
         output = json.loads(result.stdout)
@@ -474,16 +487,20 @@ class TestPostGetRunScript:
 
     def test_running_run_suggests_polling(self):
         """Running run should suggest polling again."""
-        tool_response = json.dumps({
-            "id": 300,
-            "status": "running",
-            "web_url": "https://app.codegen.com/runs/300",
-        })
-        hook_input = json.dumps({
-            "tool_name": "mcp__codegen_bridge__codegen_get_run",
-            "tool_input": {"run_id": 300},
-            "tool_response": tool_response,
-        })
+        tool_response = json.dumps(
+            {
+                "id": 300,
+                "status": "running",
+                "web_url": "https://app.codegen.com/runs/300",
+            }
+        )
+        hook_input = json.dumps(
+            {
+                "tool_name": "mcp__codegen_bridge__codegen_get_run",
+                "tool_input": {"run_id": 300},
+                "tool_response": tool_response,
+            }
+        )
         result = _run_script(POST_GET_RUN_SCRIPT, hook_input)
         assert result.returncode == 0
         output = json.loads(result.stdout)
@@ -493,15 +510,19 @@ class TestPostGetRunScript:
 
     def test_paused_run_suggests_resume(self):
         """Paused run should suggest resuming."""
-        tool_response = json.dumps({
-            "id": 400,
-            "status": "paused",
-        })
-        hook_input = json.dumps({
-            "tool_name": "mcp__codegen_bridge__codegen_get_run",
-            "tool_input": {"run_id": 400},
-            "tool_response": tool_response,
-        })
+        tool_response = json.dumps(
+            {
+                "id": 400,
+                "status": "paused",
+            }
+        )
+        hook_input = json.dumps(
+            {
+                "tool_name": "mcp__codegen_bridge__codegen_get_run",
+                "tool_input": {"run_id": 400},
+                "tool_response": tool_response,
+            }
+        )
         result = _run_script(POST_GET_RUN_SCRIPT, hook_input)
         assert result.returncode == 0
         output = json.loads(result.stdout)
@@ -510,21 +531,25 @@ class TestPostGetRunScript:
 
     def test_run_with_pull_requests(self):
         """Script should show PR count and URLs."""
-        tool_response = json.dumps({
-            "id": 500,
-            "status": "completed",
-            "web_url": "https://app.codegen.com/runs/500",
-            "summary": "Added dark mode",
-            "pull_requests": [
-                {"url": "https://github.com/org/repo/pull/42", "number": 42},
-                {"url": "https://github.com/org/repo/pull/43", "number": 43},
-            ],
-        })
-        hook_input = json.dumps({
-            "tool_name": "mcp__codegen_bridge__codegen_get_run",
-            "tool_input": {"run_id": 500},
-            "tool_response": tool_response,
-        })
+        tool_response = json.dumps(
+            {
+                "id": 500,
+                "status": "completed",
+                "web_url": "https://app.codegen.com/runs/500",
+                "summary": "Added dark mode",
+                "pull_requests": [
+                    {"url": "https://github.com/org/repo/pull/42", "number": 42},
+                    {"url": "https://github.com/org/repo/pull/43", "number": 43},
+                ],
+            }
+        )
+        hook_input = json.dumps(
+            {
+                "tool_name": "mcp__codegen_bridge__codegen_get_run",
+                "tool_input": {"run_id": 500},
+                "tool_response": tool_response,
+            }
+        )
         result = _run_script(POST_GET_RUN_SCRIPT, hook_input)
         assert result.returncode == 0
         output = json.loads(result.stdout)
@@ -534,25 +559,31 @@ class TestPostGetRunScript:
 
     def test_empty_tool_response(self):
         """Script should exit 0 silently on empty tool_response."""
-        hook_input = json.dumps({
-            "tool_name": "mcp__codegen_bridge__codegen_get_run",
-            "tool_input": {"run_id": 999},
-            "tool_response": "",
-        })
+        hook_input = json.dumps(
+            {
+                "tool_name": "mcp__codegen_bridge__codegen_get_run",
+                "tool_input": {"run_id": 999},
+                "tool_response": "",
+            }
+        )
         result = _run_script(POST_GET_RUN_SCRIPT, hook_input)
         assert result.returncode == 0
 
     def test_queued_status_emoji(self):
         """Queued runs should show the correct emoji."""
-        tool_response = json.dumps({
-            "id": 600,
-            "status": "queued",
-        })
-        hook_input = json.dumps({
-            "tool_name": "mcp__codegen_bridge__codegen_get_run",
-            "tool_input": {"run_id": 600},
-            "tool_response": tool_response,
-        })
+        tool_response = json.dumps(
+            {
+                "id": 600,
+                "status": "queued",
+            }
+        )
+        hook_input = json.dumps(
+            {
+                "tool_name": "mcp__codegen_bridge__codegen_get_run",
+                "tool_input": {"run_id": 600},
+                "tool_response": tool_response,
+            }
+        )
         result = _run_script(POST_GET_RUN_SCRIPT, hook_input)
         assert result.returncode == 0
         output = json.loads(result.stdout)
@@ -561,16 +592,20 @@ class TestPostGetRunScript:
 
     def test_result_field_fallback(self):
         """When summary is absent, result field should be used."""
-        tool_response = json.dumps({
-            "id": 700,
-            "status": "completed",
-            "result": "All tests passed",
-        })
-        hook_input = json.dumps({
-            "tool_name": "mcp__codegen_bridge__codegen_get_run",
-            "tool_input": {"run_id": 700},
-            "tool_response": tool_response,
-        })
+        tool_response = json.dumps(
+            {
+                "id": 700,
+                "status": "completed",
+                "result": "All tests passed",
+            }
+        )
+        hook_input = json.dumps(
+            {
+                "tool_name": "mcp__codegen_bridge__codegen_get_run",
+                "tool_input": {"run_id": 700},
+                "tool_response": tool_response,
+            }
+        )
         result = _run_script(POST_GET_RUN_SCRIPT, hook_input)
         assert result.returncode == 0
         output = json.loads(result.stdout)

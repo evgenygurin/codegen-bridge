@@ -110,8 +110,9 @@ class AuthorizationConfig(BaseModel):
 
     enabled: bool = True
     allow_dangerous: bool = Field(
-        default_factory=lambda: os.environ.get("CODEGEN_ALLOW_DANGEROUS_TOOLS", "").lower()
-        in ("true", "1", "yes"),
+        default_factory=lambda: (
+            os.environ.get("CODEGEN_ALLOW_DANGEROUS_TOOLS", "").lower() in ("true", "1", "yes")
+        ),
     )
     dangerous_tool_names: frozenset[str] = Field(default=DEFAULT_DANGEROUS_TOOLS)
     dangerous_tag: str = DEFAULT_DANGEROUS_TAG

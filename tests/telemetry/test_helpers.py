@@ -120,9 +120,7 @@ class TestToolSpan:
         span = next(s for s in spans if s.name == "bridge.tool.my_tool")
         assert span.attributes["bridge.tool.argument_keys"] == "prompt,repo_id"
 
-    def test_does_not_record_argument_keys_by_default(
-        self, trace_exporter: InMemorySpanExporter
-    ):
+    def test_does_not_record_argument_keys_by_default(self, trace_exporter: InMemorySpanExporter):
         with tool_span("my_tool", arguments={"secret": "value"}):
             pass
         spans = trace_exporter.get_finished_spans()

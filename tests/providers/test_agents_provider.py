@@ -138,9 +138,7 @@ class TestAgentsProvider:
 
     @pytest.mark.asyncio
     async def test_resource_name_from_frontmatter(self, tmp_path):
-        (tmp_path / "file.md").write_text(
-            "---\nname: custom-name\ndescription: Desc\n---\n\nBody"
-        )
+        (tmp_path / "file.md").write_text("---\nname: custom-name\ndescription: Desc\n---\n\nBody")
         provider = AgentsProvider(tmp_path)
         resources = await provider._list_resources()
         # Resource name uses the file stem, not the frontmatter name
@@ -170,9 +168,7 @@ class TestAgentsProvider:
 
     @pytest.mark.asyncio
     async def test_resource_content_strips_frontmatter(self, tmp_path):
-        (tmp_path / "agent.md").write_text(
-            "---\ndescription: Desc\n---\n\nActual body content"
-        )
+        (tmp_path / "agent.md").write_text("---\ndescription: Desc\n---\n\nActual body content")
         provider = AgentsProvider(tmp_path)
         resources = await provider._list_resources()
         result = await resources[0].read()
@@ -228,9 +224,7 @@ class TestAgentsProvider:
         assert resource.description == "Test desc"
 
     def test_file_to_resource_description_uses_name_fallback(self, tmp_path):
-        (tmp_path / "my-agent.md").write_text(
-            "---\nname: my-agent\n---\n\nBody"
-        )
+        (tmp_path / "my-agent.md").write_text("---\nname: my-agent\n---\n\nBody")
         provider = AgentsProvider(tmp_path)
         resource = provider._file_to_resource(tmp_path / "my-agent.md")
         assert resource.description == "Agent: my-agent"

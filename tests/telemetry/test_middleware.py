@@ -34,9 +34,7 @@ class TestTelemetryMiddlewareInit:
 class TestTelemetryMiddlewareToolSpans:
     """Test that TelemetryMiddleware creates spans for tool calls."""
 
-    async def test_tool_call_creates_bridge_span(
-        self, trace_exporter: InMemorySpanExporter
-    ):
+    async def test_tool_call_creates_bridge_span(self, trace_exporter: InMemorySpanExporter):
         server = FastMCP("test-telemetry")
         server.add_middleware(TelemetryMiddleware())
 
@@ -54,9 +52,7 @@ class TestTelemetryMiddlewareToolSpans:
         assert span.attributes["bridge.tool.name"] == "greet"
         assert span.attributes["bridge.operation"] == "tool_call"
 
-    async def test_tool_error_records_on_span(
-        self, trace_exporter: InMemorySpanExporter
-    ):
+    async def test_tool_error_records_on_span(self, trace_exporter: InMemorySpanExporter):
         server = FastMCP("test-telemetry-error")
         server.add_middleware(TelemetryMiddleware())
 
@@ -112,9 +108,7 @@ class TestTelemetryMiddlewareToolSpans:
 class TestTelemetryMiddlewareResourceSpans:
     """Test that TelemetryMiddleware creates spans for resource reads."""
 
-    async def test_resource_read_creates_span(
-        self, trace_exporter: InMemorySpanExporter
-    ):
+    async def test_resource_read_creates_span(self, trace_exporter: InMemorySpanExporter):
         server = FastMCP("test-telemetry-resource")
         server.add_middleware(TelemetryMiddleware())
 
@@ -135,9 +129,7 @@ class TestTelemetryMiddlewareResourceSpans:
 class TestTelemetryMiddlewarePromptSpans:
     """Test that TelemetryMiddleware creates spans for prompt renders."""
 
-    async def test_prompt_render_creates_span(
-        self, trace_exporter: InMemorySpanExporter
-    ):
+    async def test_prompt_render_creates_span(self, trace_exporter: InMemorySpanExporter):
         server = FastMCP("test-telemetry-prompt")
         server.add_middleware(TelemetryMiddleware())
 

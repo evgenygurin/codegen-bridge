@@ -79,9 +79,7 @@ class CommandsProvider(Provider):
         self._uri_prefix = uri_prefix.rstrip("/")
 
         if not self._commands_dir.is_dir():
-            logger.warning(
-                "Commands directory does not exist: %s", self._commands_dir
-            )
+            logger.warning("Commands directory does not exist: %s", self._commands_dir)
 
     @property
     def commands_dir(self) -> Path:

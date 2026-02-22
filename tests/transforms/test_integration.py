@@ -170,9 +170,7 @@ class TestToolTransformIntegration:
             TransformsConfig(
                 tool_transform=ToolTransformConfig(
                     tools={
-                        "list_orgs": ToolTransformEntry(
-                            description="Fetch all organizations."
-                        ),
+                        "list_orgs": ToolTransformEntry(description="Fetch all organizations."),
                     }
                 )
             ),
@@ -387,9 +385,7 @@ class TestVersionFilterIntegration:
 
         configure_transforms(
             mcp,
-            TransformsConfig(
-                version_filter=VersionFilterConfig(version_gte="2.0")
-            ),
+            TransformsConfig(version_filter=VersionFilterConfig(version_gte="2.0")),
         )
 
         async with Client(mcp) as client:
@@ -412,9 +408,7 @@ class TestVersionFilterIntegration:
 
         configure_transforms(
             mcp,
-            TransformsConfig(
-                version_filter=VersionFilterConfig(version_lt="2.0")
-            ),
+            TransformsConfig(version_filter=VersionFilterConfig(version_lt="2.0")),
         )
 
         async with Client(mcp) as client:

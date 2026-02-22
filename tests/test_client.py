@@ -165,9 +165,9 @@ class TestUnbanRun:
 class TestRemoveFromPr:
     @respx.mock
     async def test_removes_from_pr(self):
-        respx.post(
-            "https://api.codegen.com/v1/organizations/42/agent/run/remove-from-pr"
-        ).mock(return_value=Response(200, json={"message": "Removed"}))
+        respx.post("https://api.codegen.com/v1/organizations/42/agent/run/remove-from-pr").mock(
+            return_value=Response(200, json={"message": "Removed"})
+        )
 
         async with CodegenClient(api_key="test", org_id=42) as client:
             result = await client.remove_from_pr(1)
@@ -448,9 +448,9 @@ class TestWebhookConfig:
 
     @respx.mock
     async def test_sets_webhook_config(self):
-        route = respx.post(
-            "https://api.codegen.com/v1/organizations/42/webhooks/agent-run"
-        ).mock(return_value=Response(200, json={"status": "ok"}))
+        route = respx.post("https://api.codegen.com/v1/organizations/42/webhooks/agent-run").mock(
+            return_value=Response(200, json={"status": "ok"})
+        )
 
         async with CodegenClient(api_key="test", org_id=42) as client:
             result = await client.set_webhook_config(
@@ -464,9 +464,9 @@ class TestWebhookConfig:
 
     @respx.mock
     async def test_deletes_webhook_config(self):
-        respx.delete(
-            "https://api.codegen.com/v1/organizations/42/webhooks/agent-run"
-        ).mock(return_value=Response(200, json={"status": "deleted"}))
+        respx.delete("https://api.codegen.com/v1/organizations/42/webhooks/agent-run").mock(
+            return_value=Response(200, json={"status": "deleted"})
+        )
 
         async with CodegenClient(api_key="test", org_id=42) as client:
             result = await client.delete_webhook_config()
@@ -512,9 +512,7 @@ class TestGenerateSetupCommands:
 
     @respx.mock
     async def test_generates_setup_commands_minimal(self):
-        respx.post(
-            "https://api.codegen.com/v1/organizations/42/setup-commands/generate"
-        ).mock(
+        respx.post("https://api.codegen.com/v1/organizations/42/setup-commands/generate").mock(
             return_value=Response(
                 200,
                 json={
@@ -534,9 +532,7 @@ class TestGenerateSetupCommands:
 class TestAnalyzeSandboxLogs:
     @respx.mock
     async def test_analyzes_sandbox_logs(self):
-        respx.post(
-            "https://api.codegen.com/v1/organizations/42/sandbox/55/analyze-logs"
-        ).mock(
+        respx.post("https://api.codegen.com/v1/organizations/42/sandbox/55/analyze-logs").mock(
             return_value=Response(
                 200,
                 json={
@@ -558,9 +554,7 @@ class TestAnalyzeSandboxLogs:
 class TestGetCheckSuiteSettings:
     @respx.mock
     async def test_gets_check_suite_settings(self):
-        respx.get(
-            "https://api.codegen.com/v1/organizations/42/repos/check-suite-settings"
-        ).mock(
+        respx.get("https://api.codegen.com/v1/organizations/42/repos/check-suite-settings").mock(
             return_value=Response(
                 200,
                 json={
@@ -644,9 +638,7 @@ class TestUpdateCheckSuiteSettings:
 class TestGenerateSlackConnectToken:
     @respx.mock
     async def test_generates_slack_token(self):
-        route = respx.post(
-            "https://api.codegen.com/v1/slack-connect/generate-token"
-        ).mock(
+        route = respx.post("https://api.codegen.com/v1/slack-connect/generate-token").mock(
             return_value=Response(
                 200,
                 json={

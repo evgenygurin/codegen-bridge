@@ -182,8 +182,10 @@ def _format_run_for_summary(run_data: dict[str, Any]) -> str:
     if prs:
         parts.append("\n**Pull Requests:**")
         for pr in prs:
-            parts.append(f"  - [{pr.get('title', 'PR')}]({pr.get('url', '')}) "
-                         f"(#{pr.get('number', '?')}, {pr.get('state', '?')})")
+            parts.append(
+                f"  - [{pr.get('title', 'PR')}]({pr.get('url', '')}) "
+                f"(#{pr.get('number', '?')}, {pr.get('state', '?')})"
+            )
 
     parsed = run_data.get("parsed_logs")
     if parsed:

@@ -212,9 +212,7 @@ class TestGenerateSetupCommands:
 
     @respx.mock
     async def test_generates_setup_commands(self, client: Client):
-        respx.post(
-            "https://api.codegen.com/v1/organizations/42/setup-commands/generate"
-        ).mock(
+        respx.post("https://api.codegen.com/v1/organizations/42/setup-commands/generate").mock(
             return_value=Response(
                 200,
                 json={
@@ -236,9 +234,7 @@ class TestGenerateSetupCommands:
 
     @respx.mock
     async def test_generates_with_custom_prompt(self, client: Client):
-        respx.post(
-            "https://api.codegen.com/v1/organizations/42/setup-commands/generate"
-        ).mock(
+        respx.post("https://api.codegen.com/v1/organizations/42/setup-commands/generate").mock(
             return_value=Response(
                 200,
                 json={
@@ -330,9 +326,7 @@ class TestGetCheckSuiteSettings:
 
     @respx.mock
     async def test_returns_settings(self, client: Client):
-        respx.get(
-            "https://api.codegen.com/v1/organizations/42/repos/check-suite-settings"
-        ).mock(
+        respx.get("https://api.codegen.com/v1/organizations/42/repos/check-suite-settings").mock(
             return_value=Response(
                 200,
                 json={
@@ -367,9 +361,9 @@ class TestUpdateCheckSuiteSettings:
 
     @respx.mock
     async def test_updates_settings(self, client: Client):
-        respx.put(
-            "https://api.codegen.com/v1/organizations/42/repos/check-suite-settings"
-        ).mock(return_value=Response(200, json={"status": "ok"}))
+        respx.put("https://api.codegen.com/v1/organizations/42/repos/check-suite-settings").mock(
+            return_value=Response(200, json={"status": "ok"})
+        )
 
         result = await client.call_tool(
             "codegen_update_check_suite_settings",
@@ -381,9 +375,9 @@ class TestUpdateCheckSuiteSettings:
 
     @respx.mock
     async def test_updates_single_field(self, client: Client):
-        respx.put(
-            "https://api.codegen.com/v1/organizations/42/repos/check-suite-settings"
-        ).mock(return_value=Response(200, json={"status": "ok"}))
+        respx.put("https://api.codegen.com/v1/organizations/42/repos/check-suite-settings").mock(
+            return_value=Response(200, json={"status": "ok"})
+        )
 
         result = await client.call_tool(
             "codegen_update_check_suite_settings",
@@ -445,4 +439,3 @@ class TestRevokeOAuth:
         tool = next(t for t in tools if t.name == "codegen_revoke_oauth")
         tags = tool.meta.get("fastmcp", {}).get("tags", [])
         assert "dangerous" in tags
-

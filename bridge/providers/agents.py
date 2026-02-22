@@ -86,9 +86,7 @@ class AgentsProvider(Provider):
         self._uri_prefix = uri_prefix.rstrip("/")
 
         if not self._agents_dir.is_dir():
-            logger.warning(
-                "Agents directory does not exist: %s", self._agents_dir
-            )
+            logger.warning("Agents directory does not exist: %s", self._agents_dir)
 
     @property
     def agents_dir(self) -> Path:
