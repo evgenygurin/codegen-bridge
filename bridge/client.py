@@ -1,7 +1,22 @@
-"""Async HTTP client for Codegen REST API v1."""
+"""Async HTTP client for Codegen REST API v1.
+
+Production-grade client with:
+- Structured timeouts (connect / read / write / pool)
+- Automatic retries with exponential backoff + jitter
+- Normalized error hierarchy (``CodegenAPIError`` and subclasses)
+- Request ID tracking for debugging
+
+All custom exceptions inherit from ``httpx.HTTPStatusError`` so existing
+``except httpx.HTTPStatusError`` blocks continue to work.
+"""
 
 from __future__ import annotations
 
+import asyncio
+import logging
+import random
+import uuid
+from dataclasses import dataclass, field
 from typing import Any
 
 import httpx
@@ -27,7 +42,227 @@ from bridge.models import (
     WebhookConfig,
 )
 
+logger = logging.getLogger("bridge.client")
+
 BASE_URL = "https://api.codegen.com/v1"
+
+# ── Timeout Defaults ──────────────────────────────────────────────
+
+DEFAULT_CONNECT_TIMEOUT = 5.0
+DEFAULT_READ_TIMEOUT = 30.0
+DEFAULT_WRITE_TIMEOUT = 30.0
+DEFAULT_POOL_TIMEOUT = 10.0
+
+# ── Retry Configuration ──────────────────────────────────────────
+
+
+@dataclass(frozen=True)
+class RetryConfig:
+    """Configuration for automatic request retries.
+
+    Attributes:
+        max_retries: Maximum number of retry attempts (0 = no retries).
+        backoff_base: Base delay in seconds for exponential backoff.
+        backoff_max: Maximum delay cap in seconds.
+        jitter: Maximum random jitter added to each delay (seconds).
+        retryable_status_codes: HTTP status codes eligible for retry.
+        retry_on_timeout: Whether to retry on timeout exceptions.
+        retry_on_connect_error: Whether to retry on connection errors.
+    """
+
+    max_retries: int = 3
+    backoff_base: float = 0.5
+    backoff_max: float = 30.0
+    jitter: float = 0.25
+    retryable_status_codes: frozenset[int] = field(
+        default_factory=lambda: frozenset({429, 500, 502, 503, 504})
+    )
+    retry_on_timeout: bool = True
+    retry_on_connect_error: bool = True
+
+
+# Sensible default: 3 retries with exponential backoff
+DEFAULT_RETRY = RetryConfig()
+
+# No retries — useful for tests or latency-sensitive paths
+NO_RETRY = RetryConfig(max_retries=0)
+
+
+# ── Error Hierarchy ──────────────────────────────────────────────
+
+
+class CodegenAPIError(httpx.HTTPStatusError):
+    """Base exception for Codegen API errors.
+
+    Inherits from ``httpx.HTTPStatusError`` for backward compatibility —
+    existing ``except httpx.HTTPStatusError`` blocks still catch these.
+
+    Attributes:
+        status_code: HTTP status code from the response.
+        detail: Human-readable error message extracted from the response body.
+        request_id: Correlation ID for the failed request (if available).
+    """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        request: httpx.Request,
+        response: httpx.Response,
+        detail: str | None = None,
+        request_id: str | None = None,
+    ) -> None:
+        super().__init__(message, request=request, response=response)
+        self.status_code: int = response.status_code
+        self.detail: str | None = detail
+        self.request_id: str | None = request_id
+
+    def __str__(self) -> str:
+        parts = [f"[{self.status_code}]"]
+        if self.detail:
+            parts.append(self.detail)
+        if self.request_id:
+            parts.append(f"(request_id={self.request_id})")
+        return " ".join(parts)
+
+    def __repr__(self) -> str:
+        return (
+            f"{type(self).__name__}(status_code={self.status_code}, "
+            f"detail={self.detail!r}, request_id={self.request_id!r})"
+        )
+
+
+class AuthenticationError(CodegenAPIError):
+    """Raised on 401 Unauthorized or 403 Forbidden."""
+
+
+class NotFoundError(CodegenAPIError):
+    """Raised on 404 Not Found."""
+
+
+class ValidationError(CodegenAPIError):
+    """Raised on 422 Unprocessable Entity."""
+
+
+class RateLimitError(CodegenAPIError):
+    """Raised on 429 Too Many Requests.
+
+    Attributes:
+        retry_after: Seconds to wait before retrying (from ``Retry-After`` header).
+    """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        request: httpx.Request,
+        response: httpx.Response,
+        detail: str | None = None,
+        request_id: str | None = None,
+        retry_after: float | None = None,
+    ) -> None:
+        super().__init__(
+            message,
+            request=request,
+            response=response,
+            detail=detail,
+            request_id=request_id,
+        )
+        self.retry_after: float | None = retry_after
+
+
+class ServerError(CodegenAPIError):
+    """Raised on 5xx Server Error."""
+
+
+# ── Helpers ──────────────────────────────────────────────────────
+
+
+def _extract_detail(response: httpx.Response) -> str | None:
+    """Best-effort extraction of error detail from a JSON response body."""
+    try:
+        body = response.json()
+    except Exception:
+        return None
+
+    if isinstance(body, dict):
+        # Common API patterns: {"detail": "..."}, {"error": "..."}, {"message": "..."}
+        for key in ("detail", "error", "message"):
+            val = body.get(key)
+            if isinstance(val, str):
+                return val
+            # FastAPI validation: {"detail": [{"msg": "...", ...}]}
+            if isinstance(val, list) and val:
+                first = val[0]
+                if isinstance(first, dict) and "msg" in first:
+                    return str(first["msg"])
+                return str(first)
+    return None
+
+
+def _classify_error(
+    *,
+    request: httpx.Request,
+    response: httpx.Response,
+    detail: str | None,
+    request_id: str | None,
+) -> CodegenAPIError:
+    """Map an HTTP status code to the appropriate exception subclass."""
+    status = response.status_code
+    msg = f"Codegen API error: {response.status_code} {response.reason_phrase}"
+    if detail:
+        msg = f"{msg} — {detail}"
+
+    kwargs: dict[str, Any] = {
+        "request": request,
+        "response": response,
+        "detail": detail,
+        "request_id": request_id,
+    }
+
+    if status in {401, 403}:
+        return AuthenticationError(msg, **kwargs)
+    if status == 404:
+        return NotFoundError(msg, **kwargs)
+    if status == 422:
+        return ValidationError(msg, **kwargs)
+    if status == 429:
+        retry_after = _parse_retry_after(response)
+        return RateLimitError(msg, retry_after=retry_after, **kwargs)
+    if 500 <= status < 600:
+        return ServerError(msg, **kwargs)
+    return CodegenAPIError(msg, **kwargs)
+
+
+def _parse_retry_after(response: httpx.Response) -> float | None:
+    """Parse ``Retry-After`` header value (seconds)."""
+    raw = response.headers.get("retry-after")
+    if raw is None:
+        return None
+    try:
+        return float(raw)
+    except (ValueError, TypeError):
+        return None
+
+
+def _compute_delay(attempt: int, config: RetryConfig) -> float:
+    """Compute retry delay with exponential backoff and jitter."""
+    base_delay: float = config.backoff_base * (2 ** attempt)
+    capped: float = min(base_delay, config.backoff_max)
+    jitter: float = random.uniform(0, config.jitter)
+    return capped + jitter
+
+
+def _is_retryable_exception(exc: Exception, config: RetryConfig) -> bool:
+    """Check whether an exception is eligible for retry."""
+    if isinstance(exc, httpx.TimeoutException):
+        return config.retry_on_timeout
+    if isinstance(exc, (httpx.ConnectError, httpx.NetworkError)):
+        return config.retry_on_connect_error
+    return False
+
+
+# ── Client ───────────────────────────────────────────────────────
 
 
 class CodegenClient:
@@ -37,6 +272,8 @@ class CodegenClient:
         api_key: Bearer token for authentication.
         org_id: Organization ID for API calls.
         base_url: Override API base URL (for testing).
+        retry: Retry configuration. Pass ``NO_RETRY`` to disable retries.
+        timeout: Override default httpx timeout.
     """
 
     def __init__(
@@ -45,6 +282,8 @@ class CodegenClient:
         org_id: int,
         *,
         base_url: str = BASE_URL,
+        retry: RetryConfig | None = None,
+        timeout: httpx.Timeout | None = None,
     ) -> None:
         if not api_key:
             raise ValueError("api_key is required")
@@ -52,10 +291,16 @@ class CodegenClient:
             raise ValueError("org_id is required")
 
         self.org_id = org_id
+        self._retry = retry if retry is not None else DEFAULT_RETRY
         self._client = httpx.AsyncClient(
             base_url=base_url,
             headers={"Authorization": f"Bearer {api_key}"},
-            timeout=30.0,
+            timeout=timeout or httpx.Timeout(
+                connect=DEFAULT_CONNECT_TIMEOUT,
+                read=DEFAULT_READ_TIMEOUT,
+                write=DEFAULT_WRITE_TIMEOUT,
+                pool=DEFAULT_POOL_TIMEOUT,
+            ),
         )
 
     async def close(self) -> None:
@@ -403,11 +648,11 @@ class CodegenClient:
 
     async def revoke_oauth(self, provider: str) -> None:
         """Revoke/disconnect an OAuth token for a specific provider."""
-        resp = await self._client.post(
+        await self._request(
+            "POST",
             "/oauth/tokens/revoke",
             params={"provider": provider, "org_id": self.org_id},
         )
-        resp.raise_for_status()
 
     # ── Check Suite Settings ────────────────────────────────
 
@@ -449,18 +694,133 @@ class CodegenClient:
         """Get organization and user agent rules."""
         return await self._get(f"/organizations/{self.org_id}/cli/rules")
 
+    # ── Core Request Engine ─────────────────────────────────
+
+    async def _request(
+        self,
+        method: str,
+        path: str,
+        *,
+        json: dict[str, Any] | None = None,
+        params: dict[str, Any] | None = None,
+    ) -> httpx.Response:
+        """Unified HTTP request with retries, timeouts, and error normalization.
+
+        Implements exponential backoff with jitter. For 429 responses,
+        respects the ``Retry-After`` header when present.
+
+        Returns:
+            The successful ``httpx.Response``.
+
+        Raises:
+            CodegenAPIError: (or subclass) on non-retryable HTTP errors.
+            httpx.TimeoutException: If all retry attempts time out.
+            httpx.ConnectError: If all retry attempts fail to connect.
+        """
+        retry = self._retry
+        request_id = uuid.uuid4().hex[:12]
+        last_exc: Exception | None = None
+
+        for attempt in range(retry.max_retries + 1):
+            try:
+                resp = await self._client.request(
+                    method,
+                    path,
+                    json=json,
+                    params=params,
+                    headers={"X-Request-ID": request_id},
+                )
+
+                # Success — return immediately
+                if resp.is_success:
+                    return resp
+
+                # Non-retryable status — raise immediately
+                status = resp.status_code
+                if status not in retry.retryable_status_codes:
+                    raise self._build_error(resp, request_id)
+
+                # Retryable status — log and prepare for retry
+                last_exc = self._build_error(resp, request_id)
+
+                if attempt < retry.max_retries:
+                    # For 429, prefer Retry-After header
+                    if status == 429:
+                        retry_after = _parse_retry_after(resp)
+                        if retry_after is not None:
+                            delay = retry_after
+                        else:
+                            delay = _compute_delay(attempt, retry)
+                    else:
+                        delay = _compute_delay(attempt, retry)
+
+                    logger.warning(
+                        "Retryable %s %s → %d (attempt %d/%d, retry in %.1fs) "
+                        "[request_id=%s]",
+                        method,
+                        path,
+                        status,
+                        attempt + 1,
+                        retry.max_retries + 1,
+                        delay,
+                        request_id,
+                    )
+                    await asyncio.sleep(delay)
+                    continue
+
+            except (httpx.TimeoutException, httpx.ConnectError, httpx.NetworkError) as exc:
+                last_exc = exc
+
+                if not _is_retryable_exception(exc, retry) or attempt >= retry.max_retries:
+                    raise
+
+                delay = _compute_delay(attempt, retry)
+                logger.warning(
+                    "Retryable %s %s → %s (attempt %d/%d, retry in %.1fs) "
+                    "[request_id=%s]",
+                    method,
+                    path,
+                    type(exc).__name__,
+                    attempt + 1,
+                    retry.max_retries + 1,
+                    delay,
+                    request_id,
+                )
+                await asyncio.sleep(delay)
+                continue
+
+        # All retries exhausted — raise the last error
+        if last_exc is not None:
+            raise last_exc
+        # Should never reach here, but satisfy type checker
+        raise RuntimeError("Unexpected state in retry loop")  # pragma: no cover
+
+    def _build_error(
+        self,
+        response: httpx.Response,
+        request_id: str,
+    ) -> CodegenAPIError:
+        """Build a classified ``CodegenAPIError`` from an HTTP response."""
+        detail = _extract_detail(response)
+        return _classify_error(
+            request=response.request,
+            response=response,
+            detail=detail,
+            request_id=request_id,
+        )
+
     # ── HTTP Helpers ────────────────────────────────────────
 
-    async def _get(self, path: str, *, params: dict[str, Any] | None = None) -> dict[str, Any]:
-        resp = await self._client.get(path, params=params)
-        resp.raise_for_status()
+    async def _get(
+        self, path: str, *, params: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        resp = await self._request("GET", path, params=params)
         result: dict[str, Any] = resp.json()
         return result
 
     async def _get_raw(self, path: str, *, params: dict[str, Any] | None = None) -> Any:
         """GET that returns the raw JSON value (may be a list or dict)."""
-        resp = await self._client.get(path, params=params)
-        resp.raise_for_status()
+        resp = await self._request("GET", path, params=params)
         return resp.json()
 
     async def _post(
@@ -470,8 +830,7 @@ class CodegenClient:
         json: dict[str, Any] | None = None,
         params: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        resp = await self._client.post(path, json=json, params=params)
-        resp.raise_for_status()
+        resp = await self._request("POST", path, json=json, params=params)
         result: dict[str, Any] = resp.json()
         return result
 
@@ -482,18 +841,17 @@ class CodegenClient:
         json: dict[str, Any] | None = None,
         params: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        resp = await self._client.put(path, json=json, params=params)
-        resp.raise_for_status()
+        resp = await self._request("PUT", path, json=json, params=params)
         return resp.json()  # type: ignore[no-any-return]
 
-    async def _patch(self, path: str, *, json: dict[str, Any] | None = None) -> dict[str, Any]:
-        resp = await self._client.patch(path, json=json)
-        resp.raise_for_status()
+    async def _patch(
+        self, path: str, *, json: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        resp = await self._request("PATCH", path, json=json)
         result: dict[str, Any] = resp.json()
         return result
 
     async def _delete(self, path: str) -> dict[str, Any]:
-        resp = await self._client.delete(path)
-        resp.raise_for_status()
+        resp = await self._request("DELETE", path)
         result: dict[str, Any] = resp.json()
         return result
