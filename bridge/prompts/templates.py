@@ -37,9 +37,7 @@ def register_prompts(mcp: FastMCP) -> None:
         )
 
     @mcp.prompt(icons=ICON_TEMPLATE)
-    def build_task_prompt_template(
-        goal: str, task_description: str, context: str = ""
-    ) -> str:
+    def build_task_prompt_template(goal: str, task_description: str, context: str = "") -> str:
         """Build a structured prompt for delegating a task to a Codegen agent."""
         parts = [
             f"# Agent Task\n\n## Goal\n{goal}",

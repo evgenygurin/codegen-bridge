@@ -200,9 +200,7 @@ _CLI_SDK_DOCS: dict[str, object] = {
             },
             {
                 "command": "cg status",
-                "description": (
-                    "Check the status of agent runs for the current organization."
-                ),
+                "description": ("Check the status of agent runs for the current organization."),
                 "usage": "cg status [RUN_ID]",
                 "examples": [
                     "cg status",
@@ -222,8 +220,7 @@ _CLI_SDK_DOCS: dict[str, object] = {
             {
                 "command": "cg config",
                 "description": (
-                    "View or update Codegen CLI configuration (API key, org ID, "
-                    "default model)."
+                    "View or update Codegen CLI configuration (API key, org ID, default model)."
                 ),
                 "usage": "cg config [set KEY VALUE]",
                 "examples": [
@@ -289,9 +286,7 @@ _CLI_SDK_DOCS: dict[str, object] = {
         },
         {
             "name": "CODEGEN_BASE_URL",
-            "description": (
-                "Override the API base URL. Defaults to https://api.codegen.com."
-            ),
+            "description": ("Override the API base URL. Defaults to https://api.codegen.com."),
             "required": False,
         },
     ],

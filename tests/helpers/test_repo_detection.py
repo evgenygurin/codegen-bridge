@@ -99,9 +99,7 @@ class TestDetectRepoId:
 
     async def test_returns_none_when_git_fails(self, cache):
         with patch("bridge.helpers.repo_detection.subprocess") as mock_sub:
-            mock_sub.run.return_value = type(
-                "Result", (), {"returncode": 1, "stdout": ""}
-            )()
+            mock_sub.run.return_value = type("Result", (), {"returncode": 1, "stdout": ""})()
 
             async with CodegenClient(api_key="test", org_id=42) as client:
                 repo_id = await detect_repo_id(client, cache)

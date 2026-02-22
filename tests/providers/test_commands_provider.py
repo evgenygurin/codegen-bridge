@@ -105,12 +105,8 @@ class TestCommandsProvider:
 
     @pytest.mark.asyncio
     async def test_list_resources_with_files(self, tmp_path):
-        (tmp_path / "help.md").write_text(
-            '---\ndescription: "Get help"\n---\n\nHelp content here'
-        )
-        (tmp_path / "status.md").write_text(
-            "---\ndescription: Show status\n---\n\nStatus content"
-        )
+        (tmp_path / "help.md").write_text('---\ndescription: "Get help"\n---\n\nHelp content here')
+        (tmp_path / "status.md").write_text("---\ndescription: Show status\n---\n\nStatus content")
         provider = CommandsProvider(tmp_path)
         resources = await provider._list_resources()
         assert len(resources) == 2
@@ -128,9 +124,7 @@ class TestCommandsProvider:
 
     @pytest.mark.asyncio
     async def test_resource_description_from_frontmatter(self, tmp_path):
-        (tmp_path / "cmd.md").write_text(
-            '---\ndescription: "My custom desc"\n---\n\nBody'
-        )
+        (tmp_path / "cmd.md").write_text('---\ndescription: "My custom desc"\n---\n\nBody')
         provider = CommandsProvider(tmp_path)
         resources = await provider._list_resources()
         assert resources[0].description == "My custom desc"
@@ -159,9 +153,7 @@ class TestCommandsProvider:
 
     @pytest.mark.asyncio
     async def test_resource_content_strips_frontmatter(self, tmp_path):
-        (tmp_path / "cmd.md").write_text(
-            "---\ndescription: Desc\n---\n\nActual body content"
-        )
+        (tmp_path / "cmd.md").write_text("---\ndescription: Desc\n---\n\nActual body content")
         provider = CommandsProvider(tmp_path)
         resources = await provider._list_resources()
         result = await resources[0].read()
@@ -213,9 +205,7 @@ class TestCommandsProvider:
             assert r.description, f"Missing description for {r.name}"
 
     def test_file_to_resource(self, tmp_path):
-        (tmp_path / "test.md").write_text(
-            '---\ndescription: "Test desc"\n---\n\nTest body'
-        )
+        (tmp_path / "test.md").write_text('---\ndescription: "Test desc"\n---\n\nTest body')
         provider = CommandsProvider(tmp_path)
         resource = provider._file_to_resource(tmp_path / "test.md")
         assert resource.name == "command_test"

@@ -100,18 +100,20 @@ class TestStopRunWithElicitation:
                 assert data["status"] == "stopped"
 
     async def test_stop_cancelled_when_user_declines(self):
-        async with respx.MockRouter(assert_all_called=False), Client(
-            mcp, elicitation_handler=_decline()
-        ) as c:
+        async with (
+            respx.MockRouter(assert_all_called=False),
+            Client(mcp, elicitation_handler=_decline()) as c,
+        ):
             result = await c.call_tool("codegen_stop_run", {"run_id": 202})
             data = json.loads(result.data)
             assert data["action"] == "cancelled"
             assert data["run_id"] == 202
 
     async def test_stop_cancelled_when_user_cancels(self):
-        async with respx.MockRouter(assert_all_called=False), Client(
-            mcp, elicitation_handler=_cancel()
-        ) as c:
+        async with (
+            respx.MockRouter(assert_all_called=False),
+            Client(mcp, elicitation_handler=_cancel()) as c,
+        ):
             result = await c.call_tool("codegen_stop_run", {"run_id": 203})
             data = json.loads(result.data)
             assert data["action"] == "cancelled"
@@ -123,9 +125,7 @@ class TestStopRunWithoutElicitation:
     @respx.mock
     async def test_stop_skips_elicitation_when_confirmed(self, client: Client):
         respx.post(BAN_URL).mock(return_value=Response(200, json=_stopped(211)))
-        result = await client.call_tool(
-            "codegen_stop_run", {"run_id": 211, "confirmed": True}
-        )
+        result = await client.call_tool("codegen_stop_run", {"run_id": 211, "confirmed": True})
         data = json.loads(result.data)
         assert data["status"] == "stopped"
 
@@ -145,13 +145,13 @@ class TestCreateRunWithElicitation:
     async def test_model_selection_and_confirmation(self):
         async with respx.MockRouter(assert_all_called=False) as router:
             router.get(REPOS_URL).mock(return_value=Response(200, json=EMPTY_REPOS))
-            route = router.post(CREATE_URL).mock(
-                return_value=Response(200, json=_queued(301))
+            route = router.post(CREATE_URL).mock(return_value=Response(200, json=_queued(301)))
+            handler = _sequence(
+                [
+                    ElicitResult(action="accept", content={"value": "claude-3-5-sonnet"}),
+                    ElicitResult(action="accept", content={"value": True}),
+                ]
             )
-            handler = _sequence([
-                ElicitResult(action="accept", content={"value": "claude-3-5-sonnet"}),
-                ElicitResult(action="accept", content={"value": True}),
-            ])
             async with Client(mcp, elicitation_handler=handler) as c:
                 result = await c.call_tool(
                     "codegen_create_run",
@@ -165,10 +165,12 @@ class TestCreateRunWithElicitation:
     async def test_cancelled_on_repo_confirmation_decline(self):
         async with respx.MockRouter(assert_all_called=False) as router:
             router.get(REPOS_URL).mock(return_value=Response(200, json=EMPTY_REPOS))
-            handler = _sequence([
-                ElicitResult(action="accept", content={"value": "gpt-4o"}),
-                ElicitResult(action="decline", content=None),
-            ])
+            handler = _sequence(
+                [
+                    ElicitResult(action="accept", content={"value": "gpt-4o"}),
+                    ElicitResult(action="decline", content=None),
+                ]
+            )
             async with Client(mcp, elicitation_handler=handler) as c:
                 result = await c.call_tool(
                     "codegen_create_run",
@@ -180,9 +182,7 @@ class TestCreateRunWithElicitation:
     async def test_skips_model_elicitation_when_model_provided(self):
         async with respx.MockRouter(assert_all_called=False) as router:
             router.get(REPOS_URL).mock(return_value=Response(200, json=EMPTY_REPOS))
-            route = router.post(CREATE_URL).mock(
-                return_value=Response(200, json=_queued(302))
-            )
+            route = router.post(CREATE_URL).mock(return_value=Response(200, json=_queued(302)))
             async with Client(mcp, elicitation_handler=_accept()) as c:
                 result = await c.call_tool(
                     "codegen_create_run",
@@ -198,9 +198,7 @@ class TestCreateRunWithoutElicitation:
     @respx.mock
     async def test_skips_elicitation_when_confirmed(self, client: Client):
         respx.get(REPOS_URL).mock(return_value=Response(200, json=EMPTY_REPOS))
-        respx.post(CREATE_URL).mock(
-            return_value=Response(200, json=_queued(311))
-        )
+        respx.post(CREATE_URL).mock(return_value=Response(200, json=_queued(311)))
         result = await client.call_tool(
             "codegen_create_run",
             {"prompt": "Fix bug delta", "repo_id": 13, "confirmed": True},
@@ -212,9 +210,7 @@ class TestCreateRunWithoutElicitation:
     async def test_graceful_degradation(self, client: Client):
         """Without elicitation handler, create_run proceeds with defaults."""
         respx.get(REPOS_URL).mock(return_value=Response(200, json=EMPTY_REPOS))
-        route = respx.post(CREATE_URL).mock(
-            return_value=Response(200, json=_queued(312))
-        )
+        route = respx.post(CREATE_URL).mock(return_value=Response(200, json=_queued(312)))
         result = await client.call_tool(
             "codegen_create_run",
             {"prompt": "Fix bug epsilon", "repo_id": 14},

@@ -151,9 +151,7 @@ class TestListRuns:
             )
         )
 
-        result = await client.call_tool(
-            "codegen_list_runs", {"user_id": 7, "limit": 5}
-        )
+        result = await client.call_tool("codegen_list_runs", {"user_id": 7, "limit": 5})
         data = json.loads(result.data)
         assert data["total"] == 1
         assert data["runs"][0]["id"] == 1
@@ -195,9 +193,7 @@ class TestListRuns:
 class TestResumeRun:
     @respx.mock
     async def test_passes_images_to_resume(self, client: Client):
-        route = respx.post(
-            "https://api.codegen.com/v1/organizations/42/agent/run/resume"
-        ).mock(
+        route = respx.post("https://api.codegen.com/v1/organizations/42/agent/run/resume").mock(
             return_value=Response(
                 200,
                 json={
@@ -286,9 +282,9 @@ class TestBanRun:
 class TestUnbanRun:
     @respx.mock
     async def test_unbans_run(self, client: Client):
-        route = respx.post(
-            "https://api.codegen.com/v1/organizations/42/agent/run/unban"
-        ).mock(return_value=Response(200, json={}))
+        route = respx.post("https://api.codegen.com/v1/organizations/42/agent/run/unban").mock(
+            return_value=Response(200, json={})
+        )
 
         result = await client.call_tool(
             "codegen_unban_run",
@@ -344,9 +340,9 @@ class TestRemoveFromPr:
 
     @respx.mock
     async def test_remove_from_pr_minimal(self, client: Client):
-        respx.post(
-            "https://api.codegen.com/v1/organizations/42/agent/run/remove-from-pr"
-        ).mock(return_value=Response(200, json={"message": "Removed"}))
+        respx.post("https://api.codegen.com/v1/organizations/42/agent/run/remove-from-pr").mock(
+            return_value=Response(200, json={"message": "Removed"})
+        )
 
         result = await client.call_tool("codegen_remove_from_pr", {"run_id": 71})
         data = json.loads(result.data)

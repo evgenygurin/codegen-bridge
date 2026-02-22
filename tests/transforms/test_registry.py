@@ -36,9 +36,7 @@ class TestBuildChain:
         assert isinstance(chain[0], Namespace)
 
     def test_disabled_namespace_skipped(self):
-        cfg = TransformsConfig(
-            namespace=NamespaceConfig(prefix="api", enabled=False)
-        )
+        cfg = TransformsConfig(namespace=NamespaceConfig(prefix="api", enabled=False))
         chain = _build_chain(cfg)
         assert chain == []
 
@@ -69,9 +67,7 @@ class TestBuildChain:
 
     def test_visibility_single_rule(self):
         cfg = TransformsConfig(
-            visibility=VisibilityConfig(
-                rules=[VisibilityRuleConfig(enabled=True, tags={"setup"})]
-            )
+            visibility=VisibilityConfig(rules=[VisibilityRuleConfig(enabled=True, tags={"setup"})])
         )
         chain = _build_chain(cfg)
         assert len(chain) == 1

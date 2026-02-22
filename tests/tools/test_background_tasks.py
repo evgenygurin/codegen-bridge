@@ -80,9 +80,7 @@ class TestReportHelper:
 
         await _report(ctx, 2, 5, "Working")
 
-        ctx.report_progress.assert_awaited_once_with(
-            progress=2, total=5, message="Working"
-        )
+        ctx.report_progress.assert_awaited_once_with(progress=2, total=5, message="Working")
 
     async def test_report_never_raises_on_runtime_error(self):
         ctx = AsyncMock()
@@ -109,9 +107,7 @@ class TestReportHelper:
 
         await _report(ctx, 0, 10, "Initializing")
 
-        ctx.report_progress.assert_awaited_once_with(
-            progress=0, total=10, message="Initializing"
-        )
+        ctx.report_progress.assert_awaited_once_with(progress=0, total=10, message="Initializing")
 
     async def test_report_with_completion(self):
         ctx = AsyncMock()
@@ -119,9 +115,7 @@ class TestReportHelper:
 
         await _report(ctx, 5, 5, "Done")
 
-        ctx.report_progress.assert_awaited_once_with(
-            progress=5, total=5, message="Done"
-        )
+        ctx.report_progress.assert_awaited_once_with(progress=5, total=5, message="Done")
 
     async def test_report_passes_float_values(self):
         ctx = AsyncMock()
@@ -129,9 +123,7 @@ class TestReportHelper:
 
         await _report(ctx, 2.5, 10.0, "Partial")
 
-        ctx.report_progress.assert_awaited_once_with(
-            progress=2.5, total=10.0, message="Partial"
-        )
+        ctx.report_progress.assert_awaited_once_with(progress=2.5, total=10.0, message="Partial")
 
 
 # ── Tool metadata tests ─────────────────────────────────
@@ -218,9 +210,7 @@ class TestSynchronousFallback:
     @respx.mock
     async def test_get_logs_works_synchronously(self, client: Client):
         """Calling without task=True should work normally (synchronous)."""
-        respx.get(
-            "https://api.codegen.com/v1/alpha/organizations/42/agent/run/50/logs"
-        ).mock(
+        respx.get("https://api.codegen.com/v1/alpha/organizations/42/agent/run/50/logs").mock(
             return_value=Response(
                 200,
                 json={
@@ -268,9 +258,7 @@ class TestSynchronousFallback:
     @respx.mock
     async def test_get_logs_returns_correct_structure(self, client: Client):
         """Verify task-enabled get_logs returns the expected JSON keys."""
-        respx.get(
-            "https://api.codegen.com/v1/alpha/organizations/42/agent/run/77/logs"
-        ).mock(
+        respx.get("https://api.codegen.com/v1/alpha/organizations/42/agent/run/77/logs").mock(
             return_value=Response(
                 200,
                 json={

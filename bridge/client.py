@@ -344,9 +344,7 @@ class CodegenClient:
     async def test_webhook(self, url: str) -> dict[str, Any]:
         """Send a test event to a webhook URL."""
         body: dict[str, Any] = {"url": url}
-        return await self._post(
-            f"/organizations/{self.org_id}/webhooks/agent-run/test", json=body
-        )
+        return await self._post(f"/organizations/{self.org_id}/webhooks/agent-run/test", json=body)
 
     # ── Setup Commands ───────────────────────────────────────
 
@@ -363,18 +361,14 @@ class CodegenClient:
             body["prompt"] = prompt
         if trigger_source is not None:
             body["trigger_source"] = trigger_source
-        resp = await self._post(
-            f"/organizations/{self.org_id}/setup-commands/generate", json=body
-        )
+        resp = await self._post(f"/organizations/{self.org_id}/setup-commands/generate", json=body)
         return SetupCommand.model_validate(resp)
 
     # ── Sandbox ──────────────────────────────────────────────
 
     async def analyze_sandbox_logs(self, run_id: int) -> SandboxLog:
         """Analyze sandbox logs for an agent run."""
-        resp = await self._post(
-            f"/organizations/{self.org_id}/sandbox/{run_id}/analyze-logs"
-        )
+        resp = await self._post(f"/organizations/{self.org_id}/sandbox/{run_id}/analyze-logs")
         return SandboxLog.model_validate(resp)
 
     # ── Slack ────────────────────────────────────────────────
@@ -457,17 +451,13 @@ class CodegenClient:
 
     # ── HTTP Helpers ────────────────────────────────────────
 
-    async def _get(
-        self, path: str, *, params: dict[str, Any] | None = None
-    ) -> dict[str, Any]:
+    async def _get(self, path: str, *, params: dict[str, Any] | None = None) -> dict[str, Any]:
         resp = await self._client.get(path, params=params)
         resp.raise_for_status()
         result: dict[str, Any] = resp.json()
         return result
 
-    async def _get_raw(
-        self, path: str, *, params: dict[str, Any] | None = None
-    ) -> Any:
+    async def _get_raw(self, path: str, *, params: dict[str, Any] | None = None) -> Any:
         """GET that returns the raw JSON value (may be a list or dict)."""
         resp = await self._client.get(path, params=params)
         resp.raise_for_status()
@@ -496,9 +486,7 @@ class CodegenClient:
         resp.raise_for_status()
         return resp.json()  # type: ignore[no-any-return]
 
-    async def _patch(
-        self, path: str, *, json: dict[str, Any] | None = None
-    ) -> dict[str, Any]:
+    async def _patch(self, path: str, *, json: dict[str, Any] | None = None) -> dict[str, Any]:
         resp = await self._client.patch(path, json=json)
         resp.raise_for_status()
         result: dict[str, Any] = resp.json()

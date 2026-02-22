@@ -21,9 +21,7 @@ class TestEditPR:
 
     @respx.mock
     async def test_edit_pr_open(self, client: Client):
-        respx.patch(
-            "https://api.codegen.com/v1/organizations/42/repos/10/prs/5"
-        ).mock(
+        respx.patch("https://api.codegen.com/v1/organizations/42/repos/10/prs/5").mock(
             return_value=Response(
                 200,
                 json={
@@ -49,9 +47,7 @@ class TestEditPR:
 
     @respx.mock
     async def test_edit_pr_closed(self, client: Client):
-        respx.patch(
-            "https://api.codegen.com/v1/organizations/42/repos/20/prs/15"
-        ).mock(
+        respx.patch("https://api.codegen.com/v1/organizations/42/repos/20/prs/15").mock(
             return_value=Response(
                 200,
                 json={
@@ -74,9 +70,7 @@ class TestEditPR:
 
     @respx.mock
     async def test_edit_pr_draft(self, client: Client):
-        respx.patch(
-            "https://api.codegen.com/v1/organizations/42/repos/20/prs/16"
-        ).mock(
+        respx.patch("https://api.codegen.com/v1/organizations/42/repos/20/prs/16").mock(
             return_value=Response(
                 200,
                 json={
@@ -96,9 +90,7 @@ class TestEditPR:
 
     @respx.mock
     async def test_edit_pr_ready_for_review(self, client: Client):
-        respx.patch(
-            "https://api.codegen.com/v1/organizations/42/repos/20/prs/17"
-        ).mock(
+        respx.patch("https://api.codegen.com/v1/organizations/42/repos/20/prs/17").mock(
             return_value=Response(
                 200,
                 json={
@@ -117,9 +109,7 @@ class TestEditPR:
 
     @respx.mock
     async def test_edit_pr_with_error(self, client: Client):
-        respx.patch(
-            "https://api.codegen.com/v1/organizations/42/repos/10/prs/999"
-        ).mock(
+        respx.patch("https://api.codegen.com/v1/organizations/42/repos/10/prs/999").mock(
             return_value=Response(
                 200,
                 json={
@@ -139,9 +129,7 @@ class TestEditPR:
 
     @respx.mock
     async def test_edit_pr_omits_null_fields(self, client: Client):
-        respx.patch(
-            "https://api.codegen.com/v1/organizations/42/repos/30/prs/50"
-        ).mock(
+        respx.patch("https://api.codegen.com/v1/organizations/42/repos/30/prs/50").mock(
             return_value=Response(
                 200,
                 json={"success": True},
@@ -163,9 +151,9 @@ class TestEditPR:
 
     @respx.mock
     async def test_edit_pr_http_error(self, client: Client):
-        respx.patch(
-            "https://api.codegen.com/v1/organizations/42/repos/30/prs/51"
-        ).mock(return_value=Response(422, json={"detail": "Validation error"}))
+        respx.patch("https://api.codegen.com/v1/organizations/42/repos/30/prs/51").mock(
+            return_value=Response(422, json={"detail": "Validation error"})
+        )
 
         with pytest.raises(ToolError):
             await client.call_tool(
