@@ -40,6 +40,7 @@ from fastmcp.exceptions import ToolError
 from bridge.client import CodegenClient
 from bridge.context import ContextRegistry
 from bridge.helpers.repo_detection import RepoCache
+from bridge.monitoring import BackgroundTaskManager
 from bridge.middleware import configure_middleware
 from bridge.openapi_utils import create_openapi_provider
 from bridge.prompts import register_prompts
@@ -115,6 +116,7 @@ async def _lifespan(server: FastMCP) -> AsyncIterator[dict[str, Any]]:
     await registry.setup()
     repo_cache = RepoCache()
     sampling_config = SamplingConfig()
+    task_manager = BackgroundTaskManager()
 
     logger.info("Codegen Bridge ready")
     try:
@@ -124,6 +126,7 @@ async def _lifespan(server: FastMCP) -> AsyncIterator[dict[str, Any]]:
             "registry": registry,
             "repo_cache": repo_cache,
             "sampling_config": sampling_config,
+            "task_manager": task_manager,
         }
     finally:
         logger.info("Shutting down Codegen Bridge")

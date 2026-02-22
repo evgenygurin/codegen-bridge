@@ -1,10 +1,12 @@
-"""Agent run management tools: create, get, list, resume, stop, ban, unban, remove-from-pr, logs.
+"""Agent run management tools: create, get, list, resume, stop, ban, unban, remove-from-pr, logs,
+monitor, list_monitors.
 
 Decomposed into focused submodules by responsibility:
 - lifecycle: create, resume, stop (run lifecycle management)
 - queries: get, list (read-only status and pagination)
 - moderation: ban, unban, remove-from-pr (CI/CD check-suite management)
 - logs: get_logs (execution log retrieval)
+- monitor: monitor_run, list_monitors (background polling with progress reporting)
 
 Endpoints coverage (per Codegen API v1):
 - POST /v1/organizations/{org_id}/agent/run           — create
@@ -22,17 +24,19 @@ from __future__ import annotations
 from fastmcp import FastMCP
 
 from bridge.tools.agent._progress import CREATE_RUN_STEPS as _CREATE_RUN_STEPS
-from bridge.tools.agent._progress import CREATE_RUN_TASK, GET_LOGS_TASK
+from bridge.tools.agent._progress import CREATE_RUN_TASK, GET_LOGS_TASK, MONITOR_RUN_TASK
 from bridge.tools.agent._progress import GET_LOGS_STEPS as _GET_LOGS_STEPS
 from bridge.tools.agent._progress import report as _report
 from bridge.tools.agent.lifecycle import register_lifecycle_tools
 from bridge.tools.agent.logs import register_log_tools
 from bridge.tools.agent.moderation import register_moderation_tools
+from bridge.tools.agent.monitor import register_monitor_tools
 from bridge.tools.agent.queries import register_query_tools
 
 __all__ = [
     "CREATE_RUN_TASK",
     "GET_LOGS_TASK",
+    "MONITOR_RUN_TASK",
     "_CREATE_RUN_STEPS",
     "_GET_LOGS_STEPS",
     "_report",
@@ -46,3 +50,4 @@ def register_agent_tools(mcp: FastMCP) -> None:
     register_query_tools(mcp)
     register_moderation_tools(mcp)
     register_log_tools(mcp)
+    register_monitor_tools(mcp)
