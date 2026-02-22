@@ -55,10 +55,7 @@ def create_skills_provider(
         return None
 
     # Check that at least one skill subfolder exists
-    skill_folders = [
-        d for d in root.iterdir()
-        if d.is_dir() and (d / "SKILL.md").is_file()
-    ]
+    skill_folders = [d for d in root.iterdir() if d.is_dir() and (d / "SKILL.md").is_file()]
     if not skill_folders:
         logger.info("No skills found in: %s", root)
         return None

@@ -2,11 +2,27 @@
 
 from __future__ import annotations
 
+import httpx
 import pytest
 import respx
 from httpx import Response
 
-from bridge.client import CodegenClient
+from bridge.client import (
+    NO_RETRY,
+    AuthenticationError,
+    CodegenAPIError,
+    CodegenClient,
+    NotFoundError,
+    RateLimitError,
+    RetryConfig,
+    ServerError,
+    ValidationError,
+    _classify_error,
+    _compute_delay,
+    _extract_detail,
+    _is_retryable_exception,
+    _parse_retry_after,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -14,6 +30,9 @@ def _force_test_env(monkeypatch):
     """Ensure test env vars override real ones."""
     monkeypatch.setenv("CODEGEN_API_KEY", "test-key")
     monkeypatch.setenv("CODEGEN_ORG_ID", "42")
+
+
+# ── Client Init ────────────────────────────────────────────────
 
 
 class TestClientInit:
@@ -28,6 +47,522 @@ class TestClientInit:
     def test_raises_without_org_id(self):
         with pytest.raises(ValueError, match="org_id"):
             CodegenClient(api_key="test-key", org_id=0)
+
+    def test_uses_default_retry_config(self):
+        client = CodegenClient(api_key="test-key", org_id=42)
+        assert client._retry.max_retries == 3
+        assert client._retry.backoff_base == 0.5
+
+    def test_accepts_custom_retry_config(self):
+        cfg = RetryConfig(max_retries=5, backoff_base=1.0)
+        client = CodegenClient(api_key="test-key", org_id=42, retry=cfg)
+        assert client._retry.max_retries == 5
+        assert client._retry.backoff_base == 1.0
+
+    def test_accepts_no_retry(self):
+        client = CodegenClient(api_key="test-key", org_id=42, retry=NO_RETRY)
+        assert client._retry.max_retries == 0
+
+    def test_uses_structured_timeout(self):
+        client = CodegenClient(api_key="test-key", org_id=42)
+        timeout = client._client.timeout
+        assert timeout.connect == 5.0
+        assert timeout.read == 30.0
+        assert timeout.write == 30.0
+        assert timeout.pool == 10.0
+
+    def test_accepts_custom_timeout(self):
+        custom_timeout = httpx.Timeout(60.0)
+        client = CodegenClient(api_key="test-key", org_id=42, timeout=custom_timeout)
+        assert client._client.timeout.read == 60.0
+
+
+# ── Error Hierarchy ─────────────────────────────────────────────
+
+
+class TestErrorHierarchy:
+    """Verify custom exceptions are backward-compatible with httpx.HTTPStatusError."""
+
+    def _make_error(
+        self, status: int, body: dict | None = None
+    ) -> CodegenAPIError:
+        """Helper to build a classified error from a status code."""
+        req = httpx.Request("GET", "https://api.codegen.com/v1/test")
+        resp = httpx.Response(
+            status, request=req, json=body or {}
+        )
+        return _classify_error(
+            request=req, response=resp, detail=None, request_id="abc123"
+        )
+
+    def test_base_inherits_from_httpx_status_error(self):
+        err = self._make_error(400)
+        assert isinstance(err, httpx.HTTPStatusError)
+        assert isinstance(err, CodegenAPIError)
+
+    def test_401_is_authentication_error(self):
+        err = self._make_error(401)
+        assert isinstance(err, AuthenticationError)
+        assert isinstance(err, httpx.HTTPStatusError)
+        assert err.status_code == 401
+
+    def test_403_is_authentication_error(self):
+        err = self._make_error(403)
+        assert isinstance(err, AuthenticationError)
+        assert err.status_code == 403
+
+    def test_404_is_not_found_error(self):
+        err = self._make_error(404)
+        assert isinstance(err, NotFoundError)
+        assert err.status_code == 404
+
+    def test_422_is_validation_error(self):
+        err = self._make_error(422)
+        assert isinstance(err, ValidationError)
+        assert err.status_code == 422
+
+    def test_429_is_rate_limit_error(self):
+        req = httpx.Request("GET", "https://api.codegen.com/v1/test")
+        resp = httpx.Response(
+            429, request=req, json={}, headers={"Retry-After": "5"}
+        )
+        err = _classify_error(
+            request=req, response=resp, detail=None, request_id="abc"
+        )
+        assert isinstance(err, RateLimitError)
+        assert err.retry_after == 5.0
+
+    def test_500_is_server_error(self):
+        err = self._make_error(500)
+        assert isinstance(err, ServerError)
+        assert err.status_code == 500
+
+    def test_502_is_server_error(self):
+        err = self._make_error(502)
+        assert isinstance(err, ServerError)
+
+    def test_unknown_4xx_is_base_codegen_error(self):
+        err = self._make_error(418)
+        assert type(err) is CodegenAPIError
+        assert err.status_code == 418
+
+    def test_error_has_request_id(self):
+        err = self._make_error(500)
+        assert err.request_id == "abc123"
+
+    def test_error_str_includes_status(self):
+        err = self._make_error(500)
+        assert "500" in str(err)
+
+    def test_error_repr(self):
+        err = self._make_error(500)
+        assert "ServerError" in repr(err)
+        assert "abc123" in repr(err)
+
+
+# ── Detail Extraction ───────────────────────────────────────────
+
+
+class TestExtractDetail:
+    def test_extracts_detail_field(self):
+        resp = httpx.Response(422, json={"detail": "Invalid input"})
+        assert _extract_detail(resp) == "Invalid input"
+
+    def test_extracts_error_field(self):
+        resp = httpx.Response(500, json={"error": "Internal error"})
+        assert _extract_detail(resp) == "Internal error"
+
+    def test_extracts_message_field(self):
+        resp = httpx.Response(400, json={"message": "Bad request"})
+        assert _extract_detail(resp) == "Bad request"
+
+    def test_extracts_fastapi_validation_detail(self):
+        resp = httpx.Response(
+            422, json={"detail": [{"msg": "field required", "type": "missing"}]}
+        )
+        assert _extract_detail(resp) == "field required"
+
+    def test_extracts_first_item_from_list(self):
+        resp = httpx.Response(422, json={"detail": ["first error", "second"]})
+        assert _extract_detail(resp) == "first error"
+
+    def test_returns_none_for_non_json(self):
+        resp = httpx.Response(500, text="Server error")
+        assert _extract_detail(resp) is None
+
+    def test_returns_none_for_empty_dict(self):
+        resp = httpx.Response(400, json={})
+        assert _extract_detail(resp) is None
+
+
+# ── Retry After Parsing ─────────────────────────────────────────
+
+
+class TestParseRetryAfter:
+    def test_parses_integer(self):
+        resp = httpx.Response(429, headers={"Retry-After": "10"})
+        assert _parse_retry_after(resp) == 10.0
+
+    def test_parses_float(self):
+        resp = httpx.Response(429, headers={"Retry-After": "1.5"})
+        assert _parse_retry_after(resp) == 1.5
+
+    def test_returns_none_for_missing(self):
+        resp = httpx.Response(429)
+        assert _parse_retry_after(resp) is None
+
+    def test_returns_none_for_invalid(self):
+        resp = httpx.Response(429, headers={"Retry-After": "not-a-number"})
+        assert _parse_retry_after(resp) is None
+
+
+# ── Backoff Calculation ──────────────────────────────────────────
+
+
+class TestComputeDelay:
+    def test_exponential_backoff(self):
+        cfg = RetryConfig(backoff_base=1.0, jitter=0.0)
+        assert _compute_delay(0, cfg) == 1.0
+        assert _compute_delay(1, cfg) == 2.0
+        assert _compute_delay(2, cfg) == 4.0
+
+    def test_caps_at_backoff_max(self):
+        cfg = RetryConfig(backoff_base=1.0, backoff_max=5.0, jitter=0.0)
+        assert _compute_delay(10, cfg) == 5.0
+
+    def test_adds_jitter(self):
+        cfg = RetryConfig(backoff_base=1.0, jitter=0.5)
+        delays = {_compute_delay(0, cfg) for _ in range(100)}
+        # With jitter, we should get some variation
+        assert len(delays) > 1
+        assert all(1.0 <= d <= 1.5 for d in delays)
+
+
+# ── Retryable Exception Check ───────────────────────────────────
+
+
+class TestIsRetryableException:
+    def test_timeout_retryable_by_default(self):
+        exc = httpx.ReadTimeout("timeout")
+        assert _is_retryable_exception(exc, RetryConfig()) is True
+
+    def test_connect_error_retryable_by_default(self):
+        exc = httpx.ConnectError("refused")
+        assert _is_retryable_exception(exc, RetryConfig()) is True
+
+    def test_timeout_not_retryable_when_disabled(self):
+        exc = httpx.ReadTimeout("timeout")
+        cfg = RetryConfig(retry_on_timeout=False)
+        assert _is_retryable_exception(exc, cfg) is False
+
+    def test_connect_error_not_retryable_when_disabled(self):
+        exc = httpx.ConnectError("refused")
+        cfg = RetryConfig(retry_on_connect_error=False)
+        assert _is_retryable_exception(exc, cfg) is False
+
+    def test_generic_exception_not_retryable(self):
+        exc = ValueError("bad")
+        assert _is_retryable_exception(exc, RetryConfig()) is False
+
+
+# ── RetryConfig ─────────────────────────────────────────────────
+
+
+class TestRetryConfig:
+    def test_defaults(self):
+        cfg = RetryConfig()
+        assert cfg.max_retries == 3
+        assert cfg.backoff_base == 0.5
+        assert cfg.backoff_max == 30.0
+        assert cfg.jitter == 0.25
+        assert 429 in cfg.retryable_status_codes
+        assert 500 in cfg.retryable_status_codes
+        assert 502 in cfg.retryable_status_codes
+        assert cfg.retry_on_timeout is True
+        assert cfg.retry_on_connect_error is True
+
+    def test_is_frozen(self):
+        cfg = RetryConfig()
+        with pytest.raises(AttributeError):
+            cfg.max_retries = 5  # type: ignore[misc]
+
+    def test_no_retry_preset(self):
+        assert NO_RETRY.max_retries == 0
+
+
+# ── Retry Behavior (Integration) ────────────────────────────────
+
+
+class TestRetryBehavior:
+    """Test actual retry behavior with respx mocks."""
+
+    @respx.mock
+    async def test_retries_on_500_then_succeeds(self):
+        route = respx.get("https://api.codegen.com/v1/organizations/42/agent/run/1")
+        route.side_effect = [
+            Response(500, json={"error": "Internal server error"}),
+            Response(200, json={"id": 1, "status": "running"}),
+        ]
+
+        retry = RetryConfig(max_retries=2, backoff_base=0.01, jitter=0.0)
+        async with CodegenClient(api_key="test", org_id=42, retry=retry) as client:
+            run = await client.get_run(1)
+
+        assert run.id == 1
+        assert route.call_count == 2
+
+    @respx.mock
+    async def test_retries_on_502_then_succeeds(self):
+        route = respx.get("https://api.codegen.com/v1/organizations/42/agent/run/1")
+        route.side_effect = [
+            Response(502, json={"error": "Bad gateway"}),
+            Response(502, json={"error": "Bad gateway"}),
+            Response(200, json={"id": 1, "status": "completed"}),
+        ]
+
+        retry = RetryConfig(max_retries=3, backoff_base=0.01, jitter=0.0)
+        async with CodegenClient(api_key="test", org_id=42, retry=retry) as client:
+            run = await client.get_run(1)
+
+        assert run.status == "completed"
+        assert route.call_count == 3
+
+    @respx.mock
+    async def test_raises_after_max_retries_exhausted(self):
+        respx.get("https://api.codegen.com/v1/organizations/42/agent/run/1").mock(
+            return_value=Response(500, json={"error": "Always fails"})
+        )
+
+        retry = RetryConfig(max_retries=2, backoff_base=0.01, jitter=0.0)
+        async with CodegenClient(api_key="test", org_id=42, retry=retry) as client:
+            with pytest.raises(ServerError) as exc_info:
+                await client.get_run(1)
+
+        assert exc_info.value.status_code == 500
+        assert exc_info.value.detail == "Always fails"
+
+    @respx.mock
+    async def test_does_not_retry_on_404(self):
+        route = respx.get("https://api.codegen.com/v1/organizations/42/agent/run/999")
+        route.mock(return_value=Response(404, json={"detail": "Not found"}))
+
+        retry = RetryConfig(max_retries=3, backoff_base=0.01, jitter=0.0)
+        async with CodegenClient(api_key="test", org_id=42, retry=retry) as client:
+            with pytest.raises(NotFoundError):
+                await client.get_run(999)
+
+        # 404 is not retryable — should only be called once
+        assert route.call_count == 1
+
+    @respx.mock
+    async def test_does_not_retry_on_401(self):
+        route = respx.get("https://api.codegen.com/v1/organizations/42/agent/run/1")
+        route.mock(return_value=Response(401, json={"detail": "Unauthorized"}))
+
+        retry = RetryConfig(max_retries=3, backoff_base=0.01, jitter=0.0)
+        async with CodegenClient(api_key="test", org_id=42, retry=retry) as client:
+            with pytest.raises(AuthenticationError):
+                await client.get_run(1)
+
+        assert route.call_count == 1
+
+    @respx.mock
+    async def test_does_not_retry_on_422(self):
+        route = respx.post("https://api.codegen.com/v1/organizations/42/agent/run")
+        route.mock(return_value=Response(422, json={"detail": "Invalid input"}))
+
+        retry = RetryConfig(max_retries=3, backoff_base=0.01, jitter=0.0)
+        async with CodegenClient(api_key="test", org_id=42, retry=retry) as client:
+            with pytest.raises(ValidationError):
+                await client.create_run("test")
+
+        assert route.call_count == 1
+
+    @respx.mock
+    async def test_retries_on_429_with_retry_after(self):
+        route = respx.get("https://api.codegen.com/v1/organizations/42/agent/run/1")
+        route.side_effect = [
+            Response(429, json={}, headers={"Retry-After": "0.01"}),
+            Response(200, json={"id": 1, "status": "running"}),
+        ]
+
+        retry = RetryConfig(max_retries=2, backoff_base=0.01, jitter=0.0)
+        async with CodegenClient(api_key="test", org_id=42, retry=retry) as client:
+            run = await client.get_run(1)
+
+        assert run.id == 1
+        assert route.call_count == 2
+
+    @respx.mock
+    async def test_no_retry_when_disabled(self):
+        route = respx.get("https://api.codegen.com/v1/organizations/42/agent/run/1")
+        route.mock(return_value=Response(500, json={"error": "Fail"}))
+
+        async with CodegenClient(api_key="test", org_id=42, retry=NO_RETRY) as client:
+            with pytest.raises(ServerError):
+                await client.get_run(1)
+
+        assert route.call_count == 1
+
+    @respx.mock
+    async def test_retries_on_timeout_exception(self):
+        route = respx.get("https://api.codegen.com/v1/organizations/42/agent/run/1")
+        route.side_effect = [
+            httpx.ReadTimeout("read timeout"),
+            Response(200, json={"id": 1, "status": "running"}),
+        ]
+
+        retry = RetryConfig(max_retries=2, backoff_base=0.01, jitter=0.0)
+        async with CodegenClient(api_key="test", org_id=42, retry=retry) as client:
+            run = await client.get_run(1)
+
+        assert run.id == 1
+        assert route.call_count == 2
+
+    @respx.mock
+    async def test_raises_timeout_after_exhausted_retries(self):
+        respx.get("https://api.codegen.com/v1/organizations/42/agent/run/1").mock(
+            side_effect=httpx.ReadTimeout("always times out")
+        )
+
+        retry = RetryConfig(max_retries=1, backoff_base=0.01, jitter=0.0)
+        async with CodegenClient(api_key="test", org_id=42, retry=retry) as client:
+            with pytest.raises(httpx.ReadTimeout):
+                await client.get_run(1)
+
+    @respx.mock
+    async def test_retries_on_connect_error(self):
+        route = respx.get("https://api.codegen.com/v1/organizations/42/agent/run/1")
+        route.side_effect = [
+            httpx.ConnectError("Connection refused"),
+            Response(200, json={"id": 1, "status": "running"}),
+        ]
+
+        retry = RetryConfig(max_retries=2, backoff_base=0.01, jitter=0.0)
+        async with CodegenClient(api_key="test", org_id=42, retry=retry) as client:
+            run = await client.get_run(1)
+
+        assert run.id == 1
+        assert route.call_count == 2
+
+
+# ── Error Normalization in API Methods ───────────────────────────
+
+
+class TestErrorNormalization:
+    """Test that API methods raise normalized errors."""
+
+    @respx.mock
+    async def test_get_run_raises_not_found(self):
+        respx.get("https://api.codegen.com/v1/organizations/42/agent/run/999").mock(
+            return_value=Response(404, json={"detail": "Run not found"})
+        )
+
+        async with CodegenClient(api_key="test", org_id=42, retry=NO_RETRY) as client:
+            with pytest.raises(NotFoundError) as exc_info:
+                await client.get_run(999)
+
+        assert exc_info.value.detail == "Run not found"
+        assert exc_info.value.status_code == 404
+        assert exc_info.value.request_id is not None
+
+    @respx.mock
+    async def test_create_run_raises_validation_error(self):
+        respx.post("https://api.codegen.com/v1/organizations/42/agent/run").mock(
+            return_value=Response(422, json={"detail": "prompt is required"})
+        )
+
+        async with CodegenClient(api_key="test", org_id=42, retry=NO_RETRY) as client:
+            with pytest.raises(ValidationError) as exc_info:
+                await client.create_run("test")
+
+        assert exc_info.value.status_code == 422
+
+    @respx.mock
+    async def test_list_runs_raises_auth_error(self):
+        respx.get("https://api.codegen.com/v1/organizations/42/agent/runs").mock(
+            return_value=Response(401, json={"detail": "Invalid token"})
+        )
+
+        async with CodegenClient(api_key="test", org_id=42, retry=NO_RETRY) as client:
+            with pytest.raises(AuthenticationError):
+                await client.list_runs()
+
+    @respx.mock
+    async def test_server_error_preserves_response(self):
+        respx.get("https://api.codegen.com/v1/organizations/42/agent/run/1").mock(
+            return_value=Response(503, json={"error": "Service unavailable"})
+        )
+
+        async with CodegenClient(api_key="test", org_id=42, retry=NO_RETRY) as client:
+            with pytest.raises(ServerError) as exc_info:
+                await client.get_run(1)
+
+        # The response object is preserved for inspection
+        assert exc_info.value.response.status_code == 503
+        assert exc_info.value.detail == "Service unavailable"
+
+
+# ── Request ID Tracking ──────────────────────────────────────────
+
+
+class TestRequestIdTracking:
+    @respx.mock
+    async def test_sends_request_id_header(self):
+        route = respx.get("https://api.codegen.com/v1/organizations/42/agent/run/1").mock(
+            return_value=Response(200, json={"id": 1, "status": "running"})
+        )
+
+        async with CodegenClient(api_key="test", org_id=42, retry=NO_RETRY) as client:
+            await client.get_run(1)
+
+        assert route.called
+        request_id = route.calls[0].request.headers.get("x-request-id")
+        assert request_id is not None
+        assert len(request_id) == 12  # uuid hex[:12]
+
+    @respx.mock
+    async def test_error_includes_request_id(self):
+        respx.get("https://api.codegen.com/v1/organizations/42/agent/run/999").mock(
+            return_value=Response(404, json={"detail": "Not found"})
+        )
+
+        async with CodegenClient(api_key="test", org_id=42, retry=NO_RETRY) as client:
+            with pytest.raises(NotFoundError) as exc_info:
+                await client.get_run(999)
+
+        assert exc_info.value.request_id is not None
+        assert len(exc_info.value.request_id) == 12
+
+
+# ── Backward Compatibility ──────────────────────────────────────
+
+
+class TestBackwardCompatibility:
+    """Verify errors can still be caught with httpx.HTTPStatusError."""
+
+    @respx.mock
+    async def test_codegen_error_caught_as_httpx_status_error(self):
+        respx.get("https://api.codegen.com/v1/organizations/42/agent/run/1").mock(
+            return_value=Response(500, json={"error": "Internal"})
+        )
+
+        async with CodegenClient(api_key="test", org_id=42, retry=NO_RETRY) as client:
+            with pytest.raises(httpx.HTTPStatusError):
+                await client.get_run(1)
+
+    @respx.mock
+    async def test_not_found_caught_as_httpx_status_error(self):
+        respx.get("https://api.codegen.com/v1/organizations/42/agent/run/999").mock(
+            return_value=Response(404, json={"detail": "Not found"})
+        )
+
+        async with CodegenClient(api_key="test", org_id=42, retry=NO_RETRY) as client:
+            with pytest.raises(httpx.HTTPStatusError):
+                await client.get_run(999)
+
+
+# ── Original API Method Tests (preserved) ────────────────────────
 
 
 class TestCreateRun:
@@ -165,9 +700,9 @@ class TestUnbanRun:
 class TestRemoveFromPr:
     @respx.mock
     async def test_removes_from_pr(self):
-        respx.post(
-            "https://api.codegen.com/v1/organizations/42/agent/run/remove-from-pr"
-        ).mock(return_value=Response(200, json={"message": "Removed"}))
+        respx.post("https://api.codegen.com/v1/organizations/42/agent/run/remove-from-pr").mock(
+            return_value=Response(200, json={"message": "Removed"})
+        )
 
         async with CodegenClient(api_key="test", org_id=42) as client:
             result = await client.remove_from_pr(1)
@@ -368,9 +903,21 @@ class TestRevokeOAuth:
             return_value=Response(422, json={"detail": "Invalid provider"})
         )
 
-        async with CodegenClient(api_key="test", org_id=42) as client:
+        async with CodegenClient(api_key="test", org_id=42, retry=NO_RETRY) as client:
             with pytest.raises(_httpx.HTTPStatusError):
                 await client.revoke_oauth("nonexistent")
+
+    @respx.mock
+    async def test_raises_validation_error_on_422(self):
+        respx.post("https://api.codegen.com/v1/oauth/tokens/revoke").mock(
+            return_value=Response(422, json={"detail": "Invalid provider"})
+        )
+
+        async with CodegenClient(api_key="test", org_id=42, retry=NO_RETRY) as client:
+            with pytest.raises(ValidationError) as exc_info:
+                await client.revoke_oauth("nonexistent")
+
+        assert exc_info.value.detail == "Invalid provider"
 
 
 class TestGetRules:
@@ -448,9 +995,9 @@ class TestWebhookConfig:
 
     @respx.mock
     async def test_sets_webhook_config(self):
-        route = respx.post(
-            "https://api.codegen.com/v1/organizations/42/webhooks/agent-run"
-        ).mock(return_value=Response(200, json={"status": "ok"}))
+        route = respx.post("https://api.codegen.com/v1/organizations/42/webhooks/agent-run").mock(
+            return_value=Response(200, json={"status": "ok"})
+        )
 
         async with CodegenClient(api_key="test", org_id=42) as client:
             result = await client.set_webhook_config(
@@ -464,9 +1011,9 @@ class TestWebhookConfig:
 
     @respx.mock
     async def test_deletes_webhook_config(self):
-        respx.delete(
-            "https://api.codegen.com/v1/organizations/42/webhooks/agent-run"
-        ).mock(return_value=Response(200, json={"status": "deleted"}))
+        respx.delete("https://api.codegen.com/v1/organizations/42/webhooks/agent-run").mock(
+            return_value=Response(200, json={"status": "deleted"})
+        )
 
         async with CodegenClient(api_key="test", org_id=42) as client:
             result = await client.delete_webhook_config()
@@ -512,9 +1059,7 @@ class TestGenerateSetupCommands:
 
     @respx.mock
     async def test_generates_setup_commands_minimal(self):
-        respx.post(
-            "https://api.codegen.com/v1/organizations/42/setup-commands/generate"
-        ).mock(
+        respx.post("https://api.codegen.com/v1/organizations/42/setup-commands/generate").mock(
             return_value=Response(
                 200,
                 json={
@@ -534,9 +1079,7 @@ class TestGenerateSetupCommands:
 class TestAnalyzeSandboxLogs:
     @respx.mock
     async def test_analyzes_sandbox_logs(self):
-        respx.post(
-            "https://api.codegen.com/v1/organizations/42/sandbox/55/analyze-logs"
-        ).mock(
+        respx.post("https://api.codegen.com/v1/organizations/42/sandbox/55/analyze-logs").mock(
             return_value=Response(
                 200,
                 json={
@@ -558,9 +1101,7 @@ class TestAnalyzeSandboxLogs:
 class TestGetCheckSuiteSettings:
     @respx.mock
     async def test_gets_check_suite_settings(self):
-        respx.get(
-            "https://api.codegen.com/v1/organizations/42/repos/check-suite-settings"
-        ).mock(
+        respx.get("https://api.codegen.com/v1/organizations/42/repos/check-suite-settings").mock(
             return_value=Response(
                 200,
                 json={
@@ -644,9 +1185,7 @@ class TestUpdateCheckSuiteSettings:
 class TestGenerateSlackConnectToken:
     @respx.mock
     async def test_generates_slack_token(self):
-        route = respx.post(
-            "https://api.codegen.com/v1/slack-connect/generate-token"
-        ).mock(
+        route = respx.post("https://api.codegen.com/v1/slack-connect/generate-token").mock(
             return_value=Response(
                 200,
                 json={

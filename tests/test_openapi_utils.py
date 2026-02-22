@@ -152,65 +152,49 @@ class TestBuildRouteMaps:
         maps = build_route_maps()
         patterns = [m.pattern for m in maps if m.pattern is not None]
         path = "/v1/organizations/42/users"
-        assert any(
-            re.search(p, path) for p in patterns
-        ), f"No route matched {path}"
+        assert any(re.search(p, path) for p in patterns), f"No route matched {path}"
 
     def test_user_route_matches_user_by_id(self):
         maps = build_route_maps()
         patterns = [m.pattern for m in maps if m.pattern is not None]
         path = "/v1/organizations/42/users/123"
-        assert any(
-            re.search(p, path) for p in patterns
-        ), f"No route matched {path}"
+        assert any(re.search(p, path) for p in patterns), f"No route matched {path}"
 
     def test_user_me_route_matches(self):
         maps = build_route_maps()
         patterns = [m.pattern for m in maps if m.pattern is not None]
         path = "/v1/users/me"
-        assert any(
-            re.search(p, path) for p in patterns
-        ), f"No route matched {path}"
+        assert any(re.search(p, path) for p in patterns), f"No route matched {path}"
 
     def test_sandbox_route_matches(self):
         maps = build_route_maps()
         patterns = [m.pattern for m in maps if m.pattern is not None]
         path = "/v1/organizations/42/sandbox/abc123/analyze-logs"
-        assert any(
-            re.search(p, path) for p in patterns
-        ), f"No route matched {path}"
+        assert any(re.search(p, path) for p in patterns), f"No route matched {path}"
 
     def test_setup_commands_route_matches(self):
         maps = build_route_maps()
         patterns = [m.pattern for m in maps if m.pattern is not None]
         path = "/v1/organizations/42/setup-commands/generate"
-        assert any(
-            re.search(p, path) for p in patterns
-        ), f"No route matched {path}"
+        assert any(re.search(p, path) for p in patterns), f"No route matched {path}"
 
     def test_slack_route_matches(self):
         maps = build_route_maps()
         patterns = [m.pattern for m in maps if m.pattern is not None]
         path = "/v1/slack-connect/generate-token"
-        assert any(
-            re.search(p, path) for p in patterns
-        ), f"No route matched {path}"
+        assert any(re.search(p, path) for p in patterns), f"No route matched {path}"
 
     def test_oauth_routes_match(self):
         maps = build_route_maps()
         patterns = [m.pattern for m in maps if m.pattern is not None]
         for path in ["/v1/oauth/tokens/revoke", "/v1/oauth/tokens/status"]:
-            assert any(
-                re.search(p, path) for p in patterns
-            ), f"No route matched {path}"
+            assert any(re.search(p, path) for p in patterns), f"No route matched {path}"
 
     def test_mcp_providers_route_matches(self):
         maps = build_route_maps()
         patterns = [m.pattern for m in maps if m.pattern is not None]
         path = "/v1/mcp-providers"
-        assert any(
-            re.search(p, path) for p in patterns
-        ), f"No route matched {path}"
+        assert any(re.search(p, path) for p in patterns), f"No route matched {path}"
 
 
 class TestToolNames:
@@ -280,9 +264,7 @@ class TestToolNames:
                     spec_op_ids.add(method_data["operationId"])
 
         for op_id in TOOL_NAMES:
-            assert op_id in spec_op_ids, (
-                f"operationId not found in spec: {op_id}"
-            )
+            assert op_id in spec_op_ids, f"operationId not found in spec: {op_id}"
 
 
 class TestClassifyRoute:
@@ -405,6 +387,7 @@ class TestCreateOpenApiProvider:
 
     def test_creates_provider_with_validate_output(self):
         import httpx
+
         client = httpx.AsyncClient(base_url="https://api.example.com")
         try:
             provider = create_openapi_provider(client, 42, validate_output=True)
@@ -415,6 +398,7 @@ class TestCreateOpenApiProvider:
 
     def test_creates_provider_without_validate_output(self):
         import httpx
+
         client = httpx.AsyncClient(base_url="https://api.example.com")
         try:
             provider = create_openapi_provider(client, 42, validate_output=False)
@@ -424,6 +408,7 @@ class TestCreateOpenApiProvider:
 
     def test_default_validate_output_is_true(self):
         import httpx
+
         client = httpx.AsyncClient(base_url="https://api.example.com")
         try:
             provider = create_openapi_provider(client, 42)

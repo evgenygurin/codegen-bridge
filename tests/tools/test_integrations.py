@@ -69,9 +69,7 @@ class TestGetWebhookConfig:
 
     @respx.mock
     async def test_returns_webhook_config(self, client: Client):
-        respx.get(
-            "https://api.codegen.com/v1/organizations/42/webhooks/agent-run"
-        ).mock(
+        respx.get("https://api.codegen.com/v1/organizations/42/webhooks/agent-run").mock(
             return_value=Response(
                 200,
                 json={"url": "https://example.com/hook", "enabled": True, "has_secret": True},
@@ -93,9 +91,9 @@ class TestSetWebhookConfig:
 
     @respx.mock
     async def test_sets_webhook_config(self, client: Client):
-        respx.post(
-            "https://api.codegen.com/v1/organizations/42/webhooks/agent-run"
-        ).mock(return_value=Response(200, json={"status": "ok"}))
+        respx.post("https://api.codegen.com/v1/organizations/42/webhooks/agent-run").mock(
+            return_value=Response(200, json={"status": "ok"})
+        )
 
         result = await client.call_tool(
             "codegen_set_webhook_config",
@@ -113,9 +111,9 @@ class TestDeleteWebhookConfig:
 
     @respx.mock
     async def test_deletes_webhook_config(self, client: Client):
-        respx.delete(
-            "https://api.codegen.com/v1/organizations/42/webhooks/agent-run"
-        ).mock(return_value=Response(200, json={"status": "deleted"}))
+        respx.delete("https://api.codegen.com/v1/organizations/42/webhooks/agent-run").mock(
+            return_value=Response(200, json={"status": "deleted"})
+        )
 
         result = await client.call_tool(
             "codegen_delete_webhook_config",
@@ -133,9 +131,9 @@ class TestTestWebhook:
 
     @respx.mock
     async def test_sends_test_webhook(self, client: Client):
-        respx.post(
-            "https://api.codegen.com/v1/organizations/42/webhooks/agent-run/test"
-        ).mock(return_value=Response(200, json={"status": "sent"}))
+        respx.post("https://api.codegen.com/v1/organizations/42/webhooks/agent-run/test").mock(
+            return_value=Response(200, json={"status": "sent"})
+        )
 
         result = await client.call_tool(
             "codegen_test_webhook",
@@ -156,9 +154,7 @@ class TestAnalyzeSandboxLogs:
 
     @respx.mock
     async def test_analyzes_sandbox_logs(self, client: Client):
-        respx.post(
-            "https://api.codegen.com/v1/organizations/42/sandbox/55/analyze-logs"
-        ).mock(
+        respx.post("https://api.codegen.com/v1/organizations/42/sandbox/55/analyze-logs").mock(
             return_value=Response(
                 200,
                 json={

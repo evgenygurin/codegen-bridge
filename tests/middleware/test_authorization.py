@@ -27,9 +27,7 @@ from bridge.middleware.authorization import (
 # ── Helpers ─────────────────────────────────────────────
 
 
-def _make_context(
-    tool_name: str, tool_tags: set[str] | None = None
-) -> MagicMock:
+def _make_context(tool_name: str, tool_tags: set[str] | None = None) -> MagicMock:
     """Create a minimal MiddlewareContext mock for on_call_tool."""
     ctx = MagicMock()
     ctx.message.name = tool_name
@@ -134,9 +132,7 @@ class TestIsDangerous:
     """Tests for DangerousToolGuardMiddleware.is_dangerous()."""
 
     def setup_method(self):
-        self.mw = DangerousToolGuardMiddleware(
-            config=AuthorizationConfig(allow_dangerous=False)
-        )
+        self.mw = DangerousToolGuardMiddleware(config=AuthorizationConfig(allow_dangerous=False))
 
     def test_dangerous_by_name_stop_run(self):
         assert self.mw.is_dangerous("codegen_stop_run") is True
@@ -186,9 +182,7 @@ class TestOnCallTool:
 
     async def test_blocks_dangerous_tool_when_denied(self):
         """Dangerous tool call should raise ToolError when not allowed."""
-        mw = DangerousToolGuardMiddleware(
-            config=AuthorizationConfig(allow_dangerous=False)
-        )
+        mw = DangerousToolGuardMiddleware(config=AuthorizationConfig(allow_dangerous=False))
         ctx = _make_context("codegen_stop_run")
         call_next = AsyncMock(return_value="result")
 
@@ -202,9 +196,7 @@ class TestOnCallTool:
 
     async def test_allows_dangerous_tool_when_permitted(self):
         """Dangerous tool call should proceed when allowed."""
-        mw = DangerousToolGuardMiddleware(
-            config=AuthorizationConfig(allow_dangerous=True)
-        )
+        mw = DangerousToolGuardMiddleware(config=AuthorizationConfig(allow_dangerous=True))
         ctx = _make_context("codegen_stop_run")
         call_next = AsyncMock(return_value="result")
 
@@ -214,9 +206,7 @@ class TestOnCallTool:
 
     async def test_allows_safe_tool_always(self):
         """Safe tool call should always proceed regardless of config."""
-        mw = DangerousToolGuardMiddleware(
-            config=AuthorizationConfig(allow_dangerous=False)
-        )
+        mw = DangerousToolGuardMiddleware(config=AuthorizationConfig(allow_dangerous=False))
         ctx = _make_context("codegen_list_runs")
         call_next = AsyncMock(return_value="safe_result")
 
@@ -225,9 +215,7 @@ class TestOnCallTool:
         call_next.assert_called_once()
 
     async def test_blocks_edit_pr(self):
-        mw = DangerousToolGuardMiddleware(
-            config=AuthorizationConfig(allow_dangerous=False)
-        )
+        mw = DangerousToolGuardMiddleware(config=AuthorizationConfig(allow_dangerous=False))
         ctx = _make_context("codegen_edit_pr")
         call_next = AsyncMock()
 
@@ -237,9 +225,7 @@ class TestOnCallTool:
             await mw.on_call_tool(ctx, call_next)
 
     async def test_blocks_delete_webhook(self):
-        mw = DangerousToolGuardMiddleware(
-            config=AuthorizationConfig(allow_dangerous=False)
-        )
+        mw = DangerousToolGuardMiddleware(config=AuthorizationConfig(allow_dangerous=False))
         ctx = _make_context("codegen_delete_webhook")
         call_next = AsyncMock()
 
@@ -262,9 +248,7 @@ class TestOnCallTool:
 
     async def test_error_message_includes_env_var_hint(self):
         """Error message should tell the user how to enable dangerous tools."""
-        mw = DangerousToolGuardMiddleware(
-            config=AuthorizationConfig(allow_dangerous=False)
-        )
+        mw = DangerousToolGuardMiddleware(config=AuthorizationConfig(allow_dangerous=False))
         ctx = _make_context("codegen_stop_run")
         call_next = AsyncMock()
 
@@ -282,9 +266,7 @@ class TestOnListTools:
 
     async def test_annotates_blocked_tools(self):
         """Blocked dangerous tools should have [RESTRICTED] prefix."""
-        mw = DangerousToolGuardMiddleware(
-            config=AuthorizationConfig(allow_dangerous=False)
-        )
+        mw = DangerousToolGuardMiddleware(config=AuthorizationConfig(allow_dangerous=False))
         tools = [
             FakeTool(name="codegen_stop_run", tags={"dangerous"}, description="Stop a run"),
             FakeTool(name="codegen_list_runs", tags={"execution"}, description="List runs"),
@@ -303,9 +285,7 @@ class TestOnListTools:
 
     async def test_no_annotation_when_allowed(self):
         """Allowed dangerous tools should NOT have [RESTRICTED] prefix."""
-        mw = DangerousToolGuardMiddleware(
-            config=AuthorizationConfig(allow_dangerous=True)
-        )
+        mw = DangerousToolGuardMiddleware(config=AuthorizationConfig(allow_dangerous=True))
         tools = [
             FakeTool(name="codegen_stop_run", tags={"dangerous"}, description="Stop a run"),
         ]
@@ -334,9 +314,7 @@ class TestOnListTools:
 
     async def test_annotates_tool_identified_by_name_only(self):
         """Tool with no tags but matching name should still be annotated."""
-        mw = DangerousToolGuardMiddleware(
-            config=AuthorizationConfig(allow_dangerous=False)
-        )
+        mw = DangerousToolGuardMiddleware(config=AuthorizationConfig(allow_dangerous=False))
         tools = [
             FakeTool(name="codegen_edit_pr", tags=set(), description="Edit PR"),
         ]

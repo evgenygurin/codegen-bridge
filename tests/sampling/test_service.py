@@ -253,4 +253,4 @@ class TestSamplingServiceDefaultConfig:
         call_kwargs = ctx.sample.call_args.kwargs
         # Should use SamplingConfig defaults
         assert call_kwargs["temperature"] == 0.2  # summary_temperature default
-        assert call_kwargs["max_tokens"] == 512   # summary_max_tokens default
+        assert call_kwargs["max_tokens"] == 512  # summary_max_tokens default

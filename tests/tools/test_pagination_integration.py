@@ -67,9 +67,7 @@ class TestListRunsPagination:
             )
         )
 
-        result = await client.call_tool(
-            "codegen_list_runs", {"limit": 2, "cursor": cursor}
-        )
+        result = await client.call_tool("codegen_list_runs", {"limit": 2, "cursor": cursor})
         data = json.loads(result.data)
         assert len(data["runs"]) == 1
         # Last page → no next_cursor
@@ -167,9 +165,7 @@ class TestListReposPagination:
             )
         )
 
-        result = await client.call_tool(
-            "codegen_list_repos", {"limit": 2, "cursor": cursor}
-        )
+        result = await client.call_tool("codegen_list_repos", {"limit": 2, "cursor": cursor})
         data = json.loads(result.data)
         assert data["next_cursor"] is None  # Last page
 
@@ -182,9 +178,7 @@ class TestListReposPagination:
             assert "skip=0" in str(request.url)
             return Response(200, json={"items": [], "total": 0})
 
-        respx.get("https://api.codegen.com/v1/organizations/42/repos").mock(
-            side_effect=handler
-        )
+        respx.get("https://api.codegen.com/v1/organizations/42/repos").mock(side_effect=handler)
 
         # Use a unique limit to avoid cache collisions with other tests
         result = await client.call_tool("codegen_list_repos", {"limit": 7})
@@ -205,18 +199,13 @@ class TestGetLogsPagination:
                 json={
                     "id": 99,
                     "status": "running",
-                    "logs": [
-                        {"agent_run_id": 99, "thought": f"Step {i}"}
-                        for i in range(3)
-                    ],
+                    "logs": [{"agent_run_id": 99, "thought": f"Step {i}"} for i in range(3)],
                     "total_logs": 10,
                 },
             )
         )
 
-        result = await client.call_tool(
-            "codegen_get_logs", {"run_id": 99, "limit": 3}
-        )
+        result = await client.call_tool("codegen_get_logs", {"run_id": 99, "limit": 3})
         data = json.loads(result.data)
         assert len(data["logs"]) == 3
         assert data["total_logs"] == 10
@@ -234,9 +223,7 @@ class TestGetLogsPagination:
                 json={
                     "id": 99,
                     "status": "completed",
-                    "logs": [
-                        {"agent_run_id": 99, "thought": "Final step"}
-                    ],
+                    "logs": [{"agent_run_id": 99, "thought": "Final step"}],
                     "total_logs": 7,
                 },
             )
@@ -265,9 +252,9 @@ class TestGetLogsPagination:
                 },
             )
 
-        respx.get(
-            "https://api.codegen.com/v1/alpha/organizations/42/agent/run/99/logs"
-        ).mock(side_effect=handler)
+        respx.get("https://api.codegen.com/v1/alpha/organizations/42/agent/run/99/logs").mock(
+            side_effect=handler
+        )
 
         # Use a unique limit to avoid cache collisions with other tests
         result = await client.call_tool("codegen_get_logs", {"run_id": 99, "limit": 7})

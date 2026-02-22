@@ -57,11 +57,13 @@ class TestPluginSettings:
         }
 
     def test_model_validate_from_dict(self):
-        s = PluginSettings.model_validate({
-            "default_model": "gpt-4",
-            "auto_monitor": False,
-            "poll_interval": 45,
-        })
+        s = PluginSettings.model_validate(
+            {
+                "default_model": "gpt-4",
+                "auto_monitor": False,
+                "poll_interval": 45,
+            }
+        )
         assert s.default_model == "gpt-4"
         assert s.auto_monitor is False
         assert s.poll_interval == 45
@@ -85,11 +87,15 @@ class TestPluginSettings:
 class TestLoadSettings:
     def test_loads_from_file(self, tmp_path):
         settings_file = tmp_path / "settings.json"
-        settings_file.write_text(json.dumps({
-            "default_model": "claude-sonnet",
-            "auto_monitor": False,
-            "poll_interval": 60,
-        }))
+        settings_file.write_text(
+            json.dumps(
+                {
+                    "default_model": "claude-sonnet",
+                    "auto_monitor": False,
+                    "poll_interval": 60,
+                }
+            )
+        )
         result = load_settings(settings_file)
         assert result.default_model == "claude-sonnet"
         assert result.auto_monitor is False
@@ -198,11 +204,15 @@ class TestSaveSettings:
 class TestUpdateSettings:
     def test_updates_single_field(self, tmp_path):
         settings_file = tmp_path / "settings.json"
-        settings_file.write_text(json.dumps({
-            "default_model": None,
-            "auto_monitor": True,
-            "poll_interval": 30,
-        }))
+        settings_file.write_text(
+            json.dumps(
+                {
+                    "default_model": None,
+                    "auto_monitor": True,
+                    "poll_interval": 30,
+                }
+            )
+        )
 
         result = update_settings({"poll_interval": 60}, settings_file)
         assert result.poll_interval == 60
@@ -214,11 +224,15 @@ class TestUpdateSettings:
 
     def test_updates_multiple_fields(self, tmp_path):
         settings_file = tmp_path / "settings.json"
-        settings_file.write_text(json.dumps({
-            "default_model": None,
-            "auto_monitor": True,
-            "poll_interval": 30,
-        }))
+        settings_file.write_text(
+            json.dumps(
+                {
+                    "default_model": None,
+                    "auto_monitor": True,
+                    "poll_interval": 30,
+                }
+            )
+        )
 
         result = update_settings(
             {"default_model": "claude-sonnet", "auto_monitor": False},

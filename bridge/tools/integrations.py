@@ -191,8 +191,7 @@ def register_integration_tools(mcp: FastMCP) -> None:
         await ctx.info(f"Analyzing sandbox logs: sandbox_id={sandbox_id}")
         result = await client.analyze_sandbox_logs(sandbox_id)
         await ctx.info(
-            f"Sandbox analysis started: agent_run_id={result.agent_run_id}, "
-            f"status={result.status}"
+            f"Sandbox analysis started: agent_run_id={result.agent_run_id}, status={result.status}"
         )
         return json.dumps(
             {
@@ -217,9 +216,7 @@ def register_integration_tools(mcp: FastMCP) -> None:
         """
         await ctx.info("Generating Slack connect token")
         result = await client.generate_slack_connect_token()
-        await ctx.info(
-            f"Slack token generated, expires in {result.expires_in_minutes} minutes"
-        )
+        await ctx.info(f"Slack token generated, expires in {result.expires_in_minutes} minutes")
         return json.dumps(
             {
                 "token": result.token,

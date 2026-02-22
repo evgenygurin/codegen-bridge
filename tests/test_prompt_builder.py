@@ -263,9 +263,7 @@ class TestBuildIntegrationHints:
         assert "linked channels" in result
 
     def test_multiple_integrations(self):
-        result = build_integration_hints(
-            {"github": True, "linear": True, "slack": False}
-        )
+        result = build_integration_hints({"github": True, "linear": True, "slack": False})
         assert "GitHub" in result
         assert "Linear" in result
         # Slack is disabled, should not appear with hint text
@@ -277,9 +275,7 @@ class TestBuildIntegrationHints:
         assert "connected and available" in result
 
     def test_sorted_order(self):
-        result = build_integration_hints(
-            {"slack": True, "github": True, "linear": True}
-        )
+        result = build_integration_hints({"slack": True, "github": True, "linear": True})
         github_pos = result.index("GitHub")
         linear_pos = result.index("Linear")
         slack_pos = result.index("Slack")

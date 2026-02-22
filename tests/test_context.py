@@ -136,9 +136,7 @@ class TestContextRegistry:
         await registry.start_execution(
             execution_id="upd", mode="plan", goal="Test", tasks=[("T1", "Do stuff")]
         )
-        await registry.update_task(
-            execution_id="upd", task_index=0, status="running", run_id=99
-        )
+        await registry.update_task(execution_id="upd", task_index=0, status="running", run_id=99)
         ctx = await registry.get("upd")
         assert ctx.tasks[0].status == "running"
         assert ctx.tasks[0].run_id == 99
@@ -152,9 +150,7 @@ class TestContextRegistry:
         storage = MemoryStorage()
         reg1 = ContextRegistry(storage=storage)
         await reg1.setup()
-        await reg1.start_execution(
-            execution_id="store-load", mode="adhoc", goal="Persist me"
-        )
+        await reg1.start_execution(execution_id="store-load", mode="adhoc", goal="Persist me")
 
         # New registry instance sharing the same storage (empty cache)
         reg2 = ContextRegistry(storage=storage)

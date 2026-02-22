@@ -162,8 +162,7 @@ def register_agent_tools(mcp: FastMCP) -> None:
             available_models = ["claude-3-5-sonnet", "claude-3-5-haiku", "gpt-4o", "o3"]
             selected = await select_choice(
                 ctx,
-                "Choose a model for this agent run "
-                "(or decline to use the organization default):",
+                "Choose a model for this agent run (or decline to use the organization default):",
                 available_models,
             )
             if selected is not None:
@@ -173,8 +172,7 @@ def register_agent_tools(mcp: FastMCP) -> None:
         if not confirmed:
             user_confirmed = await confirm_action(
                 ctx,
-                f"Create agent run on repo_id={repo_id} "
-                f"with model={model or 'org default'}?",
+                f"Create agent run on repo_id={repo_id} with model={model or 'org default'}?",
             )
             if not user_confirmed:
                 return json.dumps(
@@ -351,9 +349,7 @@ def register_agent_tools(mcp: FastMCP) -> None:
                 field.  Omit or pass ``null`` for the first page.
         """
         offset = cursor_to_offset(cursor)
-        await ctx.info(
-            f"Listing runs: limit={limit}, offset={offset}, source_type={source_type}"
-        )
+        await ctx.info(f"Listing runs: limit={limit}, offset={offset}, source_type={source_type}")
         page = await client.list_runs(
             skip=offset, limit=limit, source_type=source_type, user_id=user_id
         )
@@ -423,8 +419,7 @@ def register_agent_tools(mcp: FastMCP) -> None:
         if not confirmed:
             user_confirmed = await confirm_action(
                 ctx,
-                f"Are you sure you want to stop agent run {run_id}? "
-                "This action cannot be undone.",
+                f"Are you sure you want to stop agent run {run_id}? This action cannot be undone.",
             )
             if not user_confirmed:
                 return json.dumps(

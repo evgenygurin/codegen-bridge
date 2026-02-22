@@ -115,11 +115,13 @@ def register_sampling_tools(mcp: FastMCP) -> None:
         summary = await service.summarise_execution(exec_ctx.model_dump_json(indent=2))
 
         await ctx.info(f"Sampling: execution summary generated ({len(summary)} chars)")
-        return json.dumps({
-            "execution_id": exec_ctx.id,
-            "status": exec_ctx.status,
-            "ai_summary": summary,
-        })
+        return json.dumps(
+            {
+                "execution_id": exec_ctx.id,
+                "status": exec_ctx.status,
+                "ai_summary": summary,
+            }
+        )
 
     @mcp.tool(tags={"sampling", "context"}, icons=ICON_SAMPLING_PROMPT)
     async def codegen_generate_task_prompt(
@@ -217,8 +219,10 @@ def register_sampling_tools(mcp: FastMCP) -> None:
         analysis = await service.analyse_logs(log_dicts)
 
         await ctx.info(f"Sampling: log analysis generated ({len(analysis)} chars)")
-        return json.dumps({
-            "run_id": run_id,
-            "logs_analysed": len(log_dicts),
-            "ai_analysis": analysis,
-        })
+        return json.dumps(
+            {
+                "run_id": run_id,
+                "logs_analysed": len(log_dicts),
+                "ai_analysis": analysis,
+            }
+        )

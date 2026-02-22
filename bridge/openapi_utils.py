@@ -52,16 +52,12 @@ TOOL_NAMES: dict[str, str] = {
     "get_user_v1_organizations__org_id__users__user_id__get": "codegen_get_user",
     "get_current_user_info_v1_users_me_get": "codegen_get_current_user",
     # ── PR management ──────────────────────────────────────────────────
-    "edit_pull_request_simple_v1_organizations__org_id__prs__pr_id__patch": (
-        "codegen_edit_pr"
-    ),
+    "edit_pull_request_simple_v1_organizations__org_id__prs__pr_id__patch": ("codegen_edit_pr"),
     "edit_pull_request_v1_organizations__org_id__repos__repo_id__prs__pr_id__patch": (
         "codegen_edit_repo_pr"
     ),
     # ── Models & config ────────────────────────────────────────────────
-    "get_available_models_v1_organizations__org_id__models_get": (
-        "codegen_get_models"
-    ),
+    "get_available_models_v1_organizations__org_id__models_get": ("codegen_get_models"),
     "get_organization_integrations_endpoint_v1_organizations__org_id__integrations_get": (
         "codegen_get_integrations"
     ),
@@ -72,9 +68,7 @@ TOOL_NAMES: dict[str, str] = {
         "codegen_set_check_suite"
     ),
     # ── Webhooks ───────────────────────────────────────────────────────
-    "get_webhook_config_v1_organizations__org_id__webhooks_agent_run_get": (
-        "codegen_get_webhook"
-    ),
+    "get_webhook_config_v1_organizations__org_id__webhooks_agent_run_get": ("codegen_get_webhook"),
     "set_webhook_config_v1_organizations__org_id__webhooks_agent_run_post": (
         "codegen_set_webhook"
     ),
@@ -274,9 +268,7 @@ def _customize_component(
         desc = component.description or ""
         method = route.method.upper() if hasattr(route, "method") else ""
         if not desc or len(desc) < 10:
-            component.description = (
-                f"{prefix} management via Codegen API ({method} {route.path})."
-            )
+            component.description = f"{prefix} management via Codegen API ({method} {route.path})."
 
         # Tag dangerous OpenAPI tools so the authorization middleware
         # can identify them by both name and tag.

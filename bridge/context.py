@@ -64,9 +64,7 @@ class ExecutionContext(BaseModel):
 
     id: str
     mode: Literal["plan", "adhoc"]
-    created_at: str = Field(
-        default_factory=lambda: datetime.now(UTC).isoformat()
-    )
+    created_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
 
     # Plan metadata
     goal: str
