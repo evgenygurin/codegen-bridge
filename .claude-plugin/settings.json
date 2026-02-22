@@ -1,5 +1,5 @@
 {
-  "default_model": null,
+  "default_model": "claude-opus-4-6",
   "auto_monitor": true,
   "poll_interval": 30
 }

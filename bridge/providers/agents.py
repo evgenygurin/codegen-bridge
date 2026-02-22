@@ -124,7 +124,7 @@ class AgentsProvider(Provider):
         uri = f"{self._uri_prefix}/{stem}"
 
         return TextResource(
-            uri=uri,
+            uri=uri,  # type: ignore[arg-type]
             name=f"agent_{stem.replace('-', '_')}",
             description=description,
             mime_type="text/markdown",

@@ -131,7 +131,7 @@ def register_setup_tools(mcp: FastMCP) -> None:
     @mcp.tool(tags={"setup"}, icons=ICON_ORG_SETTINGS)
     async def codegen_get_organization_settings(
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),
+        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
     ) -> str:
         """Get organization feature-flag settings.
 
@@ -285,7 +285,7 @@ def register_setup_tools(mcp: FastMCP) -> None:
     async def codegen_get_check_suite_settings(
         repo_id: int,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),
+        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
     ) -> str:
         """Get CI check-suite settings for a repository.
 
@@ -322,7 +322,7 @@ def register_setup_tools(mcp: FastMCP) -> None:
         custom_prompts: dict[str, str] | None = None,
         high_priority_apps: list[str] | None = None,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),
+        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
     ) -> str:
         """Update CI check-suite settings for a repository.
 
@@ -337,7 +337,7 @@ def register_setup_tools(mcp: FastMCP) -> None:
             custom_prompts: Per-check custom prompts (check_name → prompt).
             high_priority_apps: Apps whose checks are treated as high priority.
         """
-        body: dict = {}
+        body: dict[str, object] = {}
         if check_retry_count is not None:
             body["check_retry_count"] = check_retry_count
         if ignored_checks is not None:

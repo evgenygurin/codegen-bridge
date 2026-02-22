@@ -19,7 +19,7 @@ from bridge.icons import ICON_CLI, ICON_GUIDE
 
 # ── Static content ────────────────────────────────────────
 
-_INTEGRATIONS_GUIDE: dict = {
+_INTEGRATIONS_GUIDE: dict[str, object] = {
     "title": "Codegen Platform Integrations Guide",
     "description": (
         "Comprehensive reference for all supported third-party integrations. "
@@ -179,7 +179,7 @@ _INTEGRATIONS_GUIDE: dict = {
     ),
 }
 
-_CLI_SDK_DOCS: dict = {
+_CLI_SDK_DOCS: dict[str, object] = {
     "title": "Codegen CLI & SDK Reference",
     "description": (
         "Quick reference for the Codegen command-line interface and Python SDK. "

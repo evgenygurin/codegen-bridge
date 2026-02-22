@@ -432,7 +432,7 @@ class CodegenClient:
         self,
         repo_id: int,
         settings: dict[str, Any],
-    ) -> dict:
+    ) -> dict[str, Any]:
         """Update check suite settings for a repository.
 
         Endpoint: ``PUT /v1/organizations/{org_id}/repos/check-suite-settings?repo_id=``
