@@ -4,6 +4,7 @@ Provides high-level wrappers around ``ctx.elicit()`` that handle:
 - Graceful degradation when the client doesn't support elicitation
 - Consistent logging of elicitation outcomes
 - Normalization of accept/decline/cancel to simple return values
+- Structured Pydantic schemas for rich confirmation dialogs
 
 All helpers fall through silently when elicitation is unsupported,
 returning a configurable default so tools remain fully functional
@@ -18,37 +19,84 @@ Usage::
         if not await confirm_action(ctx, f"Stop agent run {run_id}?"):
             return "Cancelled by user"
         ...
+
+    from bridge.elicitation import confirm_with_schema, DangerousActionConfirmation
+
+    @mcp.tool
+    async def delete_resource(id: int, ctx: Context = CurrentContext()) -> str:
+        result = await confirm_with_schema(
+            ctx,
+            f"Delete resource {id}? This cannot be undone.",
+            DangerousActionConfirmation,
+        )
+        if result is None or not result.confirm:
+            return "Cancelled"
+        # result.reason is available if the user provided one
+        ...
 """
 
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
+from typing import Any
 
 from fastmcp.server.context import Context
 from fastmcp.server.elicitation import (
     AcceptedElicitation,
 )
 from mcp.shared.exceptions import McpError
+from pydantic import BaseModel, Field
 
 logger = logging.getLogger("bridge.elicitation")
 
 
-# ── Elicitation schemas ──────────────────────────────────────
+# ── Elicitation schemas (Pydantic) ─────────────────────────────
+#
+# Pydantic models for structured elicitation.  These are used with
+# ``confirm_with_schema`` to collect richer input from the user than
+# a plain boolean.
 
 
-@dataclass
-class StopConfirmation:
+class StopConfirmation(BaseModel):
     """Schema for stop-run confirmation prompt."""
 
-    confirm: bool
+    confirm: bool = Field(description="Whether to proceed with stopping the run.")
 
 
-@dataclass
-class RepoConfirmation:
+class RepoConfirmation(BaseModel):
     """Schema for repository confirmation prompt."""
 
-    confirm: bool
+    confirm: bool = Field(description="Whether to proceed with the detected repository.")
+
+
+class DangerousActionConfirmation(BaseModel):
+    """Schema for confirming a destructive / irreversible action.
+
+    Provides an optional ``reason`` field so the user can annotate
+    *why* they chose to proceed (useful for audit logging).
+    """
+
+    confirm: bool = Field(description="Whether to proceed with the dangerous action.")
+    reason: str = Field(
+        default="",
+        description="Optional reason for confirming (for audit trail).",
+    )
+
+
+class ModelSelectionInput(BaseModel):
+    """Schema for interactive model selection.
+
+    Provides structured input when the user selects a model and
+    optionally overrides temperature.
+    """
+
+    model: str = Field(description="Selected LLM model identifier.")
+    temperature_override: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="Optional temperature override for this run.",
+    )
 
 
 # ── Helper functions ─────────────────────────────────────────
@@ -99,12 +147,15 @@ async def confirm_with_schema[T](
     *,
     default_on_unsupported: T | None = None,
 ) -> T | None:
-    """Ask the user for structured confirmation using a dataclass schema.
+    """Ask the user for structured confirmation using a Pydantic schema.
+
+    Accepts both Pydantic ``BaseModel`` subclasses and plain
+    ``dataclass`` types as the schema (FastMCP handles both).
 
     Args:
         ctx: MCP tool context.
         message: Human-readable prompt shown to the user.
-        schema: A dataclass type defining the elicitation form.
+        schema: A Pydantic model or dataclass type defining the form.
         default_on_unsupported: Value returned when elicitation
             is not supported by the client.
 
@@ -164,6 +215,51 @@ async def select_choice(
         selected: str = result.data  # type: ignore[assignment]
         await ctx.info(f"User selected: {selected}")
         return selected
+
+    await ctx.info(f"User {result.action}: {message}")
+    return None
+
+
+async def collect_input[T: BaseModel](
+    ctx: Context,
+    message: str,
+    schema: type[T],
+    *,
+    default_on_unsupported: dict[str, Any] | None = None,
+) -> T | None:
+    """Collect structured input from the user using a Pydantic model.
+
+    Unlike ``confirm_with_schema`` which is generic over any type,
+    ``collect_input`` is specifically typed to ``BaseModel`` subclasses
+    and can provide a dict of defaults when elicitation is unavailable.
+
+    Args:
+        ctx: MCP tool context.
+        message: Human-readable prompt shown to the user.
+        schema: A Pydantic ``BaseModel`` subclass defining the input form.
+        default_on_unsupported: Dict of field values used to construct
+            the schema instance when elicitation is unavailable.
+            If ``None``, returns ``None`` on unsupported.
+
+    Returns:
+        Populated schema instance on accept, constructed default on
+        unsupported (if defaults given), or ``None``.
+    """
+    try:
+        result = await ctx.elicit(message, schema)  # type: ignore[arg-type]
+    except McpError:
+        logger.debug("Elicitation not supported; using defaults")
+        if default_on_unsupported is not None:
+            return schema.model_validate(default_on_unsupported)
+        return None
+    except Exception:
+        logger.debug("Elicitation failed; using defaults", exc_info=True)
+        if default_on_unsupported is not None:
+            return schema.model_validate(default_on_unsupported)
+        return None
+
+    if isinstance(result, AcceptedElicitation):
+        return result.data  # type: ignore[return-value]
 
     await ctx.info(f"User {result.action}: {message}")
     return None

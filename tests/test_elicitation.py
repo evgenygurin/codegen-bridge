@@ -20,7 +20,16 @@ from fastmcp.server.elicitation import (
 from mcp.shared.exceptions import McpError
 from mcp.types import ErrorData
 
-from bridge.elicitation import confirm_action, confirm_with_schema, select_choice
+from bridge.elicitation import (
+    DangerousActionConfirmation,
+    ModelSelectionInput,
+    RepoConfirmation,
+    StopConfirmation,
+    collect_input,
+    confirm_action,
+    confirm_with_schema,
+    select_choice,
+)
 
 
 def _mcp_error(msg: str = "Elicitation not supported") -> McpError:
@@ -180,3 +189,126 @@ class TestSelectChoice:
         mock_ctx.elicit.side_effect = RuntimeError("broken")
         result = await select_choice(mock_ctx, "Pick one:", ["a", "b"], default="b")
         assert result == "b"
+
+
+# ── Pydantic schema tests ──────────────────────────────────────
+
+
+class TestPydanticElicitationSchemas:
+    """Verify that the Pydantic schemas are properly defined."""
+
+    def test_stop_confirmation(self):
+        s = StopConfirmation(confirm=True)
+        assert s.confirm is True
+
+    def test_repo_confirmation(self):
+        s = RepoConfirmation(confirm=False)
+        assert s.confirm is False
+
+    def test_dangerous_action_confirmation(self):
+        s = DangerousActionConfirmation(confirm=True, reason="Testing")
+        assert s.confirm is True
+        assert s.reason == "Testing"
+
+    def test_dangerous_action_default_reason(self):
+        s = DangerousActionConfirmation(confirm=True)
+        assert s.reason == ""
+
+    def test_model_selection_input(self):
+        s = ModelSelectionInput(model="claude-3-5-sonnet", temperature_override=0.5)
+        assert s.model == "claude-3-5-sonnet"
+        assert s.temperature_override == 0.5
+
+    def test_model_selection_no_override(self):
+        s = ModelSelectionInput(model="gpt-4o")
+        assert s.temperature_override is None
+
+    def test_schemas_json_round_trip(self):
+        original = DangerousActionConfirmation(confirm=True, reason="test")
+        restored = DangerousActionConfirmation.model_validate_json(
+            original.model_dump_json()
+        )
+        assert restored.confirm == original.confirm
+        assert restored.reason == original.reason
+
+
+# ── confirm_with_schema (Pydantic) ────────────────────────────
+
+
+class TestConfirmWithPydanticSchema:
+    """confirm_with_schema works with Pydantic BaseModel schemas."""
+
+    async def test_returns_pydantic_data_when_accepted(self, mock_ctx):
+        mock_data = DangerousActionConfirmation(confirm=True, reason="safe")
+        mock_ctx.elicit.return_value = AcceptedElicitation(action="accept", data=mock_data)
+        result = await confirm_with_schema(
+            mock_ctx, "Proceed?", DangerousActionConfirmation
+        )
+        assert result is not None
+        assert result.confirm is True
+        assert result.reason == "safe"
+
+    async def test_returns_none_when_declined(self, mock_ctx):
+        mock_ctx.elicit.return_value = DeclinedElicitation(action="decline")
+        result = await confirm_with_schema(
+            mock_ctx, "Proceed?", StopConfirmation
+        )
+        assert result is None
+
+
+# ── collect_input ──────────────────────────────────────────────
+
+
+class TestCollectInput:
+    """Tests for the new collect_input helper."""
+
+    async def test_returns_data_when_accepted(self, mock_ctx):
+        mock_data = ModelSelectionInput(model="gpt-4o", temperature_override=0.3)
+        mock_ctx.elicit.return_value = AcceptedElicitation(action="accept", data=mock_data)
+        result = await collect_input(mock_ctx, "Select model:", ModelSelectionInput)
+        assert result is not None
+        assert result.model == "gpt-4o"
+        assert result.temperature_override == 0.3
+
+    async def test_returns_none_when_declined(self, mock_ctx):
+        mock_ctx.elicit.return_value = DeclinedElicitation(action="decline")
+        result = await collect_input(mock_ctx, "Select model:", ModelSelectionInput)
+        assert result is None
+
+    async def test_returns_none_when_cancelled(self, mock_ctx):
+        mock_ctx.elicit.return_value = CancelledElicitation(action="cancel")
+        result = await collect_input(mock_ctx, "Select model:", ModelSelectionInput)
+        assert result is None
+
+    async def test_returns_none_when_unsupported(self, mock_ctx):
+        mock_ctx.elicit.side_effect = _mcp_error()
+        result = await collect_input(mock_ctx, "Select model:", ModelSelectionInput)
+        assert result is None
+
+    async def test_returns_default_when_unsupported(self, mock_ctx):
+        mock_ctx.elicit.side_effect = _mcp_error()
+        result = await collect_input(
+            mock_ctx,
+            "Select model:",
+            ModelSelectionInput,
+            default_on_unsupported={"model": "claude-3-5-sonnet"},
+        )
+        assert result is not None
+        assert result.model == "claude-3-5-sonnet"
+        assert result.temperature_override is None
+
+    async def test_returns_default_on_unexpected_error(self, mock_ctx):
+        mock_ctx.elicit.side_effect = RuntimeError("broken")
+        result = await collect_input(
+            mock_ctx,
+            "Select model:",
+            ModelSelectionInput,
+            default_on_unsupported={"model": "fallback"},
+        )
+        assert result is not None
+        assert result.model == "fallback"
+
+    async def test_returns_none_on_unexpected_error_no_default(self, mock_ctx):
+        mock_ctx.elicit.side_effect = RuntimeError("broken")
+        result = await collect_input(mock_ctx, "Select model:", ModelSelectionInput)
+        assert result is None
