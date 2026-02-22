@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl:*)",
+      "Bash(python3:*)",
+      "Bash(python -c:*)",
+      "mcp__plugin_codegen-bridge_codegen__codegen_get_run",
+      "mcp__plugin_codegen-bridge_codegen__codegen_create_run",
+      "mcp__plugin_codegen-bridge_codegen__codegen_get_logs"
+    ]
+  }
+}

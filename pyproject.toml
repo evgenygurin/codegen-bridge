@@ -40,6 +40,7 @@ select = ["E", "F", "W", "I", "N", "UP", "B", "SIM", "RUF"]
 # B008: Depends() / CurrentContext() in default args is the standard FastMCP DI pattern
 "bridge/dependencies.py" = ["B008"]
 "bridge/tools/*.py" = ["B008"]
+"bridge/tools/**/*.py" = ["B008"]
 "bridge/resources/*.py" = ["B008"]
 "bridge/sampling/tools.py" = ["B008"]
 
