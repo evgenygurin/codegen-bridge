@@ -22,8 +22,8 @@ from fastmcp import Client
 from fastmcp.client.elicitation import ElicitResult
 from httpx import Response
 
-os.environ.setdefault("CODEGEN_API_KEY", "test-key")
-os.environ.setdefault("CODEGEN_ORG_ID", "42")
+os.environ["CODEGEN_API_KEY"] = "test-key"
+os.environ["CODEGEN_ORG_ID"] = "42"
 
 from bridge.server import mcp
 
