@@ -43,6 +43,26 @@ jobs:
       - run: uv sync --dev
       - run: uv run mypy bridge/
 
+  openapi-governance:
+    name: OpenAPI Governance
+    runs-on: ubuntu-latest
+    env:
+      CODEGEN_API_KEY: test-key
+      CODEGEN_ORG_ID: "42"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - run: uv sync --dev
+      - name: Validate spec integrity
+        run: uv run python scripts/openapi_sync.py validate
+      - name: Check endpoint parity
+        run: uv run python scripts/openapi_sync.py parity
+
   test:
     name: Test
     runs-on: ubuntu-latest

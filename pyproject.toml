@@ -43,6 +43,8 @@ select = ["E", "F", "W", "I", "N", "UP", "B", "SIM", "RUF"]
 "bridge/tools/**/*.py" = ["B008"]
 "bridge/resources/*.py" = ["B008"]
 "bridge/sampling/tools.py" = ["B008"]
+# RUF001: CLI scripts use emoji for human-readable output
+"scripts/*.py" = ["RUF001"]
 
 [tool.mypy]
 python_version = "3.12"
