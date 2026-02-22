@@ -8,3 +8,9 @@ uv.lock
 .env
 docs/outputs/
 .codegen-bridge/
+
+# Override global gitignore — track these in this repo
+!CLAUDE.md
+!.claude/
+!.claude/rules/
+!.mcp.json

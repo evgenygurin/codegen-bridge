@@ -331,7 +331,7 @@ def register_setup_tools(mcp: FastMCP) -> None:
 
         Args:
             repo_id: Repository ID to update settings for.
-            check_retry_count: Global retry count for failed checks (0–10).
+            check_retry_count: Global retry count for failed checks (0-10).
             ignored_checks: List of check names to ignore.
             check_retry_counts: Per-check retry counts (check_name → count).
             custom_prompts: Per-check custom prompts (check_name → prompt).

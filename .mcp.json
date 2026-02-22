@@ -1,0 +1,10 @@
+{
+  "codegen": {
+    "command": "uv",
+    "args": ["run", "--directory", "${CLAUDE_PLUGIN_ROOT}", "python", "-m", "bridge.server"],
+    "env": {
+      "CODEGEN_API_KEY": "${CODEGEN_API_KEY}",
+      "CODEGEN_ORG_ID": "${CODEGEN_ORG_ID}"
+    }
+  }
+}

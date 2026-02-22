@@ -1,4 +1,6 @@
-"""Tests for setup tools (list_orgs, list_repos, users, generate_setup_commands, MCP providers, OAuth, check suite settings)."""
+"""Tests for setup tools (list_orgs, list_repos, users, generate_setup_commands,
+MCP providers, OAuth, check suite settings).
+"""
 
 from __future__ import annotations
 

@@ -20,9 +20,10 @@ import pytest
 
 # ── Paths ─────────────────────────────────────────────────────
 
-PLUGIN_ROOT = Path(__file__).resolve().parent.parent / ".claude-plugin"
-HOOKS_JSON = PLUGIN_ROOT / "hooks" / "hooks.json"
-SCRIPTS_DIR = PLUGIN_ROOT / "hooks" / "scripts"
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+HOOKS_DIR = PROJECT_ROOT / "hooks"
+HOOKS_JSON = HOOKS_DIR / "hooks.json"
+SCRIPTS_DIR = HOOKS_DIR / "scripts"
 POST_CREATE_RUN_SCRIPT = SCRIPTS_DIR / "post-create-run.sh"
 POST_GET_RUN_SCRIPT = SCRIPTS_DIR / "post-get-run.sh"
 
