@@ -1,18 +1,25 @@
-"""Tests for OpenAPI spec utilities."""
+"""Tests for OpenAPI spec utilities and governance."""
 
 from __future__ import annotations
 
 import json
 import re
+from typing import Any
 from unittest.mock import MagicMock
 
 from bridge.openapi_utils import (
+    EXCLUDED_OPERATIONS,
     TOOL_NAMES,
     _classify_route,
     _customize_component,
     build_route_maps,
     create_openapi_provider,
+    diff_specs,
+    extract_operation_ids,
     load_and_patch_spec,
+    load_raw_spec,
+    validate_endpoint_parity,
+    validate_spec_integrity,
 )
 
 
@@ -415,3 +422,323 @@ class TestCreateOpenApiProvider:
             assert provider is not None
         finally:
             pass
+
+
+# ── Governance Tests ─────────────────────────────────────────────
+
+
+class TestLoadRawSpec:
+    """Tests for loading the unpatched spec."""
+
+    def test_returns_dict(self):
+        spec = load_raw_spec()
+        assert isinstance(spec, dict)
+
+    def test_has_openapi_key(self):
+        spec = load_raw_spec()
+        assert "openapi" in spec
+
+    def test_has_paths(self):
+        spec = load_raw_spec()
+        assert "paths" in spec
+        assert len(spec["paths"]) > 0
+
+    def test_paths_contain_org_id_template(self):
+        """Raw spec should still have {org_id} in path templates."""
+        spec = load_raw_spec()
+        org_paths = [p for p in spec["paths"] if "{org_id}" in p]
+        assert len(org_paths) > 0, "Expected {org_id} in raw spec paths"
+
+
+class TestExtractOperationIds:
+    """Tests for operationId extraction."""
+
+    def test_extracts_from_real_spec(self):
+        spec = load_raw_spec()
+        op_ids = extract_operation_ids(spec)
+        assert len(op_ids) > 0
+
+    def test_extracts_known_operation_ids(self):
+        spec = load_raw_spec()
+        op_ids = extract_operation_ids(spec)
+        # Spot-check a few known operationIds
+        assert "get_users_v1_organizations__org_id__users_get" in op_ids
+        assert "create_agent_run_v1_organizations__org_id__agent_run_post" in op_ids
+
+    def test_handles_empty_spec(self):
+        op_ids = extract_operation_ids({"paths": {}})
+        assert op_ids == set()
+
+    def test_handles_missing_paths(self):
+        op_ids = extract_operation_ids({})
+        assert op_ids == set()
+
+    def test_skips_non_dict_methods(self):
+        """Non-dict items under a path (e.g., 'parameters' list) are ignored."""
+        spec: dict[str, Any] = {
+            "paths": {
+                "/test": {
+                    "parameters": [{"name": "x"}],
+                    "get": {"operationId": "test_op"},
+                }
+            }
+        }
+        op_ids = extract_operation_ids(spec)
+        assert op_ids == {"test_op"}
+
+
+class TestExcludedOperations:
+    """Tests for the EXCLUDED_OPERATIONS governance set."""
+
+    def test_is_frozenset(self):
+        assert isinstance(EXCLUDED_OPERATIONS, frozenset)
+
+    def test_has_expected_count(self):
+        # 6 agent + 2 org/repo + 1 rules = 9
+        assert len(EXCLUDED_OPERATIONS) == 9, (
+            f"Expected 9 excluded operations, got {len(EXCLUDED_OPERATIONS)}"
+        )
+
+    def test_contains_agent_lifecycle_operations(self):
+        expected = {
+            "create_agent_run_v1_organizations__org_id__agent_run_post",
+            "get_agent_run_v1_organizations__org_id__agent_run__agent_run_id__get",
+            "list_agent_runs_v1_organizations__org_id__agent_runs_get",
+            "resume_agent_run_v1_organizations__org_id__agent_run_resume_post",
+            "ban_all_checks_for_agent_run_v1_organizations__org_id__agent_run_ban_post",
+            "get_agent_run_logs_v1_alpha_organizations__org_id__agent_run__agent_run_id__logs_get",
+        }
+        assert expected.issubset(EXCLUDED_OPERATIONS)
+
+    def test_contains_org_repo_operations(self):
+        expected = {
+            "get_organizations_v1_organizations_get",
+            "get_repositories_v1_organizations__org_id__repos_get",
+        }
+        assert expected.issubset(EXCLUDED_OPERATIONS)
+
+    def test_contains_rules_operation(self):
+        assert "get_cli_rules_v1_organizations__org_id__cli_rules_get" in EXCLUDED_OPERATIONS
+
+    def test_no_overlap_with_tool_names(self):
+        """EXCLUDED_OPERATIONS and TOOL_NAMES keys must be disjoint."""
+        overlap = set(TOOL_NAMES.keys()) & set(EXCLUDED_OPERATIONS)
+        assert overlap == set(), f"Overlap between TOOL_NAMES and EXCLUDED_OPERATIONS: {overlap}"
+
+    def test_all_excluded_exist_in_spec(self):
+        """Every EXCLUDED_OPERATIONS entry must exist in the spec."""
+        spec = load_raw_spec()
+        spec_ops = extract_operation_ids(spec)
+        stale = set(EXCLUDED_OPERATIONS) - spec_ops
+        assert stale == set(), f"Stale EXCLUDED_OPERATIONS entries: {stale}"
+
+
+class TestValidateSpecIntegrity:
+    """Tests for spec structural validation."""
+
+    def test_real_spec_passes(self):
+        errors = validate_spec_integrity()
+        assert errors == [], f"Spec integrity errors: {errors}"
+
+    def test_detects_missing_openapi_key(self):
+        errors = validate_spec_integrity({"info": {}, "paths": {}})
+        assert any("openapi" in e for e in errors)
+
+    def test_detects_missing_info_key(self):
+        errors = validate_spec_integrity({"openapi": "3.1.0", "paths": {}})
+        assert any("info" in e for e in errors)
+
+    def test_detects_missing_paths_key(self):
+        errors = validate_spec_integrity({"openapi": "3.1.0", "info": {}})
+        assert any("paths" in e for e in errors)
+
+    def test_detects_wrong_openapi_version(self):
+        errors = validate_spec_integrity(
+            {"openapi": "2.0", "info": {"title": "x", "version": "1"}, "paths": {"/a": {}}}
+        )
+        assert any("version" in e.lower() for e in errors)
+
+    def test_detects_empty_paths(self):
+        errors = validate_spec_integrity(
+            {"openapi": "3.1.0", "info": {"title": "x", "version": "1"}, "paths": {}}
+        )
+        assert any("no paths" in e.lower() for e in errors)
+
+    def test_detects_missing_info_title(self):
+        errors = validate_spec_integrity(
+            {"openapi": "3.1.0", "info": {"version": "1"}, "paths": {"/a": {}}}
+        )
+        assert any("title" in e for e in errors)
+
+    def test_detects_missing_info_version(self):
+        errors = validate_spec_integrity(
+            {"openapi": "3.1.0", "info": {"title": "x"}, "paths": {"/a": {}}}
+        )
+        assert any("version" in e for e in errors)
+
+    def test_detects_missing_operation_id(self):
+        errors = validate_spec_integrity(
+            {
+                "openapi": "3.1.0",
+                "info": {"title": "x", "version": "1"},
+                "paths": {"/a": {"get": {"summary": "no op id"}}},
+            }
+        )
+        assert any("operationId" in e for e in errors)
+
+    def test_valid_minimal_spec(self):
+        errors = validate_spec_integrity(
+            {
+                "openapi": "3.1.0",
+                "info": {"title": "Test", "version": "1.0.0"},
+                "paths": {"/a": {"get": {"operationId": "test_op"}}},
+            }
+        )
+        assert errors == []
+
+
+class TestValidateEndpointParity:
+    """Tests for endpoint parity validation.
+
+    This is the primary governance test — if a new endpoint appears in
+    the spec without being mapped or explicitly excluded, this test
+    catches it.
+    """
+
+    def test_real_spec_has_full_parity(self):
+        """Every operationId in the committed spec is accounted for."""
+        result = validate_endpoint_parity()
+        assert result["unmapped"] == set(), (
+            f"Unmapped operationIds: {result['unmapped']}\n"
+            "Add to TOOL_NAMES or EXCLUDED_OPERATIONS in bridge/openapi_utils.py"
+        )
+
+    def test_no_stale_tool_names(self):
+        """No TOOL_NAMES entries reference non-existent operationIds."""
+        result = validate_endpoint_parity()
+        assert result["stale_tool_names"] == set(), (
+            f"Stale TOOL_NAMES entries: {result['stale_tool_names']}"
+        )
+
+    def test_no_stale_excluded(self):
+        """No EXCLUDED_OPERATIONS entries reference non-existent operationIds."""
+        result = validate_endpoint_parity()
+        assert result["stale_excluded"] == set(), (
+            f"Stale EXCLUDED_OPERATIONS entries: {result['stale_excluded']}"
+        )
+
+    def test_total_coverage(self):
+        """TOOL_NAMES + EXCLUDED_OPERATIONS should cover all spec operationIds."""
+        spec = load_raw_spec()
+        spec_ops = extract_operation_ids(spec)
+        covered = set(TOOL_NAMES.keys()) | set(EXCLUDED_OPERATIONS)
+        assert spec_ops == covered, (
+            f"Coverage mismatch:\n"
+            f"  In spec but not covered: {spec_ops - covered}\n"
+            f"  Covered but not in spec: {covered - spec_ops}"
+        )
+
+    def test_detects_unmapped_operations(self):
+        """Validate that a synthetic unmapped operationId is caught."""
+        fake_spec: dict[str, Any] = {
+            "paths": {
+                "/test": {"get": {"operationId": "totally_new_endpoint_get"}},
+                # Add a known one so the result isn't just 'everything is unmapped'
+                "/v1/users/me": {"get": {"operationId": "get_current_user_info_v1_users_me_get"}},
+            }
+        }
+        result = validate_endpoint_parity(fake_spec)
+        assert "totally_new_endpoint_get" in result["unmapped"]
+
+    def test_detects_stale_entries(self):
+        """Validate that stale TOOL_NAMES keys are caught when spec is reduced."""
+        # Spec with only one endpoint — all other TOOL_NAMES keys become stale
+        fake_spec: dict[str, Any] = {
+            "paths": {
+                "/v1/users/me": {"get": {"operationId": "get_current_user_info_v1_users_me_get"}},
+            }
+        }
+        result = validate_endpoint_parity(fake_spec)
+        # At least some TOOL_NAMES entries should be stale
+        assert len(result["stale_tool_names"]) > 0
+
+
+class TestDiffSpecs:
+    """Tests for structural diff between two specs."""
+
+    def test_identical_specs_no_diff(self):
+        spec = load_raw_spec()
+        result = diff_specs(spec, spec)
+        assert result["added_endpoints"] == []
+        assert result["removed_endpoints"] == []
+        assert result["added_schemas"] == []
+        assert result["removed_schemas"] == []
+
+    def test_detects_added_endpoint(self):
+        local: dict[str, Any] = {"paths": {"/a": {"get": {"operationId": "a_get"}}}}
+        remote: dict[str, Any] = {
+            "paths": {
+                "/a": {"get": {"operationId": "a_get"}},
+                "/b": {"post": {"operationId": "b_post"}},
+            }
+        }
+        result = diff_specs(local, remote)
+        assert ("POST", "/b") in result["added_endpoints"]
+        assert result["removed_endpoints"] == []
+
+    def test_detects_removed_endpoint(self):
+        local: dict[str, Any] = {
+            "paths": {
+                "/a": {"get": {"operationId": "a_get"}},
+                "/b": {"post": {"operationId": "b_post"}},
+            }
+        }
+        remote: dict[str, Any] = {"paths": {"/a": {"get": {"operationId": "a_get"}}}}
+        result = diff_specs(local, remote)
+        assert ("POST", "/b") in result["removed_endpoints"]
+        assert result["added_endpoints"] == []
+
+    def test_detects_added_schema(self):
+        local: dict[str, Any] = {
+            "paths": {},
+            "components": {"schemas": {"Foo": {"type": "object"}}},
+        }
+        remote: dict[str, Any] = {
+            "paths": {},
+            "components": {"schemas": {"Foo": {"type": "object"}, "Bar": {"type": "string"}}},
+        }
+        result = diff_specs(local, remote)
+        assert "Bar" in result["added_schemas"]
+
+    def test_detects_removed_schema(self):
+        local: dict[str, Any] = {
+            "paths": {},
+            "components": {"schemas": {"Foo": {"type": "object"}, "Bar": {"type": "string"}}},
+        }
+        remote: dict[str, Any] = {
+            "paths": {},
+            "components": {"schemas": {"Foo": {"type": "object"}}},
+        }
+        result = diff_specs(local, remote)
+        assert "Bar" in result["removed_schemas"]
+
+    def test_reports_versions(self):
+        local: dict[str, Any] = {"info": {"version": "1.0.0"}, "paths": {}}
+        remote: dict[str, Any] = {"info": {"version": "2.0.0"}, "paths": {}}
+        result = diff_specs(local, remote)
+        assert result["version_local"] == "1.0.0"
+        assert result["version_remote"] == "2.0.0"
+
+    def test_handles_missing_components(self):
+        local: dict[str, Any] = {"paths": {}}
+        remote: dict[str, Any] = {"paths": {}}
+        result = diff_specs(local, remote)
+        assert result["added_schemas"] == []
+        assert result["removed_schemas"] == []
+
+    def test_handles_missing_info(self):
+        local: dict[str, Any] = {"paths": {}}
+        remote: dict[str, Any] = {"paths": {}}
+        result = diff_specs(local, remote)
+        assert result["version_local"] == "unknown"
+        assert result["version_remote"] == "unknown"

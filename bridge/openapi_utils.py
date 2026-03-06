@@ -1,13 +1,24 @@
-"""Utilities for OpenAPI spec patching and provider setup.
+"""Utilities for OpenAPI spec patching, provider setup, and governance.
 
 This module handles:
 - Loading and patching the OpenAPI spec (replacing {org_id} with real values)
 - Building route maps to select which endpoints become MCP tools
 - Customizing auto-generated tool metadata (tags, descriptions, icons)
 - Creating the configured OpenAPIProvider instance
+- **Governance**: validating spec integrity and endpoint parity
 
 The OpenAPIProvider is one of several providers registered with the server;
 see ``bridge.providers`` for the full provider registry.
+
+Governance Model
+~~~~~~~~~~~~~~~~
+Every ``operationId`` in the spec must be accounted for in exactly one of:
+
+- ``TOOL_NAMES`` — mapped to an auto-generated tool via ``OpenAPIProvider``
+- ``EXCLUDED_OPERATIONS`` — intentionally excluded (handled by manual tools)
+
+The ``validate_spec_integrity`` and ``validate_endpoint_parity`` functions
+ensure this invariant holds and are run in CI as well as in tests.
 """
 
 from __future__ import annotations
@@ -31,6 +42,7 @@ from bridge.middleware.authorization import DEFAULT_DANGEROUS_TOOLS
 logger = logging.getLogger("bridge.openapi")
 
 SPEC_PATH = Path(__file__).parent / "openapi_spec.json"
+LIVE_SPEC_URL = "https://api.codegen.com/api/openapi.json"
 
 # operationId -> human-readable MCP tool name
 #
@@ -95,6 +107,197 @@ TOOL_NAMES: dict[str, str] = {
     # ── MCP providers ──────────────────────────────────────────────────
     "get_mcp_providers_v1_mcp_providers_get": "codegen_get_mcp_providers",
 }
+
+# operationIds intentionally excluded from auto-generation.
+# These endpoints are served by manual tools in bridge.tools.*.
+#
+# Every operationId in the spec MUST appear in either TOOL_NAMES or
+# EXCLUDED_OPERATIONS.  The governance tests enforce this invariant.
+EXCLUDED_OPERATIONS: frozenset[str] = frozenset(
+    {
+        # ── Agent lifecycle (bridge.tools.agent) ──────────────────────
+        "create_agent_run_v1_organizations__org_id__agent_run_post",
+        "get_agent_run_v1_organizations__org_id__agent_run__agent_run_id__get",
+        "list_agent_runs_v1_organizations__org_id__agent_runs_get",
+        "resume_agent_run_v1_organizations__org_id__agent_run_resume_post",
+        "ban_all_checks_for_agent_run_v1_organizations__org_id__agent_run_ban_post",
+        "get_agent_run_logs_v1_alpha_organizations__org_id__agent_run__agent_run_id__logs_get",
+        # ── Organization / repo discovery (bridge.tools.setup) ───────
+        "get_organizations_v1_organizations_get",
+        "get_repositories_v1_organizations__org_id__repos_get",
+        # ── Agent rules (bridge.tools.execution) ─────────────────────
+        "get_cli_rules_v1_organizations__org_id__cli_rules_get",
+    }
+)
+
+
+# ── Governance Helpers ────────────────────────────────────────────────
+
+
+def load_raw_spec() -> dict[str, Any]:
+    """Load the raw OpenAPI spec from disk without patching.
+
+    Used by governance tooling where the spec must be inspected
+    in its canonical (unpatched) form.
+
+    Raises:
+        FileNotFoundError: If the spec file is missing.
+        json.JSONDecodeError: If the spec file is invalid JSON.
+    """
+    result: dict[str, Any] = json.loads(SPEC_PATH.read_text())
+    return result
+
+
+def extract_operation_ids(spec: dict[str, Any]) -> set[str]:
+    """Extract all operationIds from an OpenAPI spec.
+
+    Args:
+        spec: Parsed OpenAPI spec dict (raw or patched).
+
+    Returns:
+        Set of all operationId strings found in the spec.
+    """
+    op_ids: set[str] = set()
+    for path_item in spec.get("paths", {}).values():
+        for method_data in path_item.values():
+            if isinstance(method_data, dict) and "operationId" in method_data:
+                op_ids.add(method_data["operationId"])
+    return op_ids
+
+
+def validate_spec_integrity(spec: dict[str, Any] | None = None) -> list[str]:
+    """Validate structural integrity of the OpenAPI spec.
+
+    Checks:
+    - Top-level required keys (``openapi``, ``info``, ``paths``)
+    - Version string starts with ``3.``
+    - ``info`` contains ``title`` and ``version``
+    - At least one path is defined
+    - Every path/method pair has an ``operationId``
+
+    Args:
+        spec: Parsed spec dict.  If ``None``, loads from ``SPEC_PATH``.
+
+    Returns:
+        List of error messages.  Empty list means the spec is valid.
+    """
+    if spec is None:
+        spec = load_raw_spec()
+
+    errors: list[str] = []
+
+    # Top-level structure
+    for key in ("openapi", "info", "paths"):
+        if key not in spec:
+            errors.append(f"Missing required top-level key: {key}")
+
+    # OpenAPI version
+    version = spec.get("openapi", "")
+    if isinstance(version, str) and not version.startswith("3."):
+        errors.append(f"Unexpected OpenAPI version: {version} (expected 3.x)")
+
+    # Info block
+    info = spec.get("info", {})
+    if isinstance(info, dict):
+        for field in ("title", "version"):
+            if field not in info:
+                errors.append(f"Missing info.{field}")
+
+    # Paths
+    paths = spec.get("paths", {})
+    if not paths:
+        errors.append("Spec has no paths defined")
+
+    # operationId presence
+    for path, path_item in paths.items():
+        for method, method_data in path_item.items():
+            if not isinstance(method_data, dict):
+                continue
+            if "operationId" not in method_data:
+                errors.append(f"Missing operationId: {method.upper()} {path}")
+
+    return errors
+
+
+def validate_endpoint_parity(spec: dict[str, Any] | None = None) -> dict[str, set[str]]:
+    """Validate that every operationId is accounted for.
+
+    Every operationId in the spec must appear in either ``TOOL_NAMES``
+    (auto-generated tool) or ``EXCLUDED_OPERATIONS`` (manual tool).
+
+    Args:
+        spec: Parsed spec dict.  If ``None``, loads from ``SPEC_PATH``.
+
+    Returns:
+        Dict with keys:
+        - ``unmapped``: operationIds not in TOOL_NAMES or EXCLUDED_OPERATIONS
+        - ``stale_tool_names``: TOOL_NAMES keys not found in spec
+        - ``stale_excluded``: EXCLUDED_OPERATIONS entries not found in spec
+
+        All sets empty means full parity.
+    """
+    if spec is None:
+        spec = load_raw_spec()
+
+    spec_ops = extract_operation_ids(spec)
+    mapped_ops = set(TOOL_NAMES.keys())
+    excluded_ops = set(EXCLUDED_OPERATIONS)
+    accounted = mapped_ops | excluded_ops
+
+    return {
+        "unmapped": spec_ops - accounted,
+        "stale_tool_names": mapped_ops - spec_ops,
+        "stale_excluded": excluded_ops - spec_ops,
+    }
+
+
+def diff_specs(
+    local: dict[str, Any],
+    remote: dict[str, Any],
+) -> dict[str, Any]:
+    """Compute structural diff between two OpenAPI specs.
+
+    Compares at the endpoint level (path + method + operationId) and the
+    schema level (component names).
+
+    Args:
+        local: The local (committed) spec.
+        remote: The remote (live API) spec.
+
+    Returns:
+        Dict with keys:
+        - ``added_endpoints``: list of (method, path) in remote but not local
+        - ``removed_endpoints``: list of (method, path) in local but not remote
+        - ``added_schemas``: schema names in remote but not local
+        - ``removed_schemas``: schema names in local but not remote
+        - ``version_local``: info.version from local spec
+        - ``version_remote``: info.version from remote spec
+    """
+
+    def _endpoints(spec: dict[str, Any]) -> set[tuple[str, str]]:
+        eps: set[tuple[str, str]] = set()
+        for path, item in spec.get("paths", {}).items():
+            for method, data in item.items():
+                if isinstance(data, dict):
+                    eps.add((method.upper(), path))
+        return eps
+
+    def _schemas(spec: dict[str, Any]) -> set[str]:
+        return set(spec.get("components", {}).get("schemas", {}).keys())
+
+    local_eps = _endpoints(local)
+    remote_eps = _endpoints(remote)
+    local_schemas = _schemas(local)
+    remote_schemas = _schemas(remote)
+
+    return {
+        "added_endpoints": sorted(remote_eps - local_eps),
+        "removed_endpoints": sorted(local_eps - remote_eps),
+        "added_schemas": sorted(remote_schemas - local_schemas),
+        "removed_schemas": sorted(local_schemas - remote_schemas),
+        "version_local": local.get("info", {}).get("version", "unknown"),
+        "version_remote": remote.get("info", {}).get("version", "unknown"),
+    }
 
 
 def load_and_patch_spec(org_id: int) -> dict[str, Any]:
