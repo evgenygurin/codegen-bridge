@@ -30,7 +30,7 @@
         "hooks": [
           {
             "type": "prompt",
-            "prompt": "Output ONLY raw JSON, no markdown, no code blocks, no extra text.\n\nScan $ARGUMENTS for tool calls matching 'codegen_create_run' or 'codegen_get_run'. Extract run ID, status, web_url, and any PR links.\n\nIf no runs found: {\"ok\":true,\"reason\":\"No Codegen runs this session.\"}\nIf runs found: {\"ok\":true,\"reason\":\"Codegen runs: #ID STATUS URL | Total: N\"}",
+            "prompt": "You MUST respond with ONLY a JSON object with exactly two fields: \"decision\" (always \"approve\") and \"reason\" (string). No markdown, no code blocks, no extra text.\n\nScan $ARGUMENTS for tool calls matching 'codegen_create_run' or 'codegen_get_run'. Extract run ID, status, web_url, and any PR links.\n\nIf no runs found: {\"decision\":\"approve\",\"reason\":\"No Codegen runs this session.\"}\nIf runs found: {\"decision\":\"approve\",\"reason\":\"Codegen runs: #ID STATUS URL | Total: N\"}",
             "timeout": 30
           }
         ]
