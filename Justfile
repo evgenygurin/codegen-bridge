@@ -53,6 +53,10 @@ test-ci:
 test-file FILE:
     uv run pytest {{FILE}} -v
 
+# Run MCP integration tests (full protocol round-trip, structured logging)
+mcp-test *ARGS:
+    uv run pytest tests/test_mcp_integration.py -v -s --tb=short {{ARGS}}
+
 # ── Combined ───────────────────────────────────────────
 
 # Run all checks: lint + format check + typecheck + tests
