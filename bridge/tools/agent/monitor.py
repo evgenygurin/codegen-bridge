@@ -14,7 +14,7 @@ import asyncio
 import json
 import logging
 import time
-from typing import Any
+from typing import Any, Literal
 
 from fastmcp import FastMCP
 from fastmcp.server.context import Context
@@ -73,8 +73,8 @@ def register_monitor_tools(mcp: FastMCP) -> None:
 
         Args:
             run_id: Agent run ID to monitor.
-            poll_interval: Seconds between status polls (2–30, default 5).
-            max_duration: Maximum monitoring duration in seconds (10–600, default 300).
+            poll_interval: Seconds between status polls (2-30, default 5).
+            max_duration: Maximum monitoring duration in seconds (10-600, default 300).
             execution_id: Optional execution context ID for auto-reporting on completion.
             task_index: Task index within the execution (default: current_task_index).
         """
@@ -300,7 +300,9 @@ async def _report_to_execution(
             total_steps=parsed.total_steps if parsed else 0,
         )
 
-        task_status = "completed" if run.status == "completed" else "failed"
+        task_status: Literal["completed", "failed"] = (
+            "completed" if run.status == "completed" else "failed"
+        )
         await registry.update_task(
             execution_id=execution_id,
             task_index=idx,

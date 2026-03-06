@@ -12,10 +12,9 @@ are transient — they exist only for the duration of the server process).
 from __future__ import annotations
 
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
-
 
 # ── Terminal states ──────────────────────────────────────────────
 

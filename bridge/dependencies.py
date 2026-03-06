@@ -19,7 +19,6 @@ from fastmcp.server.context import Context
 from bridge.client import CodegenClient
 from bridge.context import ContextRegistry
 from bridge.helpers.repo_detection import RepoCache
-
 from bridge.monitoring import BackgroundTaskManager
 
 if TYPE_CHECKING:

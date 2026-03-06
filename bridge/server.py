@@ -40,8 +40,8 @@ from fastmcp.exceptions import ToolError
 from bridge.client import CodegenClient
 from bridge.context import ContextRegistry
 from bridge.helpers.repo_detection import RepoCache
-from bridge.monitoring import BackgroundTaskManager
 from bridge.middleware import configure_middleware
+from bridge.monitoring import BackgroundTaskManager
 from bridge.openapi_utils import create_openapi_provider
 from bridge.prompts import register_prompts
 from bridge.providers import create_all_providers

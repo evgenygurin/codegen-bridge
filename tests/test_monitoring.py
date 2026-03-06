@@ -21,7 +21,6 @@ from bridge.monitoring import (
     MonitorRecord,
 )
 
-
 # ── Constants ────────────────────────────────────────────
 
 

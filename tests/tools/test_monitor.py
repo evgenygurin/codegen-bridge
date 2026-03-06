@@ -19,7 +19,6 @@ from httpx import Response
 
 from bridge.tools.agent._progress import MONITOR_RUN_TASK
 
-
 # ── TaskConfig tests ─────────────────────────────────────
 
 
