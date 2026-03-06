@@ -15,31 +15,31 @@ from fastmcp import Client
 os.environ["CODEGEN_API_KEY"] = "test-key"
 os.environ["CODEGEN_ORG_ID"] = "42"
 
+from bridge.dependencies import get_sampling_config
 from bridge.sampling.config import SamplingConfig
-from bridge.sampling.tools import _get_sampling_config
 
 
 class TestGetSamplingConfig:
-    """_get_sampling_config resolves from lifespan context or falls back."""
+    """get_sampling_config DI provider resolves from lifespan context or falls back."""
 
-    def test_returns_config_from_lifespan(self):
+    async def test_returns_config_from_lifespan(self):
         cfg = SamplingConfig(summary_max_tokens=999)
         ctx = type("FakeCtx", (), {"lifespan_context": {"sampling_config": cfg}})()
-        result = _get_sampling_config(ctx)
+        result = await get_sampling_config(ctx)
         assert result is cfg
         assert result.summary_max_tokens == 999
 
-    def test_returns_default_when_missing(self):
+    async def test_returns_default_when_missing(self):
         ctx = type("FakeCtx", (), {"lifespan_context": {}})()
-        result = _get_sampling_config(ctx)
+        result = await get_sampling_config(ctx)
         assert isinstance(result, SamplingConfig)
         assert result.summary_max_tokens == 512  # default
 
-    def test_returns_default_when_no_lifespan(self):
+    async def test_returns_default_when_no_lifespan(self):
         class FakeCtx:
             lifespan_context = None
 
-        result = _get_sampling_config(FakeCtx())
+        result = await get_sampling_config(FakeCtx())
         assert isinstance(result, SamplingConfig)
 
 
