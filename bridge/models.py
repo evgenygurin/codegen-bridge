@@ -200,12 +200,14 @@ class IntegrationStatus(BaseModel):
     """Status of a single organization integration.
 
     Maps to ``IntegrationStatus`` in the OpenAPI spec.
+    The ``token_id`` and ``installation_id`` fields accept both ``int``
+    and ``str`` because some API responses return string-encoded IDs.
     """
 
     integration_type: str
     active: bool
-    token_id: int | None = None
-    installation_id: int | None = None
+    token_id: int | str | None = None
+    installation_id: int | str | None = None
     metadata: dict[str, Any] | None = None
 
 
