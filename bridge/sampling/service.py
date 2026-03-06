@@ -6,8 +6,11 @@ system prompts, and the FastMCP sampling API into high-level operations
 
 Each public method:
 1. Builds a user message from domain data.
-2. Picks the right system prompt and temperature from ``SamplingConfig``.
-3. Calls ``ctx.sample()`` and returns the text result.
+2. Picks the right system prompt and temperature from ``SamplingConfig``
+   (with per-operation overrides).
+3. Calls ``ctx.sample()`` with retry on transient failures.
+4. Returns a structured Pydantic schema (with ``__str__`` / ``__len__``
+   for backward compatibility with callers that expect plain strings).
 
 The service is intentionally *not* a singleton — tools create it from
 DI-injected config + context on every call, keeping it thread-safe and
@@ -16,11 +19,13 @@ easy to test.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from typing import Any
 
 from fastmcp.server.context import Context
+from pydantic import ValidationError
 
 from bridge.sampling.config import SamplingConfig
 from bridge.sampling.prompts import (
@@ -29,8 +34,22 @@ from bridge.sampling.prompts import (
     system_prompt_run_summary,
     system_prompt_task_prompt_generator,
 )
+from bridge.sampling.schemas import (
+    ExecutionSummary,
+    LogAnalysis,
+    RunSummary,
+    TaskPrompt,
+    _SamplingResult,
+)
 
 logger = logging.getLogger("bridge.sampling.service")
+
+# Exception types considered transient (eligible for retry)
+_TRANSIENT_ERRORS: tuple[type[BaseException], ...] = (
+    TimeoutError,
+    ConnectionError,
+    OSError,
+)
 
 
 class SamplingService:
@@ -47,7 +66,7 @@ class SamplingService:
 
     # ── Public API ────────────────────────────────────────────
 
-    async def summarise_run(self, run_data: dict[str, Any]) -> str:
+    async def summarise_run(self, run_data: dict[str, Any]) -> RunSummary:
         """Generate a human-readable summary for a single agent run.
 
         Args:
@@ -55,32 +74,50 @@ class SamplingService:
                 ``pull_requests``, ``parsed_logs``, etc.
 
         Returns:
-            Markdown summary text.
+            Structured ``RunSummary`` with text, key_findings, status_verdict.
         """
+        operation = "summarise_run"
         user_msg = _format_run_for_summary(run_data)
-        return await self._sample(
+        raw = await self._sample(
             user_msg,
-            system_prompt=system_prompt_run_summary(),
-            temperature=self._cfg.summary_temperature,
-            max_tokens=self._cfg.summary_max_tokens,
+            operation=operation,
+            system_prompt=self._cfg.resolve_system_prompt(
+                operation, system_prompt_run_summary()
+            ),
+            temperature=self._cfg.resolve_temperature(
+                operation, self._cfg.summary_temperature
+            ),
+            max_tokens=self._cfg.resolve_max_tokens(
+                operation, self._cfg.summary_max_tokens
+            ),
         )
+        return _parse_result(raw, RunSummary)
 
-    async def summarise_execution(self, execution_json: str) -> str:
+    async def summarise_execution(self, execution_json: str) -> ExecutionSummary:
         """Generate a summary for a full execution context.
 
         Args:
             execution_json: JSON-serialised ``ExecutionContext``.
 
         Returns:
-            Markdown summary text.
+            Structured ``ExecutionSummary`` with text, task counts, next_steps.
         """
+        operation = "summarise_execution"
         user_msg = f"Here is the full execution context:\n\n```json\n{execution_json}\n```"
-        return await self._sample(
+        raw = await self._sample(
             user_msg,
-            system_prompt=system_prompt_execution_summary(),
-            temperature=self._cfg.summary_temperature,
-            max_tokens=self._cfg.summary_max_tokens,
+            operation=operation,
+            system_prompt=self._cfg.resolve_system_prompt(
+                operation, system_prompt_execution_summary()
+            ),
+            temperature=self._cfg.resolve_temperature(
+                operation, self._cfg.summary_temperature
+            ),
+            max_tokens=self._cfg.resolve_max_tokens(
+                operation, self._cfg.summary_max_tokens
+            ),
         )
+        return _parse_result(raw, ExecutionSummary)
 
     async def generate_task_prompt(
         self,
@@ -90,7 +127,7 @@ class SamplingService:
         tech_stack: list[str] | None = None,
         architecture: str | None = None,
         completed_tasks: list[dict[str, Any]] | None = None,
-    ) -> str:
+    ) -> TaskPrompt:
         """Use the LLM to generate a detailed agent task prompt.
 
         Args:
@@ -101,8 +138,9 @@ class SamplingService:
             completed_tasks: Summaries of previously completed tasks.
 
         Returns:
-            A ready-to-use agent prompt (Markdown).
+            Structured ``TaskPrompt`` with text, acceptance_criteria, constraints.
         """
+        operation = "generate_task_prompt"
         user_msg = _format_task_generation_input(
             goal=goal,
             task_description=task_description,
@@ -110,29 +148,46 @@ class SamplingService:
             architecture=architecture,
             completed_tasks=completed_tasks,
         )
-        return await self._sample(
+        raw = await self._sample(
             user_msg,
-            system_prompt=system_prompt_task_prompt_generator(),
-            temperature=self._cfg.creative_temperature,
-            max_tokens=self._cfg.prompt_max_tokens,
+            operation=operation,
+            system_prompt=self._cfg.resolve_system_prompt(
+                operation, system_prompt_task_prompt_generator()
+            ),
+            temperature=self._cfg.resolve_temperature(
+                operation, self._cfg.creative_temperature
+            ),
+            max_tokens=self._cfg.resolve_max_tokens(
+                operation, self._cfg.prompt_max_tokens
+            ),
         )
+        return _parse_result(raw, TaskPrompt)
 
-    async def analyse_logs(self, logs: list[dict[str, Any]]) -> str:
+    async def analyse_logs(self, logs: list[dict[str, Any]]) -> LogAnalysis:
         """Analyse agent execution logs and produce insights.
 
         Args:
             logs: List of log entry dicts (thought, tool_name, tool_output, …).
 
         Returns:
-            Markdown analysis text.
+            Structured ``LogAnalysis`` with text, severity, error_patterns, suggestions.
         """
+        operation = "analyse_logs"
         user_msg = _format_logs_for_analysis(logs)
-        return await self._sample(
+        raw = await self._sample(
             user_msg,
-            system_prompt=system_prompt_log_analysis(),
-            temperature=self._cfg.summary_temperature,
-            max_tokens=self._cfg.analysis_max_tokens,
+            operation=operation,
+            system_prompt=self._cfg.resolve_system_prompt(
+                operation, system_prompt_log_analysis()
+            ),
+            temperature=self._cfg.resolve_temperature(
+                operation, self._cfg.summary_temperature
+            ),
+            max_tokens=self._cfg.resolve_max_tokens(
+                operation, self._cfg.analysis_max_tokens
+            ),
         )
+        return _parse_result(raw, LogAnalysis)
 
     # ── Private helpers ───────────────────────────────────────
 
@@ -140,31 +195,93 @@ class SamplingService:
         self,
         user_message: str,
         *,
+        operation: str,
         system_prompt: str,
         temperature: float,
         max_tokens: int,
     ) -> str:
-        """Issue a single ``ctx.sample()`` call and return text.
+        """Issue ``ctx.sample()`` with retry on transient failures.
 
-        On sampling failure (e.g. client doesn't support it) falls back
-        to returning an explanatory placeholder so the tool never crashes.
+        On non-transient failure (e.g. client doesn't support sampling)
+        falls back to returning an explanatory placeholder so the tool
+        never crashes.
         """
+        max_attempts = 1 + self._cfg.retry.max_retries
+        last_exc: BaseException | None = None
+
+        for attempt in range(max_attempts):
+            try:
+                result = await self._ctx.sample(
+                    messages=user_message,
+                    system_prompt=system_prompt,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                    model_preferences=self._cfg.model_preferences,
+                )
+                return result.text or ""
+            except _TRANSIENT_ERRORS as exc:
+                last_exc = exc
+                if attempt < max_attempts - 1:
+                    delay = self._cfg.retry.backoff_base * (2**attempt)
+                    logger.warning(
+                        "Sampling attempt %d/%d failed (%s: %s), retrying in %.1fs",
+                        attempt + 1,
+                        max_attempts,
+                        type(exc).__name__,
+                        exc,
+                        delay,
+                    )
+                    await asyncio.sleep(delay)
+                else:
+                    logger.warning(
+                        "Sampling failed after %d attempts: %s", max_attempts, exc
+                    )
+            except (ValueError, RuntimeError) as exc:
+                # Sampling not supported by the client or handler misconfigured
+                logger.warning("Sampling unavailable: %s", exc)
+                return f"[Sampling unavailable: {exc}]"
+            except Exception as exc:
+                logger.exception("Unexpected error during sampling")
+                return f"[Sampling error: {exc}]"
+
+        # All retries exhausted for transient errors
+        return f"[Sampling failed after {max_attempts} attempts: {last_exc}]"
+
+
+# ── Response parsing ──────────────────────────────────────────────
+
+
+def _parse_result[T: _SamplingResult](raw: str, model: type[T]) -> T:
+    """Attempt to parse LLM output as structured JSON into a schema.
+
+    Falls back to populating only the ``text`` field when the LLM
+    returns plain Markdown (the common case).  This makes structured
+    fields available *when the LLM cooperates* without ever failing.
+    """
+    # Try JSON parse (LLM may return a JSON block)
+    text_to_try = raw.strip()
+    if text_to_try.startswith("```"):
+        # Strip fenced code block markers
+        lines = text_to_try.split("\n")
+        if lines and lines[0].startswith("```"):
+            lines = lines[1:]
+        if lines and lines[-1].strip() == "```":
+            lines = lines[:-1]
+        text_to_try = "\n".join(lines).strip()
+
+    if text_to_try.startswith("{"):
         try:
-            result = await self._ctx.sample(
-                messages=user_message,
-                system_prompt=system_prompt,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                model_preferences=self._cfg.model_preferences,
-            )
-            return result.text or ""
-        except (ValueError, RuntimeError) as exc:
-            # Sampling not supported by the client or handler misconfigured
-            logger.warning("Sampling unavailable: %s", exc)
-            return f"[Sampling unavailable: {exc}]"
-        except Exception as exc:
-            logger.exception("Unexpected error during sampling")
-            return f"[Sampling error: {exc}]"
+            data = json.loads(text_to_try)
+            if isinstance(data, dict):
+                # Ensure text field is populated
+                if "text" not in data:
+                    data["text"] = raw
+                return model.model_validate(data)
+        except (json.JSONDecodeError, ValidationError):
+            pass  # Fall through to plain-text fallback
+
+    # Plain text fallback — only populate the text field
+    return model(text=raw)
 
 
 # ── Message formatters (pure functions) ──────────────────────────
