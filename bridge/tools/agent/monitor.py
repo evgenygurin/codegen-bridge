@@ -59,9 +59,9 @@ def register_monitor_tools(mcp: FastMCP) -> None:
         execution_id: str | None = None,
         task_index: int | None = None,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
-        registry: ContextRegistry = Depends(get_registry),  # type: ignore[arg-type]
-        task_manager: BackgroundTaskManager = Depends(get_task_manager),  # type: ignore[arg-type]
+        client: CodegenClient = Depends(get_client),
+        registry: ContextRegistry = Depends(get_registry),
+        task_manager: BackgroundTaskManager = Depends(get_task_manager),
     ) -> str:
         """Monitor an agent run until completion with real-time progress reporting.
 
@@ -184,7 +184,7 @@ def register_monitor_tools(mcp: FastMCP) -> None:
         active_only: bool = False,
         run_id: int | None = None,
         ctx: Context = CurrentContext(),
-        task_manager: BackgroundTaskManager = Depends(get_task_manager),  # type: ignore[arg-type]
+        task_manager: BackgroundTaskManager = Depends(get_task_manager)
     ) -> str:
         """List active and completed run monitors.
 

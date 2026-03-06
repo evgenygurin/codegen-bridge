@@ -30,7 +30,7 @@ def register_moderation_tools(mcp: FastMCP) -> None:
         after_card_order_id: str | None = None,
         confirmed: bool = False,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
+        client: CodegenClient = Depends(get_client)
     ) -> str:
         """Ban all checks for a PR and stop all related agents.
 
@@ -78,7 +78,7 @@ def register_moderation_tools(mcp: FastMCP) -> None:
         before_card_order_id: str | None = None,
         after_card_order_id: str | None = None,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
+        client: CodegenClient = Depends(get_client)
     ) -> str:
         """Unban all checks for a PR.
 
@@ -115,7 +115,7 @@ def register_moderation_tools(mcp: FastMCP) -> None:
         after_card_order_id: str | None = None,
         confirmed: bool = False,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
+        client: CodegenClient = Depends(get_client)
     ) -> str:
         """Remove Codegen from a PR.
 

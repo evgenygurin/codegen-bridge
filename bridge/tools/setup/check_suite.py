@@ -25,7 +25,7 @@ def register_check_suite_tools(mcp: FastMCP) -> None:
     async def codegen_get_check_suite_settings(
         repo_id: int,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
+        client: CodegenClient = Depends(get_client)
     ) -> str:
         """Get CI check-suite settings for a repository.
 
@@ -62,7 +62,7 @@ def register_check_suite_tools(mcp: FastMCP) -> None:
         custom_prompts: dict[str, str] | None = None,
         high_priority_apps: list[str] | None = None,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
+        client: CodegenClient = Depends(get_client)
     ) -> str:
         """Update CI check-suite settings for a repository.
 

@@ -33,7 +33,7 @@ def register_sampling_tools(mcp: FastMCP) -> None:
     async def codegen_summarise_run(
         run_id: int,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
+        client: CodegenClient = Depends(get_client)
     ) -> str:
         """Generate an AI-powered summary of an agent run.
 
@@ -92,7 +92,7 @@ def register_sampling_tools(mcp: FastMCP) -> None:
     async def codegen_summarise_execution(
         execution_id: str | None = None,
         ctx: Context = CurrentContext(),
-        registry: ContextRegistry = Depends(get_registry),  # type: ignore[arg-type]
+        registry: ContextRegistry = Depends(get_registry)
     ) -> str:
         """Generate an AI-powered summary of a full execution plan.
 
@@ -135,7 +135,7 @@ def register_sampling_tools(mcp: FastMCP) -> None:
         architecture: str | None = None,
         execution_id: str | None = None,
         ctx: Context = CurrentContext(),
-        registry: ContextRegistry = Depends(get_registry),  # type: ignore[arg-type]
+        registry: ContextRegistry = Depends(get_registry)
     ) -> str:
         """Use AI to generate a detailed, optimised prompt for a Codegen agent.
 
@@ -193,7 +193,7 @@ def register_sampling_tools(mcp: FastMCP) -> None:
         run_id: int,
         limit: int = 50,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
+        client: CodegenClient = Depends(get_client)
     ) -> str:
         """Analyse agent execution logs with AI to identify patterns and issues.
 

@@ -36,8 +36,8 @@ def register_query_tools(mcp: FastMCP) -> None:
         execution_id: str | None = None,
         task_index: int | None = None,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
-        registry: ContextRegistry = Depends(get_registry),  # type: ignore[arg-type]
+        client: CodegenClient = Depends(get_client),
+        registry: ContextRegistry = Depends(get_registry),
     ) -> str:
         """Get agent run status, result, summary, and created PRs.
 
@@ -149,7 +149,7 @@ def register_query_tools(mcp: FastMCP) -> None:
         user_id: int | None = None,
         cursor: str | None = None,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
+        client: CodegenClient = Depends(get_client)
     ) -> str:
         """List recent agent runs with cursor-based pagination.
 

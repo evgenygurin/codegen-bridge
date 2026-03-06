@@ -24,7 +24,7 @@ def register_oauth_tools(mcp: FastMCP) -> None:
     @mcp.tool(tags={"setup"}, icons=ICON_MCP)
     async def codegen_get_mcp_providers(
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
+        client: CodegenClient = Depends(get_client)
     ) -> str:
         """List available MCP-enabled OAuth providers.
 
@@ -55,7 +55,7 @@ def register_oauth_tools(mcp: FastMCP) -> None:
     @mcp.tool(tags={"setup"}, icons=ICON_OAUTH)
     async def codegen_get_oauth_status(
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
+        client: CodegenClient = Depends(get_client)
     ) -> str:
         """Get OAuth token status for the current user and organization.
 
@@ -80,7 +80,7 @@ def register_oauth_tools(mcp: FastMCP) -> None:
         provider: str,
         confirmed: bool = False,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
+        client: CodegenClient = Depends(get_client)
     ) -> str:
         """Revoke/disconnect an OAuth token for a specific provider.
 

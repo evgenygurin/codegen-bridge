@@ -41,9 +41,9 @@ def register_lifecycle_tools(mcp: FastMCP) -> None:
         task_index: int | None = None,
         confirmed: bool = False,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
-        registry: ContextRegistry = Depends(get_registry),  # type: ignore[arg-type]
-        repo_cache: RepoCache = Depends(get_repo_cache),  # type: ignore[arg-type]
+        client: CodegenClient = Depends(get_client),
+        registry: ContextRegistry = Depends(get_registry),
+        repo_cache: RepoCache = Depends(get_repo_cache),
     ) -> str:
         """Create a new Codegen agent run.
 
@@ -172,7 +172,7 @@ def register_lifecycle_tools(mcp: FastMCP) -> None:
         model: str | None = None,
         images: list[str] | None = None,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
+        client: CodegenClient = Depends(get_client)
     ) -> str:
         """Resume a paused or blocked agent run with new instructions.
 
@@ -194,7 +194,7 @@ def register_lifecycle_tools(mcp: FastMCP) -> None:
         run_id: int,
         confirmed: bool = False,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
+        client: CodegenClient = Depends(get_client)
     ) -> str:
         """Stop a running agent. Use when a task needs to be cancelled.
 

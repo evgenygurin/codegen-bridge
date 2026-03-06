@@ -27,7 +27,7 @@ def register_organization_tools(mcp: FastMCP) -> None:
     @mcp.tool(tags={"setup"}, icons=ICON_ORG)
     async def codegen_list_orgs(
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
+        client: CodegenClient = Depends(get_client)
     ) -> str:
         """List Codegen organizations the authenticated user belongs to."""
         await ctx.info("Listing organizations")
@@ -42,7 +42,7 @@ def register_organization_tools(mcp: FastMCP) -> None:
     @mcp.tool(tags={"setup"}, icons=ICON_ORG_SETTINGS)
     async def codegen_get_organization_settings(
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
+        client: CodegenClient = Depends(get_client)
     ) -> str:
         """Get organization feature-flag settings.
 
@@ -67,7 +67,7 @@ def register_organization_tools(mcp: FastMCP) -> None:
         limit: int = DEFAULT_PAGE_SIZE,
         cursor: str | None = None,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
+        client: CodegenClient = Depends(get_client)
     ) -> str:
         """List repositories in the configured Codegen organization.
 
@@ -107,7 +107,7 @@ def register_organization_tools(mcp: FastMCP) -> None:
         prompt: str | None = None,
         trigger_source: str = "setup-commands",
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
+        client: CodegenClient = Depends(get_client)
     ) -> str:
         """Generate setup commands for a repository.
 

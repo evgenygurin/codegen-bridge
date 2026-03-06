@@ -1,5 +1,5 @@
 {
-  "default_model": null,
-  "auto_monitor": true,
-  "poll_interval": 30
+  "default_model": "claude-3-5-sonnet",
+  "auto_monitor": false,
+  "poll_interval": 60
 }
