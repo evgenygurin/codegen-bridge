@@ -20,6 +20,8 @@ from bridge.client import CodegenClient
 from bridge.context import ContextRegistry
 from bridge.helpers.repo_detection import RepoCache
 
+from bridge.monitoring import BackgroundTaskManager
+
 if TYPE_CHECKING:
     from bridge.sampling.config import SamplingConfig
 
@@ -31,6 +33,7 @@ __all__ = [
     "get_registry",
     "get_repo_cache",
     "get_sampling_config",
+    "get_task_manager",
 ]
 
 
@@ -59,6 +62,15 @@ async def get_repo_cache(ctx: Context = CurrentContext()) -> RepoCache:
     """Provide the ``RepoCache`` from lifespan context."""
     repo_cache: RepoCache = ctx.lifespan_context["repo_cache"]
     return repo_cache
+
+
+async def get_task_manager(ctx: Context = CurrentContext()) -> BackgroundTaskManager:
+    """Provide the ``BackgroundTaskManager`` from lifespan context."""
+    lc = ctx.lifespan_context
+    if lc and "task_manager" in lc:
+        manager: BackgroundTaskManager = lc["task_manager"]
+        return manager
+    return BackgroundTaskManager()
 
 
 async def get_sampling_config(ctx: Context = CurrentContext()) -> SamplingConfig:
