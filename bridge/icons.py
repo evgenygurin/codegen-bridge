@@ -206,6 +206,18 @@ ICON_MONITOR = _svg_icon(  # eye: monitor runs
     '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>'
 )
 
+ICON_MONITOR_RUN = _svg_icon(  # radio: background run monitoring
+    '<circle cx="12" cy="12" r="2"/>'
+    '<path d="M16.24 7.76a6 6 0 0 1 0 8.49"/>'
+    '<path d="M7.76 16.24a6 6 0 0 1 0-8.49"/>'
+    '<path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>'
+    '<path d="M4.93 19.07a10 10 0 0 1 0-14.14"/>'
+)
+
+ICON_LIST_MONITORS = _svg_icon(  # activity: list active monitors
+    '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>'
+)
+
 ICON_TEMPLATE = _svg_icon(  # layout: build task prompt
     '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>'
     '<line x1="3" y1="9" x2="21" y2="9"/>'
