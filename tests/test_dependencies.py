@@ -60,3 +60,15 @@ class TestGetOrgIdProvider:
             result = await c.read_resource("codegen://config")
             data = json.loads(result[0].text)
             assert data["org_id"] == "42"
+
+
+class TestGetTaskManagerProvider:
+    async def test_task_manager_is_available_in_tool(self):
+        """The lifespan-created BackgroundTaskManager should be injected into tools."""
+        async with Client(mcp) as c:
+            # codegen_list_monitors uses get_task_manager DI.
+            # If the provider failed, calling the tool would raise.
+            result = await c.call_tool("codegen_list_monitors", {})
+            data = json.loads(result.data)
+            assert "monitors" in data
+            assert "total" in data

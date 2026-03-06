@@ -28,7 +28,7 @@ def register_log_tools(mcp: FastMCP) -> None:
         reverse: bool = True,
         cursor: str | None = None,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
+        client: CodegenClient = Depends(get_client)
     ) -> str:
         """Get step-by-step agent execution logs with cursor-based pagination.
 

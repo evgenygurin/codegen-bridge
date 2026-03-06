@@ -30,9 +30,9 @@ def register_execution_tools(mcp: FastMCP) -> None:
         repo_structure: str | None = None,
         confirmed: bool = False,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
-        registry: ContextRegistry = Depends(get_registry),  # type: ignore[arg-type]
-        repo_cache: RepoCache = Depends(get_repo_cache),  # type: ignore[arg-type]
+        client: CodegenClient = Depends(get_client),
+        registry: ContextRegistry = Depends(get_registry),
+        repo_cache: RepoCache = Depends(get_repo_cache),
     ) -> str:
         """Initialize an execution context, load agent rules and integrations.
 
@@ -121,7 +121,7 @@ def register_execution_tools(mcp: FastMCP) -> None:
     async def codegen_get_execution_context(
         execution_id: str | None = None,
         ctx: Context = CurrentContext(),
-        registry: ContextRegistry = Depends(get_registry),  # type: ignore[arg-type]
+        registry: ContextRegistry = Depends(get_registry)
     ) -> str:
         """Get full execution context — active or by ID.
 
@@ -145,7 +145,7 @@ def register_execution_tools(mcp: FastMCP) -> None:
     @mcp.tool(tags={"context"}, icons=ICON_RULES)
     async def codegen_get_agent_rules(
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
+        client: CodegenClient = Depends(get_client)
     ) -> str:
         """Fetch organization agent rules from the Codegen API.
 

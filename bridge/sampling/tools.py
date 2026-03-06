@@ -15,19 +15,15 @@ from fastmcp.server.context import Context
 
 from bridge.client import CodegenClient
 from bridge.context import ContextRegistry
-from bridge.dependencies import CurrentContext, Depends, get_client, get_registry
+from bridge.dependencies import (
+    CurrentContext,
+    Depends,
+    get_client,
+    get_registry,
+    get_sampling_config,
+)
 from bridge.icons import ICON_SAMPLING_ANALYSIS, ICON_SAMPLING_PROMPT, ICON_SAMPLING_SUMMARY
-from bridge.sampling.config import SamplingConfig
 from bridge.sampling.service import SamplingService
-
-
-def _get_sampling_config(ctx: Context) -> SamplingConfig:
-    """Resolve ``SamplingConfig`` from lifespan context, with a safe default."""
-    lc = ctx.lifespan_context
-    if lc and "sampling_config" in lc:
-        cfg: SamplingConfig = lc["sampling_config"]
-        return cfg
-    return SamplingConfig()
 
 
 def register_sampling_tools(mcp: FastMCP) -> None:
@@ -37,7 +33,7 @@ def register_sampling_tools(mcp: FastMCP) -> None:
     async def codegen_summarise_run(
         run_id: int,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
+        client: CodegenClient = Depends(get_client)
     ) -> str:
         """Generate an AI-powered summary of an agent run.
 
@@ -80,18 +76,23 @@ def register_sampling_tools(mcp: FastMCP) -> None:
         except Exception:
             await ctx.warning(f"Could not fetch logs for run {run_id}; summarising without them")
 
-        cfg = _get_sampling_config(ctx)
+        cfg = await get_sampling_config(ctx)
         service = SamplingService(ctx, cfg)
-        summary = await service.summarise_run(run_data)
+        result = await service.summarise_run(run_data)
 
-        await ctx.info(f"Sampling: run {run_id} summary generated ({len(summary)} chars)")
-        return json.dumps({"run_id": run_id, "ai_summary": summary})
+        await ctx.info(f"Sampling: run {run_id} summary generated ({len(result)} chars)")
+        return json.dumps({
+            "run_id": run_id,
+            "ai_summary": result.text,
+            "key_findings": result.key_findings,
+            "status_verdict": result.status_verdict,
+        })
 
     @mcp.tool(tags={"sampling", "monitoring"}, icons=ICON_SAMPLING_SUMMARY)
     async def codegen_summarise_execution(
         execution_id: str | None = None,
         ctx: Context = CurrentContext(),
-        registry: ContextRegistry = Depends(get_registry),  # type: ignore[arg-type]
+        registry: ContextRegistry = Depends(get_registry)
     ) -> str:
         """Generate an AI-powered summary of a full execution plan.
 
@@ -110,16 +111,19 @@ def register_sampling_tools(mcp: FastMCP) -> None:
         if exec_ctx is None:
             return json.dumps({"error": "No execution context found"})
 
-        cfg = _get_sampling_config(ctx)
+        cfg = await get_sampling_config(ctx)
         service = SamplingService(ctx, cfg)
-        summary = await service.summarise_execution(exec_ctx.model_dump_json(indent=2))
+        result = await service.summarise_execution(exec_ctx.model_dump_json(indent=2))
 
-        await ctx.info(f"Sampling: execution summary generated ({len(summary)} chars)")
+        await ctx.info(f"Sampling: execution summary generated ({len(result)} chars)")
         return json.dumps(
             {
                 "execution_id": exec_ctx.id,
                 "status": exec_ctx.status,
-                "ai_summary": summary,
+                "ai_summary": result.text,
+                "tasks_completed": result.tasks_completed,
+                "tasks_failed": result.tasks_failed,
+                "next_steps": result.next_steps,
             }
         )
 
@@ -131,7 +135,7 @@ def register_sampling_tools(mcp: FastMCP) -> None:
         architecture: str | None = None,
         execution_id: str | None = None,
         ctx: Context = CurrentContext(),
-        registry: ContextRegistry = Depends(get_registry),  # type: ignore[arg-type]
+        registry: ContextRegistry = Depends(get_registry)
     ) -> str:
         """Use AI to generate a detailed, optimised prompt for a Codegen agent.
 
@@ -167,9 +171,9 @@ def register_sampling_tools(mcp: FastMCP) -> None:
                 if not architecture and exec_ctx.architecture:
                     architecture = exec_ctx.architecture
 
-        cfg = _get_sampling_config(ctx)
+        cfg = await get_sampling_config(ctx)
         service = SamplingService(ctx, cfg)
-        prompt = await service.generate_task_prompt(
+        result = await service.generate_task_prompt(
             goal=goal,
             task_description=task_description,
             tech_stack=tech_stack,
@@ -177,15 +181,19 @@ def register_sampling_tools(mcp: FastMCP) -> None:
             completed_tasks=completed_tasks,
         )
 
-        await ctx.info(f"Sampling: task prompt generated ({len(prompt)} chars)")
-        return json.dumps({"generated_prompt": prompt})
+        await ctx.info(f"Sampling: task prompt generated ({len(result)} chars)")
+        return json.dumps({
+            "generated_prompt": result.text,
+            "acceptance_criteria": result.acceptance_criteria,
+            "constraints": result.constraints,
+        })
 
     @mcp.tool(tags={"sampling", "monitoring"}, icons=ICON_SAMPLING_ANALYSIS)
     async def codegen_analyse_run_logs(
         run_id: int,
         limit: int = 50,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
+        client: CodegenClient = Depends(get_client)
     ) -> str:
         """Analyse agent execution logs with AI to identify patterns and issues.
 
@@ -214,15 +222,18 @@ def register_sampling_tools(mcp: FastMCP) -> None:
             for log in logs_result.logs
         ]
 
-        cfg = _get_sampling_config(ctx)
+        cfg = await get_sampling_config(ctx)
         service = SamplingService(ctx, cfg)
-        analysis = await service.analyse_logs(log_dicts)
+        result = await service.analyse_logs(log_dicts)
 
-        await ctx.info(f"Sampling: log analysis generated ({len(analysis)} chars)")
+        await ctx.info(f"Sampling: log analysis generated ({len(result)} chars)")
         return json.dumps(
             {
                 "run_id": run_id,
                 "logs_analysed": len(log_dicts),
-                "ai_analysis": analysis,
+                "ai_analysis": result.text,
+                "severity": result.severity,
+                "error_patterns": result.error_patterns,
+                "suggestions": result.suggestions,
             }
         )

@@ -44,7 +44,7 @@ def register_user_tools(mcp: FastMCP) -> None:
     @mcp.tool(tags={"setup"}, icons=ICON_USER)
     async def codegen_get_current_user(
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
+        client: CodegenClient = Depends(get_client)
     ) -> str:
         """Get current user information from the API token.
 
@@ -61,7 +61,7 @@ def register_user_tools(mcp: FastMCP) -> None:
         limit: int = DEFAULT_PAGE_SIZE,
         cursor: str | None = None,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
+        client: CodegenClient = Depends(get_client)
     ) -> str:
         """List users in the configured Codegen organization.
 
@@ -90,7 +90,7 @@ def register_user_tools(mcp: FastMCP) -> None:
     async def codegen_get_user(
         user_id: int,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
+        client: CodegenClient = Depends(get_client)
     ) -> str:
         """Get details for a specific user in the organization.
 

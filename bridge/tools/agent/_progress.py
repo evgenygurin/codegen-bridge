@@ -26,6 +26,12 @@ GET_LOGS_TASK = TaskConfig(
 )
 """Get-logs does a single API fetch + formatting — faster poll."""
 
+MONITOR_RUN_TASK = TaskConfig(
+    mode="optional",
+    poll_interval=timedelta(seconds=5),
+)
+"""Monitor-run is a long-polling loop — reports progress at each poll interval."""
+
 # Total progress steps for each operation
 CREATE_RUN_STEPS = 5
 GET_LOGS_STEPS = 3

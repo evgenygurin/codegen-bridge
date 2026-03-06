@@ -34,7 +34,7 @@ def register_integration_tools(mcp: FastMCP) -> None:
     @mcp.tool(tags={"integrations"}, icons=ICON_INTEGRATIONS)
     async def codegen_get_integrations(
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
+        client: CodegenClient = Depends(get_client)
     ) -> str:
         """Get all integration statuses for the organization.
 
@@ -71,7 +71,7 @@ def register_integration_tools(mcp: FastMCP) -> None:
     @mcp.tool(tags={"webhooks"}, icons=ICON_WEBHOOK)
     async def codegen_get_webhook_config(
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
+        client: CodegenClient = Depends(get_client)
     ) -> str:
         """Get webhook configuration for agent run completion events.
 
@@ -96,7 +96,7 @@ def register_integration_tools(mcp: FastMCP) -> None:
         enabled: bool = True,
         confirmed: bool = False,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
+        client: CodegenClient = Depends(get_client)
     ) -> str:
         """Configure webhook for agent run completion events.
 
@@ -128,7 +128,7 @@ def register_integration_tools(mcp: FastMCP) -> None:
     async def codegen_delete_webhook_config(
         confirmed: bool = False,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
+        client: CodegenClient = Depends(get_client)
     ) -> str:
         """Remove webhook configuration for agent run completion events.
 
@@ -157,7 +157,7 @@ def register_integration_tools(mcp: FastMCP) -> None:
     async def codegen_test_webhook(
         url: str,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
+        client: CodegenClient = Depends(get_client)
     ) -> str:
         """Send a test webhook to verify the endpoint is reachable.
 
@@ -177,7 +177,7 @@ def register_integration_tools(mcp: FastMCP) -> None:
     async def codegen_analyze_sandbox_logs(
         sandbox_id: int,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
+        client: CodegenClient = Depends(get_client)
     ) -> str:
         """Analyze sandbox setup logs using an AI agent.
 
@@ -206,7 +206,7 @@ def register_integration_tools(mcp: FastMCP) -> None:
     @mcp.tool(tags={"slack"}, icons=ICON_SLACK)
     async def codegen_generate_slack_token(
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
+        client: CodegenClient = Depends(get_client)
     ) -> str:
         """Generate a temporary token for Slack account connection.
 

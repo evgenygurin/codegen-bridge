@@ -31,7 +31,7 @@ def register_resources(mcp: FastMCP) -> None:
 
     @mcp.resource("codegen://execution/current", icons=ICON_DASHBOARD)
     async def get_current_execution(
-        registry: ContextRegistry = Depends(get_registry),  # type: ignore[arg-type]
+        registry: ContextRegistry = Depends(get_registry)
     ) -> str:
         """Current execution progress — plan status, task list, active run."""
         exec_ctx = await registry.get_active()
