@@ -17,6 +17,7 @@ from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from fastmcp.server.context import Context
 
+from bridge.annotations import CREATES, DESTRUCTIVE
 from bridge.dependencies import CurrentContext, Depends, get_run_service
 from bridge.elicitation import confirm_action, select_choice
 from bridge.icons import ICON_RESUME, ICON_RUN, ICON_STOP
@@ -29,7 +30,7 @@ def register_lifecycle_tools(mcp: FastMCP) -> None:
 
     # ── Create ───────────────────────────────────────────
 
-    @mcp.tool(tags={"execution"}, icons=ICON_RUN, task=CREATE_RUN_TASK)
+    @mcp.tool(tags={"execution"}, icons=ICON_RUN, task=CREATE_RUN_TASK, annotations=CREATES)
     async def codegen_create_run(
         prompt: str,
         repo_id: int | None = None,
@@ -40,8 +41,7 @@ def register_lifecycle_tools(mcp: FastMCP) -> None:
         task_index: int | None = None,
         confirmed: bool = False,
         ctx: Context = CurrentContext(),
-        svc: RunService = Depends(get_run_service),  # type: ignore[arg-type]
-    ) -> str:
+        svc: RunService = Depends(get_run_service),    ) -> str:
         """Create a new Codegen agent run.
 
         The agent will execute the task in a cloud sandbox and may create a PR.
@@ -140,15 +140,14 @@ def register_lifecycle_tools(mcp: FastMCP) -> None:
 
     # ── Resume ────────────────────────────────────────────
 
-    @mcp.tool(tags={"execution"}, icons=ICON_RESUME)
+    @mcp.tool(tags={"execution"}, icons=ICON_RESUME, annotations=CREATES)
     async def codegen_resume_run(
         run_id: int,
         prompt: str,
         model: str | None = None,
         images: list[str] | None = None,
         ctx: Context = CurrentContext(),
-        svc: RunService = Depends(get_run_service),  # type: ignore[arg-type]
-    ) -> str:
+        svc: RunService = Depends(get_run_service),    ) -> str:
         """Resume a paused or blocked agent run with new instructions.
 
         Args:
@@ -164,13 +163,12 @@ def register_lifecycle_tools(mcp: FastMCP) -> None:
 
     # ── Stop (legacy alias for ban) ──────────────────────
 
-    @mcp.tool(tags={"execution", "dangerous"}, icons=ICON_STOP)
+    @mcp.tool(tags={"execution", "dangerous"}, icons=ICON_STOP, annotations=DESTRUCTIVE)
     async def codegen_stop_run(
         run_id: int,
         confirmed: bool = False,
         ctx: Context = CurrentContext(),
-        svc: RunService = Depends(get_run_service),  # type: ignore[arg-type]
-    ) -> str:
+        svc: RunService = Depends(get_run_service),    ) -> str:
         """Stop a running agent. Use when a task needs to be cancelled.
 
         Asks for user confirmation before stopping unless ``confirmed=True``.

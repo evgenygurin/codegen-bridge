@@ -13,6 +13,7 @@ from typing import Any
 from fastmcp import FastMCP
 from fastmcp.server.context import Context
 
+from bridge.annotations import READ_ONLY
 from bridge.client import CodegenClient
 from bridge.context import ContextRegistry
 from bridge.dependencies import CurrentContext, Depends, get_client, get_registry
@@ -33,12 +34,11 @@ def _get_sampling_config(ctx: Context) -> SamplingConfig:
 def register_sampling_tools(mcp: FastMCP) -> None:
     """Register all sampling-powered tools on the given FastMCP server."""
 
-    @mcp.tool(tags={"sampling", "monitoring"}, icons=ICON_SAMPLING_SUMMARY)
+    @mcp.tool(tags={"sampling", "monitoring"}, icons=ICON_SAMPLING_SUMMARY, annotations=READ_ONLY)
     async def codegen_summarise_run(
         run_id: int,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
-    ) -> str:
+        client: CodegenClient = Depends(get_client),    ) -> str:
         """Generate an AI-powered summary of an agent run.
 
         Uses server-side LLM sampling to produce a concise, actionable
@@ -87,12 +87,11 @@ def register_sampling_tools(mcp: FastMCP) -> None:
         await ctx.info(f"Sampling: run {run_id} summary generated ({len(summary)} chars)")
         return json.dumps({"run_id": run_id, "ai_summary": summary})
 
-    @mcp.tool(tags={"sampling", "monitoring"}, icons=ICON_SAMPLING_SUMMARY)
+    @mcp.tool(tags={"sampling", "monitoring"}, icons=ICON_SAMPLING_SUMMARY, annotations=READ_ONLY)
     async def codegen_summarise_execution(
         execution_id: str | None = None,
         ctx: Context = CurrentContext(),
-        registry: ContextRegistry = Depends(get_registry),  # type: ignore[arg-type]
-    ) -> str:
+        registry: ContextRegistry = Depends(get_registry),    ) -> str:
         """Generate an AI-powered summary of a full execution plan.
 
         Summarises all tasks, their statuses, PRs, and key decisions
@@ -123,7 +122,7 @@ def register_sampling_tools(mcp: FastMCP) -> None:
             }
         )
 
-    @mcp.tool(tags={"sampling", "context"}, icons=ICON_SAMPLING_PROMPT)
+    @mcp.tool(tags={"sampling", "context"}, icons=ICON_SAMPLING_PROMPT, annotations=READ_ONLY)
     async def codegen_generate_task_prompt(
         goal: str,
         task_description: str,
@@ -131,8 +130,7 @@ def register_sampling_tools(mcp: FastMCP) -> None:
         architecture: str | None = None,
         execution_id: str | None = None,
         ctx: Context = CurrentContext(),
-        registry: ContextRegistry = Depends(get_registry),  # type: ignore[arg-type]
-    ) -> str:
+        registry: ContextRegistry = Depends(get_registry),    ) -> str:
         """Use AI to generate a detailed, optimised prompt for a Codegen agent.
 
         The LLM produces a structured, self-contained prompt based on the
@@ -180,13 +178,12 @@ def register_sampling_tools(mcp: FastMCP) -> None:
         await ctx.info(f"Sampling: task prompt generated ({len(prompt)} chars)")
         return json.dumps({"generated_prompt": prompt})
 
-    @mcp.tool(tags={"sampling", "monitoring"}, icons=ICON_SAMPLING_ANALYSIS)
+    @mcp.tool(tags={"sampling", "monitoring"}, icons=ICON_SAMPLING_ANALYSIS, annotations=READ_ONLY)
     async def codegen_analyse_run_logs(
         run_id: int,
         limit: int = 50,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
-    ) -> str:
+        client: CodegenClient = Depends(get_client),    ) -> str:
         """Analyse agent execution logs with AI to identify patterns and issues.
 
         Fetches logs for the given run and uses LLM sampling to produce

@@ -16,6 +16,7 @@ import json
 from fastmcp import FastMCP
 from fastmcp.server.context import Context
 
+from bridge.annotations import MUTATES, READ_ONLY
 from bridge.dependencies import CurrentContext, Depends, get_run_service
 from bridge.helpers.pagination import DEFAULT_PAGE_SIZE
 from bridge.icons import ICON_GET_RUN, ICON_LIST
@@ -27,12 +28,11 @@ def register_query_tools(mcp: FastMCP) -> None:
 
     # ── Get (pure read) ────────────────────────────────────
 
-    @mcp.tool(tags={"execution"}, icons=ICON_GET_RUN)
+    @mcp.tool(tags={"execution"}, icons=ICON_GET_RUN, annotations=READ_ONLY)
     async def codegen_get_run(
         run_id: int,
         ctx: Context = CurrentContext(),
-        svc: RunService = Depends(get_run_service),  # type: ignore[arg-type]
-    ) -> str:
+        svc: RunService = Depends(get_run_service),    ) -> str:
         """Get agent run status, result, summary, and created PRs.
 
         Pure read — safe to poll repeatedly without side effects.
@@ -47,14 +47,13 @@ def register_query_tools(mcp: FastMCP) -> None:
 
     # ── Report Run Result (explicit mutation) ──────────────
 
-    @mcp.tool(tags={"execution"}, icons=ICON_GET_RUN)
+    @mcp.tool(tags={"execution"}, icons=ICON_GET_RUN, annotations=MUTATES)
     async def codegen_report_run_result(
         run_id: int,
         execution_id: str,
         task_index: int | None = None,
         ctx: Context = CurrentContext(),
-        svc: RunService = Depends(get_run_service),  # type: ignore[arg-type]
-    ) -> str:
+        svc: RunService = Depends(get_run_service),    ) -> str:
         """Report a completed/failed agent run back to an execution context.
 
         Fetches the run, parses its logs, writes a TaskReport to the
@@ -74,15 +73,14 @@ def register_query_tools(mcp: FastMCP) -> None:
 
     # ── List ───────────────────────────────────────────────
 
-    @mcp.tool(tags={"execution"}, icons=ICON_LIST)
+    @mcp.tool(tags={"execution"}, icons=ICON_LIST, annotations=READ_ONLY)
     async def codegen_list_runs(
         limit: int = DEFAULT_PAGE_SIZE,
         source_type: str | None = None,
         user_id: int | None = None,
         cursor: str | None = None,
         ctx: Context = CurrentContext(),
-        svc: RunService = Depends(get_run_service),  # type: ignore[arg-type]
-    ) -> str:
+        svc: RunService = Depends(get_run_service),    ) -> str:
         """List recent agent runs with cursor-based pagination.
 
         Args:

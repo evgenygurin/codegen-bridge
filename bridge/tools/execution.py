@@ -12,6 +12,7 @@ from typing import Literal
 from fastmcp import FastMCP
 from fastmcp.server.context import Context
 
+from bridge.annotations import CREATES, READ_ONLY, READ_ONLY_LOCAL
 from bridge.dependencies import CurrentContext, Depends, get_execution_service
 from bridge.elicitation import confirm_action
 from bridge.icons import ICON_CONTEXT, ICON_EXECUTION, ICON_RULES
@@ -21,7 +22,7 @@ from bridge.services.execution import ExecutionService
 def register_execution_tools(mcp: FastMCP) -> None:
     """Register all execution context management tools on the given FastMCP server."""
 
-    @mcp.tool(tags={"context"}, icons=ICON_EXECUTION)
+    @mcp.tool(tags={"context"}, icons=ICON_EXECUTION, annotations=CREATES)
     async def codegen_start_execution(
         execution_id: str,
         goal: str,
@@ -32,8 +33,7 @@ def register_execution_tools(mcp: FastMCP) -> None:
         repo_structure: str | None = None,
         confirmed: bool = False,
         ctx: Context = CurrentContext(),
-        svc: ExecutionService = Depends(get_execution_service),  # type: ignore[arg-type]
-    ) -> str:
+        svc: ExecutionService = Depends(get_execution_service),    ) -> str:
         """Initialize an execution context, load agent rules and integrations.
 
         Call this at the start of a plan or ad-hoc task to set up full context
@@ -88,12 +88,11 @@ def register_execution_tools(mcp: FastMCP) -> None:
         )
         return json.dumps(result)
 
-    @mcp.tool(tags={"context"}, icons=ICON_CONTEXT)
+    @mcp.tool(tags={"context"}, icons=ICON_CONTEXT, annotations=READ_ONLY_LOCAL)
     async def codegen_get_execution_context(
         execution_id: str | None = None,
         ctx: Context = CurrentContext(),
-        svc: ExecutionService = Depends(get_execution_service),  # type: ignore[arg-type]
-    ) -> str:
+        svc: ExecutionService = Depends(get_execution_service),    ) -> str:
         """Get full execution context — active or by ID.
 
         Returns the complete execution state including tasks, rules, and metadata.
@@ -110,11 +109,10 @@ def register_execution_tools(mcp: FastMCP) -> None:
 
         return exec_ctx.model_dump_json(indent=2)
 
-    @mcp.tool(tags={"context"}, icons=ICON_RULES)
+    @mcp.tool(tags={"context"}, icons=ICON_RULES, annotations=READ_ONLY)
     async def codegen_get_agent_rules(
         ctx: Context = CurrentContext(),
-        svc: ExecutionService = Depends(get_execution_service),  # type: ignore[arg-type]
-    ) -> str:
+        svc: ExecutionService = Depends(get_execution_service),    ) -> str:
         """Fetch organization agent rules from the Codegen API.
 
         Returns organization-level rules and user custom prompts that should

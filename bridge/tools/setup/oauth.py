@@ -12,6 +12,7 @@ from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from fastmcp.server.context import Context
 
+from bridge.annotations import DESTRUCTIVE, READ_ONLY
 from bridge.client import CodegenClient
 from bridge.dependencies import CurrentContext, Depends, get_client
 from bridge.elicitation import confirm_action
@@ -21,11 +22,10 @@ from bridge.icons import ICON_MCP, ICON_OAUTH
 def register_oauth_tools(mcp: FastMCP) -> None:
     """Register OAuth and MCP provider management tools."""
 
-    @mcp.tool(tags={"setup"}, icons=ICON_MCP)
+    @mcp.tool(tags={"setup"}, icons=ICON_MCP, annotations=READ_ONLY)
     async def codegen_get_mcp_providers(
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
-    ) -> str:
+        client: CodegenClient = Depends(get_client),    ) -> str:
         """List available MCP-enabled OAuth providers.
 
         Returns all providers registered in Codegen with ``is_mcp=True``.
@@ -52,11 +52,10 @@ def register_oauth_tools(mcp: FastMCP) -> None:
             }
         )
 
-    @mcp.tool(tags={"setup"}, icons=ICON_OAUTH)
+    @mcp.tool(tags={"setup"}, icons=ICON_OAUTH, annotations=READ_ONLY)
     async def codegen_get_oauth_status(
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
-    ) -> str:
+        client: CodegenClient = Depends(get_client),    ) -> str:
         """Get OAuth token status for the current user and organization.
 
         Returns a list of connected OAuth providers that have active tokens.
@@ -75,13 +74,12 @@ def register_oauth_tools(mcp: FastMCP) -> None:
             }
         )
 
-    @mcp.tool(tags={"setup", "dangerous"}, icons=ICON_OAUTH)
+    @mcp.tool(tags={"setup", "dangerous"}, icons=ICON_OAUTH, annotations=DESTRUCTIVE)
     async def codegen_revoke_oauth(
         provider: str,
         confirmed: bool = False,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
-    ) -> str:
+        client: CodegenClient = Depends(get_client),    ) -> str:
         """Revoke/disconnect an OAuth token for a specific provider.
 
         Marks ALL tokens as inactive for the current user and organization.
