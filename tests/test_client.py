@@ -83,17 +83,11 @@ class TestClientInit:
 class TestErrorHierarchy:
     """Verify custom exceptions are backward-compatible with httpx.HTTPStatusError."""
 
-    def _make_error(
-        self, status: int, body: dict | None = None
-    ) -> CodegenAPIError:
+    def _make_error(self, status: int, body: dict | None = None) -> CodegenAPIError:
         """Helper to build a classified error from a status code."""
         req = httpx.Request("GET", "https://api.codegen.com/v1/test")
-        resp = httpx.Response(
-            status, request=req, json=body or {}
-        )
-        return _classify_error(
-            request=req, response=resp, detail=None, request_id="abc123"
-        )
+        resp = httpx.Response(status, request=req, json=body or {})
+        return _classify_error(request=req, response=resp, detail=None, request_id="abc123")
 
     def test_base_inherits_from_httpx_status_error(self):
         err = self._make_error(400)
@@ -123,12 +117,8 @@ class TestErrorHierarchy:
 
     def test_429_is_rate_limit_error(self):
         req = httpx.Request("GET", "https://api.codegen.com/v1/test")
-        resp = httpx.Response(
-            429, request=req, json={}, headers={"Retry-After": "5"}
-        )
-        err = _classify_error(
-            request=req, response=resp, detail=None, request_id="abc"
-        )
+        resp = httpx.Response(429, request=req, json={}, headers={"Retry-After": "5"})
+        err = _classify_error(request=req, response=resp, detail=None, request_id="abc")
         assert isinstance(err, RateLimitError)
         assert err.retry_after == 5.0
 
@@ -177,9 +167,7 @@ class TestExtractDetail:
         assert _extract_detail(resp) == "Bad request"
 
     def test_extracts_fastapi_validation_detail(self):
-        resp = httpx.Response(
-            422, json={"detail": [{"msg": "field required", "type": "missing"}]}
-        )
+        resp = httpx.Response(422, json={"detail": [{"msg": "field required", "type": "missing"}]})
         assert _extract_detail(resp) == "field required"
 
     def test_extracts_first_item_from_list(self):

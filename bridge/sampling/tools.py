@@ -3,15 +3,23 @@
 Each tool uses ``SamplingService`` to request LLM completions via
 ``ctx.sample()`` — the actual inference is done by the connected
 client or a configured fallback handler.
+
+All sampling tools use ``task=TaskConfig(mode="optional")`` so they
+can run as background tasks with progress reporting.  This prevents
+timeout failures on the 30-60 second LLM invocations.
 """
 
 from __future__ import annotations
 
 import json
+from contextlib import suppress
+from datetime import timedelta
 from typing import Any
 
 from fastmcp import FastMCP
 from fastmcp.server.context import Context
+from fastmcp.server.tasks import TaskConfig
+from mcp.types import ToolAnnotations
 
 from bridge.client import CodegenClient
 from bridge.context import ContextRegistry
@@ -19,6 +27,22 @@ from bridge.dependencies import CurrentContext, Depends, get_client, get_registr
 from bridge.icons import ICON_SAMPLING_ANALYSIS, ICON_SAMPLING_PROMPT, ICON_SAMPLING_SUMMARY
 from bridge.sampling.config import SamplingConfig
 from bridge.sampling.service import SamplingService
+
+# ── Task configurations for sampling operations ──────────
+# Sampling tools invoke ctx.sample() which can take 30-60 seconds.
+# Background task support prevents MCP protocol timeouts.
+
+SAMPLING_TASK = TaskConfig(
+    mode="optional",
+    poll_interval=timedelta(seconds=5),
+)
+"""Standard task config for sampling tools — 5s poll interval."""
+
+
+async def _report(ctx: Context, progress: float, total: float, message: str) -> None:
+    """Best-effort progress report — never raises."""
+    with suppress(Exception):
+        await ctx.report_progress(progress=progress, total=total, message=message)
 
 
 def _get_sampling_config(ctx: Context) -> SamplingConfig:
@@ -33,7 +57,17 @@ def _get_sampling_config(ctx: Context) -> SamplingConfig:
 def register_sampling_tools(mcp: FastMCP) -> None:
     """Register all sampling-powered tools on the given FastMCP server."""
 
-    @mcp.tool(tags={"sampling", "monitoring"}, icons=ICON_SAMPLING_SUMMARY)
+    @mcp.tool(
+        tags={"sampling", "monitoring"},
+        icons=ICON_SAMPLING_SUMMARY,
+        task=SAMPLING_TASK,
+        timeout=120,
+        annotations=ToolAnnotations(
+            title="Summarise Agent Run (AI)",
+            readOnlyHint=True,
+            openWorldHint=True,
+        ),
+    )
     async def codegen_summarise_run(
         run_id: int,
         ctx: Context = CurrentContext(),
@@ -43,12 +77,17 @@ def register_sampling_tools(mcp: FastMCP) -> None:
 
         Uses server-side LLM sampling to produce a concise, actionable
         summary from the run's status, result, PRs, and parsed logs.
+        Supports background execution with progress reporting.
 
         Args:
             run_id: Agent run ID to summarise.
         """
-        await ctx.info(f"Sampling: summarising run {run_id}")
+        total = 4
+        step = 0
 
+        # Step 1: Fetch run data
+        await _report(ctx, step, total, "Fetching run data")
+        await ctx.info(f"Sampling: summarising run {run_id}")
         run = await client.get_run(run_id)
         run_data: dict[str, Any] = {
             "id": run.id,
@@ -57,14 +96,15 @@ def register_sampling_tools(mcp: FastMCP) -> None:
             "summary": run.summary,
             "web_url": run.web_url,
         }
-
         if run.github_pull_requests:
             run_data["pull_requests"] = [
                 {"url": pr.url, "number": pr.number, "title": pr.title, "state": pr.state}
                 for pr in run.github_pull_requests
             ]
+        step += 1
 
-        # Optionally enrich with parsed logs
+        # Step 2: Enrich with parsed logs
+        await _report(ctx, step, total, "Fetching and parsing logs")
         try:
             logs_result = await client.get_logs(run_id, limit=50)
             if logs_result.logs:
@@ -79,15 +119,30 @@ def register_sampling_tools(mcp: FastMCP) -> None:
                 }
         except Exception:
             await ctx.warning(f"Could not fetch logs for run {run_id}; summarising without them")
+        step += 1
 
+        # Step 3: Generate AI summary via sampling
+        await _report(ctx, step, total, "Generating AI summary")
         cfg = _get_sampling_config(ctx)
         service = SamplingService(ctx, cfg)
         summary = await service.summarise_run(run_data)
+        step += 1
 
+        await _report(ctx, total, total, "Summary complete")
         await ctx.info(f"Sampling: run {run_id} summary generated ({len(summary)} chars)")
         return json.dumps({"run_id": run_id, "ai_summary": summary})
 
-    @mcp.tool(tags={"sampling", "monitoring"}, icons=ICON_SAMPLING_SUMMARY)
+    @mcp.tool(
+        tags={"sampling", "monitoring"},
+        icons=ICON_SAMPLING_SUMMARY,
+        task=SAMPLING_TASK,
+        timeout=120,
+        annotations=ToolAnnotations(
+            title="Summarise Execution Plan (AI)",
+            readOnlyHint=True,
+            openWorldHint=False,
+        ),
+    )
     async def codegen_summarise_execution(
         execution_id: str | None = None,
         ctx: Context = CurrentContext(),
@@ -97,23 +152,33 @@ def register_sampling_tools(mcp: FastMCP) -> None:
 
         Summarises all tasks, their statuses, PRs, and key decisions
         into a concise report using server-side LLM sampling.
+        Supports background execution with progress reporting.
 
         Args:
             execution_id: Execution ID. If not given, uses the active execution.
         """
-        await ctx.info(f"Sampling: summarising execution {execution_id or 'active'}")
+        total = 3
+        step = 0
 
+        # Step 1: Fetch execution context
+        await _report(ctx, step, total, "Fetching execution context")
+        await ctx.info(f"Sampling: summarising execution {execution_id or 'active'}")
         if execution_id:
             exec_ctx = await registry.get(execution_id)
         else:
             exec_ctx = await registry.get_active()
         if exec_ctx is None:
             return json.dumps({"error": "No execution context found"})
+        step += 1
 
+        # Step 2: Generate AI summary via sampling
+        await _report(ctx, step, total, "Generating AI summary")
         cfg = _get_sampling_config(ctx)
         service = SamplingService(ctx, cfg)
         summary = await service.summarise_execution(exec_ctx.model_dump_json(indent=2))
+        step += 1
 
+        await _report(ctx, total, total, "Summary complete")
         await ctx.info(f"Sampling: execution summary generated ({len(summary)} chars)")
         return json.dumps(
             {
@@ -123,7 +188,17 @@ def register_sampling_tools(mcp: FastMCP) -> None:
             }
         )
 
-    @mcp.tool(tags={"sampling", "context"}, icons=ICON_SAMPLING_PROMPT)
+    @mcp.tool(
+        tags={"sampling", "context"},
+        icons=ICON_SAMPLING_PROMPT,
+        task=SAMPLING_TASK,
+        timeout=120,
+        annotations=ToolAnnotations(
+            title="Generate Task Prompt (AI)",
+            readOnlyHint=True,
+            openWorldHint=False,
+        ),
+    )
     async def codegen_generate_task_prompt(
         goal: str,
         task_description: str,
@@ -138,6 +213,7 @@ def register_sampling_tools(mcp: FastMCP) -> None:
         The LLM produces a structured, self-contained prompt based on the
         provided goal, task, and optional context. Much richer than the
         static template in ``build_task_prompt``.
+        Supports background execution with progress reporting.
 
         Args:
             goal: High-level project goal.
@@ -146,8 +222,12 @@ def register_sampling_tools(mcp: FastMCP) -> None:
             architecture: Architecture overview string.
             execution_id: Optional execution ID to pull completed-task context from.
         """
-        await ctx.info("Sampling: generating task prompt")
+        total = 3
+        step = 0
 
+        # Step 1: Gather context
+        await _report(ctx, step, total, "Gathering context")
+        await ctx.info("Sampling: generating task prompt")
         completed_tasks: list[dict[str, Any]] | None = None
         if execution_id:
             exec_ctx = await registry.get(execution_id)
@@ -166,7 +246,10 @@ def register_sampling_tools(mcp: FastMCP) -> None:
                     tech_stack = exec_ctx.tech_stack
                 if not architecture and exec_ctx.architecture:
                     architecture = exec_ctx.architecture
+        step += 1
 
+        # Step 2: Generate prompt via sampling
+        await _report(ctx, step, total, "Generating optimised prompt")
         cfg = _get_sampling_config(ctx)
         service = SamplingService(ctx, cfg)
         prompt = await service.generate_task_prompt(
@@ -176,11 +259,23 @@ def register_sampling_tools(mcp: FastMCP) -> None:
             architecture=architecture,
             completed_tasks=completed_tasks,
         )
+        step += 1
 
+        await _report(ctx, total, total, "Prompt generated")
         await ctx.info(f"Sampling: task prompt generated ({len(prompt)} chars)")
         return json.dumps({"generated_prompt": prompt})
 
-    @mcp.tool(tags={"sampling", "monitoring"}, icons=ICON_SAMPLING_ANALYSIS)
+    @mcp.tool(
+        tags={"sampling", "monitoring"},
+        icons=ICON_SAMPLING_ANALYSIS,
+        task=SAMPLING_TASK,
+        timeout=120,
+        annotations=ToolAnnotations(
+            title="Analyse Run Logs (AI)",
+            readOnlyHint=True,
+            openWorldHint=True,
+        ),
+    )
     async def codegen_analyse_run_logs(
         run_id: int,
         limit: int = 50,
@@ -192,13 +287,18 @@ def register_sampling_tools(mcp: FastMCP) -> None:
         Fetches logs for the given run and uses LLM sampling to produce
         structured insights: accomplishments, errors, test results, and
         improvement suggestions.
+        Supports background execution with progress reporting.
 
         Args:
             run_id: Agent run ID whose logs to analyse.
             limit: Maximum log entries to analyse (default 50).
         """
-        await ctx.info(f"Sampling: analysing logs for run {run_id}")
+        total = 3
+        step = 0
 
+        # Step 1: Fetch logs
+        await _report(ctx, step, total, f"Fetching logs for run {run_id}")
+        await ctx.info(f"Sampling: analysing logs for run {run_id}")
         logs_result = await client.get_logs(run_id, limit=limit)
         log_dicts = [
             {
@@ -213,11 +313,16 @@ def register_sampling_tools(mcp: FastMCP) -> None:
             }
             for log in logs_result.logs
         ]
+        step += 1
 
+        # Step 2: Analyse via sampling
+        await _report(ctx, step, total, "Analysing logs with AI")
         cfg = _get_sampling_config(ctx)
         service = SamplingService(ctx, cfg)
         analysis = await service.analyse_logs(log_dicts)
+        step += 1
 
+        await _report(ctx, total, total, "Analysis complete")
         await ctx.info(f"Sampling: log analysis generated ({len(analysis)} chars)")
         return json.dumps(
             {

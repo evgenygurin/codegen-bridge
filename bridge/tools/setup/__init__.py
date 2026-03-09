@@ -12,6 +12,7 @@ from __future__ import annotations
 from fastmcp import FastMCP
 
 from bridge.tools.setup.check_suite import register_check_suite_tools
+from bridge.tools.setup.models import register_models_tools
 from bridge.tools.setup.oauth import register_oauth_tools
 from bridge.tools.setup.organizations import register_organization_tools
 from bridge.tools.setup.users import register_user_tools
@@ -25,3 +26,4 @@ def register_setup_tools(mcp: FastMCP) -> None:
     register_organization_tools(mcp)
     register_oauth_tools(mcp)
     register_check_suite_tools(mcp)
+    register_models_tools(mcp)

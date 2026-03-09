@@ -11,6 +11,7 @@ import json
 
 from fastmcp import FastMCP
 from fastmcp.server.context import Context
+from mcp.types import ToolAnnotations
 
 from bridge.client import CodegenClient
 from bridge.dependencies import CurrentContext, Depends, get_client
@@ -23,7 +24,18 @@ def register_moderation_tools(mcp: FastMCP) -> None:
 
     # ── Ban ───────────────────────────────────────────────
 
-    @mcp.tool(tags={"execution", "dangerous"}, icons=ICON_BAN)
+    @mcp.tool(
+        tags={"execution", "dangerous"},
+        icons=ICON_BAN,
+        timeout=30,
+        annotations=ToolAnnotations(
+            title="Ban Agent Run Checks",
+            readOnlyHint=False,
+            destructiveHint=True,
+            idempotentHint=False,
+            openWorldHint=True,
+        ),
+    )
     async def codegen_ban_run(
         run_id: int,
         before_card_order_id: str | None = None,
@@ -72,7 +84,18 @@ def register_moderation_tools(mcp: FastMCP) -> None:
 
     # ── Unban ─────────────────────────────────────────────
 
-    @mcp.tool(tags={"execution"}, icons=ICON_UNBAN)
+    @mcp.tool(
+        tags={"execution"},
+        icons=ICON_UNBAN,
+        timeout=30,
+        annotations=ToolAnnotations(
+            title="Unban Agent Run Checks",
+            readOnlyHint=False,
+            destructiveHint=False,
+            idempotentHint=True,
+            openWorldHint=True,
+        ),
+    )
     async def codegen_unban_run(
         run_id: int,
         before_card_order_id: str | None = None,
@@ -108,7 +131,18 @@ def register_moderation_tools(mcp: FastMCP) -> None:
 
     # ── Remove from PR ────────────────────────────────────
 
-    @mcp.tool(tags={"execution", "dangerous"}, icons=ICON_REMOVE_FROM_PR)
+    @mcp.tool(
+        tags={"execution", "dangerous"},
+        icons=ICON_REMOVE_FROM_PR,
+        timeout=30,
+        annotations=ToolAnnotations(
+            title="Remove Codegen from PR",
+            readOnlyHint=False,
+            destructiveHint=True,
+            idempotentHint=False,
+            openWorldHint=True,
+        ),
+    )
     async def codegen_remove_from_pr(
         run_id: int,
         before_card_order_id: str | None = None,

@@ -10,6 +10,7 @@ import json
 
 from fastmcp import FastMCP
 from fastmcp.server.context import Context
+from mcp.types import ToolAnnotations
 
 from bridge.client import CodegenClient
 from bridge.dependencies import CurrentContext, Depends, get_client
@@ -21,7 +22,18 @@ from bridge.tools.agent._progress import GET_LOGS_STEPS, GET_LOGS_TASK, report
 def register_log_tools(mcp: FastMCP) -> None:
     """Register agent log retrieval tools."""
 
-    @mcp.tool(tags={"monitoring"}, icons=ICON_LOGS, task=GET_LOGS_TASK)
+    @mcp.tool(
+        tags={"monitoring"},
+        icons=ICON_LOGS,
+        task=GET_LOGS_TASK,
+        timeout=30,
+        annotations=ToolAnnotations(
+            title="Get Agent Logs",
+            readOnlyHint=True,
+            idempotentHint=True,
+            openWorldHint=True,
+        ),
+    )
     async def codegen_get_logs(
         run_id: int,
         limit: int = DEFAULT_PAGE_SIZE,

@@ -12,6 +12,7 @@ from typing import Any, Literal
 
 from fastmcp import FastMCP
 from fastmcp.server.context import Context
+from mcp.types import ToolAnnotations
 
 from bridge.client import CodegenClient
 from bridge.context import ContextRegistry, PRInfo, TaskReport
@@ -30,7 +31,17 @@ def register_query_tools(mcp: FastMCP) -> None:
 
     # ── Get ───────────────────────────────────────────────
 
-    @mcp.tool(tags={"execution"}, icons=ICON_GET_RUN)
+    @mcp.tool(
+        tags={"execution"},
+        icons=ICON_GET_RUN,
+        timeout=30,
+        annotations=ToolAnnotations(
+            title="Get Agent Run",
+            readOnlyHint=True,
+            idempotentHint=True,
+            openWorldHint=True,
+        ),
+    )
     async def codegen_get_run(
         run_id: int,
         execution_id: str | None = None,
@@ -142,7 +153,17 @@ def register_query_tools(mcp: FastMCP) -> None:
 
     # ── List ──────────────────────────────────────────────
 
-    @mcp.tool(tags={"execution"}, icons=ICON_LIST)
+    @mcp.tool(
+        tags={"execution"},
+        icons=ICON_LIST,
+        timeout=30,
+        annotations=ToolAnnotations(
+            title="List Agent Runs",
+            readOnlyHint=True,
+            idempotentHint=True,
+            openWorldHint=True,
+        ),
+    )
     async def codegen_list_runs(
         limit: int = DEFAULT_PAGE_SIZE,
         source_type: str | None = None,
@@ -161,9 +182,7 @@ def register_query_tools(mcp: FastMCP) -> None:
                 field.  Omit or pass ``null`` for the first page.
         """
         offset = cursor_to_offset(cursor)
-        await ctx.info(
-            f"Listing runs: limit={limit}, offset={offset}, source_type={source_type}"
-        )
+        await ctx.info(f"Listing runs: limit={limit}, offset={offset}, source_type={source_type}")
         page = await client.list_runs(
             skip=offset, limit=limit, source_type=source_type, user_id=user_id
         )

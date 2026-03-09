@@ -10,6 +10,7 @@ import json
 
 from fastmcp import FastMCP
 from fastmcp.server.context import Context
+from mcp.types import ToolAnnotations
 
 from bridge.client import CodegenClient
 from bridge.dependencies import CurrentContext, Depends, get_client
@@ -24,7 +25,17 @@ from bridge.icons import ICON_ORG, ICON_ORG_SETTINGS, ICON_REPO, ICON_SETUP_CMD
 def register_organization_tools(mcp: FastMCP) -> None:
     """Register organization and repository management tools."""
 
-    @mcp.tool(tags={"setup"}, icons=ICON_ORG)
+    @mcp.tool(
+        tags={"setup"},
+        icons=ICON_ORG,
+        timeout=30,
+        annotations=ToolAnnotations(
+            title="List Organizations",
+            readOnlyHint=True,
+            idempotentHint=True,
+            openWorldHint=True,
+        ),
+    )
     async def codegen_list_orgs(
         ctx: Context = CurrentContext(),
         client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
@@ -39,7 +50,17 @@ def register_organization_tools(mcp: FastMCP) -> None:
             }
         )
 
-    @mcp.tool(tags={"setup"}, icons=ICON_ORG_SETTINGS)
+    @mcp.tool(
+        tags={"setup"},
+        icons=ICON_ORG_SETTINGS,
+        timeout=30,
+        annotations=ToolAnnotations(
+            title="Get Organization Settings",
+            readOnlyHint=True,
+            idempotentHint=True,
+            openWorldHint=True,
+        ),
+    )
     async def codegen_get_organization_settings(
         ctx: Context = CurrentContext(),
         client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
@@ -62,7 +83,17 @@ def register_organization_tools(mcp: FastMCP) -> None:
             }
         )
 
-    @mcp.tool(tags={"setup"}, icons=ICON_REPO)
+    @mcp.tool(
+        tags={"setup"},
+        icons=ICON_REPO,
+        timeout=30,
+        annotations=ToolAnnotations(
+            title="List Repositories",
+            readOnlyHint=True,
+            idempotentHint=True,
+            openWorldHint=True,
+        ),
+    )
     async def codegen_list_repos(
         limit: int = DEFAULT_PAGE_SIZE,
         cursor: str | None = None,
@@ -101,7 +132,17 @@ def register_organization_tools(mcp: FastMCP) -> None:
             )
         )
 
-    @mcp.tool(tags={"setup"}, icons=ICON_SETUP_CMD)
+    @mcp.tool(
+        tags={"setup"},
+        icons=ICON_SETUP_CMD,
+        timeout=60,
+        annotations=ToolAnnotations(
+            title="Generate Setup Commands",
+            readOnlyHint=False,
+            destructiveHint=False,
+            openWorldHint=True,
+        ),
+    )
     async def codegen_generate_setup_commands(
         repo_id: int,
         prompt: str | None = None,
