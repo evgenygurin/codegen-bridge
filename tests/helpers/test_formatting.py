@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 
-from bridge.helpers.formatting import format_logs, format_run, format_run_basic, format_run_list
+from bridge.helpers.formatting import format_logs, format_run
 from bridge.models import AgentLog, AgentRun, AgentRunWithLogs
 
 
@@ -36,37 +36,6 @@ class TestFormatRun:
     def test_excludes_none_summary(self):
         result = format_run(_run(summary=None))
         assert "summary" not in result
-
-
-class TestFormatRunBasic:
-    def test_returns_json_string(self):
-        output = format_run_basic(_run())
-        data = json.loads(output)
-        assert data["id"] == 1
-        assert data["status"] == "completed"
-        assert data["web_url"] == "https://codegen.com/run/1"
-
-    def test_only_includes_three_fields(self):
-        output = format_run_basic(_run(result="extra", summary="extra"))
-        data = json.loads(output)
-        assert set(data.keys()) == {"id", "status", "web_url"}
-
-
-class TestFormatRunList:
-    def test_returns_json_with_total_and_runs(self):
-        runs = [_run(id=1), _run(id=2, status="running")]
-        output = format_run_list(runs, total=5)
-        data = json.loads(output)
-        assert data["total"] == 5
-        assert len(data["runs"]) == 2
-        assert data["runs"][0]["id"] == 1
-        assert data["runs"][1]["status"] == "running"
-
-    def test_empty_list(self):
-        output = format_run_list([], total=0)
-        data = json.loads(output)
-        assert data["total"] == 0
-        assert data["runs"] == []
 
 
 class TestFormatLogs:
