@@ -666,9 +666,25 @@ class TestStopRun:
         async with CodegenClient(api_key="test", org_id=42) as client:
             result = await client.stop_run(1)
 
-        # stop_run is a legacy alias — returns AgentRun for backward compat
+        # stop_run accepts both AgentRun-like and action-style payloads
         assert result.id == 1
         assert result.status == "stopped"
+
+    @respx.mock
+    async def test_stops_run_with_action_payload(self):
+        respx.post("https://api.codegen.com/v1/organizations/42/agent/run/ban").mock(
+            return_value=Response(
+                200,
+                json={"status": "success", "message": "Run stopped", "agent_run_id": 7},
+            )
+        )
+
+        async with CodegenClient(api_key="test", org_id=42) as client:
+            result = await client.stop_run(7)
+
+        assert result.id is None
+        assert result.agent_run_id == 7
+        assert result.status == "success"
 
 
 class TestBanRun:
@@ -733,6 +749,63 @@ class TestGetOrganizationSettings:
     async def test_returns_defaults(self):
         respx.get("https://api.codegen.com/v1/organizations/42/settings").mock(
             return_value=Response(200, json={})
+        )
+
+        async with CodegenClient(api_key="test", org_id=42) as client:
+            settings = await client.get_organization_settings()
+
+        assert settings.enable_pr_creation is True
+        assert settings.enable_rules_detection is True
+
+    @respx.mock
+    async def test_falls_back_to_organizations_list_on_404(self):
+        respx.get("https://api.codegen.com/v1/organizations/42/settings").mock(
+            return_value=Response(404, json={"detail": "Not Found"})
+        )
+        respx.get("https://api.codegen.com/v1/organizations").mock(
+            return_value=Response(
+                200,
+                json={
+                    "items": [
+                        {
+                            "id": 42,
+                            "name": "acme",
+                            "settings": {
+                                "enable_pr_creation": False,
+                                "enable_rules_detection": True,
+                            },
+                        }
+                    ],
+                    "total": 1,
+                    "page": 1,
+                    "size": 20,
+                    "pages": 1,
+                },
+            )
+        )
+
+        async with CodegenClient(api_key="test", org_id=42) as client:
+            settings = await client.get_organization_settings()
+
+        assert settings.enable_pr_creation is False
+        assert settings.enable_rules_detection is True
+
+    @respx.mock
+    async def test_fallback_returns_defaults_when_org_settings_missing(self):
+        respx.get("https://api.codegen.com/v1/organizations/42/settings").mock(
+            return_value=Response(404, json={"detail": "Not Found"})
+        )
+        respx.get("https://api.codegen.com/v1/organizations").mock(
+            return_value=Response(
+                200,
+                json={
+                    "items": [{"id": 42, "name": "acme"}],
+                    "total": 1,
+                    "page": 1,
+                    "size": 20,
+                    "pages": 1,
+                },
+            )
         )
 
         async with CodegenClient(api_key="test", org_id=42) as client:

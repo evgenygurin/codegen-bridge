@@ -39,6 +39,7 @@ from bridge.models import (
     SandboxLog,
     SetupCommand,
     SlackToken,
+    StopRunResponse,
     User,
     WebhookConfig,
 )
@@ -491,11 +492,11 @@ class CodegenClient:
         return BanActionResponse.model_validate(resp)
 
     # Legacy alias — preserved for backward compatibility
-    async def stop_run(self, run_id: int) -> AgentRun:
-        """Stop/ban an agent run (legacy alias — returns AgentRun for backward compat)."""
+    async def stop_run(self, run_id: int) -> StopRunResponse:
+        """Stop/ban an agent run (legacy alias)."""
         body: dict[str, Any] = {"agent_run_id": run_id}
         resp = await self._post(f"/organizations/{self.org_id}/agent/run/ban", json=body)
-        return AgentRun.model_validate(resp)
+        return StopRunResponse.model_validate(resp)
 
     # ── Users ──────────────────────────────────────────────
 
@@ -532,8 +533,17 @@ class CodegenClient:
 
         Endpoint: ``GET /v1/organizations/{org_id}/settings``
         """
-        resp = await self._get(f"/organizations/{self.org_id}/settings")
-        return OrganizationSettings.model_validate(resp)
+        try:
+            resp = await self._get(f"/organizations/{self.org_id}/settings")
+            return OrganizationSettings.model_validate(resp)
+        except NotFoundError:
+            # Compatibility fallback for API variants where settings are only
+            # embedded in /organizations list payloads.
+            orgs = await self.list_orgs()
+            match = next((org for org in orgs.items if org.id == self.org_id), None)
+            if match is not None and match.settings is not None:
+                return match.settings
+            return OrganizationSettings()
 
     async def list_repos(
         self,

@@ -266,7 +266,18 @@ class RunService:
     async def stop_run(self, run_id: int) -> dict[str, Any]:
         """Stop a running agent."""
         run = await self._client.stop_run(run_id)
-        return {"id": run.id, "status": run.status, "web_url": run.web_url}
+        effective_id = getattr(run, "id", None)
+        if effective_id is None:
+            effective_id = getattr(run, "agent_run_id", None)
+        status = getattr(run, "status", None)
+        web_url = getattr(run, "web_url", None)
+        message = getattr(run, "message", None)
+        return {
+            "id": effective_id if effective_id is not None else run_id,
+            "status": status,
+            "web_url": web_url,
+            **({"message": message} if message is not None else {}),
+        }
 
     # ── Moderation ────────────────────────────────────────
 

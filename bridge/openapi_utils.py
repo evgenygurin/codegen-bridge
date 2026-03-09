@@ -73,11 +73,34 @@ def load_and_patch_spec(org_id: int) -> dict[str, Any]:
             if not isinstance(method_data, dict):
                 continue
             if "parameters" in method_data:
-                method_data["parameters"] = [
-                    p
-                    for p in method_data["parameters"]
-                    if not (isinstance(p, dict) and p.get("name") == "org_id")
-                ]
+                patched_params: list[Any] = []
+                for param in method_data["parameters"]:
+                    if not isinstance(param, dict):
+                        patched_params.append(param)
+                        continue
+
+                    if param.get("name") != "org_id":
+                        patched_params.append(param)
+                        continue
+
+                    # Most endpoints use {org_id} in the path, so org_id
+                    # should not be exposed as a tool argument.
+                    #
+                    # OAuth revoke is different: org_id is a required query
+                    # parameter even though the path is global. Keep it in the
+                    # spec with a default so callers don't need to pass it.
+                    if new_path == "/v1/oauth/tokens/revoke":
+                        org_param = copy.deepcopy(param)
+                        org_param["required"] = False
+                        schema = org_param.get("schema")
+                        if isinstance(schema, dict):
+                            schema["default"] = org_id
+                        patched_params.append(org_param)
+                        continue
+
+                    # Drop org_id from all other operations.
+
+                method_data["parameters"] = patched_params
 
         patched_paths[new_path] = path_item
 

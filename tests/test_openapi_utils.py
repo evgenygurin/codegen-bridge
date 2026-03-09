@@ -39,9 +39,17 @@ class TestLoadAndPatchSpec:
                 params = data.get("parameters", [])
                 for p in params:
                     if isinstance(p, dict):
-                        assert p.get("name") != "org_id", (
-                            f"org_id param still in {method.upper()} {path}"
-                        )
+                        if path == "/v1/oauth/tokens/revoke":
+                            # Special case: keep org_id for revoke endpoint,
+                            # but make it optional with default.
+                            if p.get("name") == "org_id":
+                                assert p.get("required") is False
+                                schema = p.get("schema", {})
+                                assert schema.get("default") == 42
+                        else:
+                            assert p.get("name") != "org_id", (
+                                f"org_id param still in {method.upper()} {path}"
+                            )
 
     def test_preserves_other_path_params(self):
         spec = load_and_patch_spec(42)
