@@ -103,62 +103,14 @@ class TestBuildRouteMaps:
 
         assert maps[-1].mcp_type == MCPType.EXCLUDE
 
-    def test_does_not_include_ban_endpoint(self):
-        """Ban endpoint is handled by manual codegen_stop_run tool."""
+    def test_only_five_tool_routes(self):
+        """Only routes for the 5 unique auto-tools plus the catch-all exclude."""
         maps = build_route_maps()
-        patterns = [str(m.pattern) for m in maps if hasattr(m, "pattern")]
-        for p in patterns:
-            assert "ban" not in p or "unban" in p
+        from fastmcp.server.providers.openapi import MCPType
 
-    def test_includes_users_routes(self):
-        """Users endpoints should be routed as tools."""
-        maps = build_route_maps()
-        patterns = [str(m.pattern) for m in maps if m.pattern is not None]
-        matched = [p for p in patterns if "users" in p]
-        assert len(matched) >= 3, f"Expected >=3 user route maps, got: {matched}"
-
-    def test_includes_sandbox_route(self):
-        maps = build_route_maps()
-        patterns = [str(m.pattern) for m in maps if m.pattern is not None]
-        matched = [p for p in patterns if "sandbox" in p]
-        assert len(matched) >= 1, "Expected sandbox route map"
-
-    def test_includes_setup_commands_route(self):
-        maps = build_route_maps()
-        patterns = [str(m.pattern) for m in maps if m.pattern is not None]
-        matched = [p for p in patterns if "setup-commands" in p]
-        assert len(matched) >= 1, "Expected setup-commands route map"
-
-    def test_includes_slack_route(self):
-        maps = build_route_maps()
-        patterns = [str(m.pattern) for m in maps if m.pattern is not None]
-        matched = [p for p in patterns if "slack" in p]
-        assert len(matched) >= 1, "Expected slack-connect route map"
-
-    def test_includes_oauth_route(self):
-        maps = build_route_maps()
-        patterns = [str(m.pattern) for m in maps if m.pattern is not None]
-        matched = [p for p in patterns if "oauth" in p]
-        assert len(matched) >= 1, "Expected oauth route map"
-
-    def test_includes_mcp_providers_route(self):
-        maps = build_route_maps()
-        patterns = [str(m.pattern) for m in maps if m.pattern is not None]
-        matched = [p for p in patterns if "mcp-providers" in p]
-        assert len(matched) >= 1, "Expected mcp-providers route map"
-
-    def test_user_route_matches_org_scoped_users(self):
-        """Org-scoped /users path should match the route pattern."""
-        maps = build_route_maps()
-        patterns = [m.pattern for m in maps if m.pattern is not None]
-        path = "/v1/organizations/42/users"
-        assert any(re.search(p, path) for p in patterns), f"No route matched {path}"
-
-    def test_user_route_matches_user_by_id(self):
-        maps = build_route_maps()
-        patterns = [m.pattern for m in maps if m.pattern is not None]
-        path = "/v1/organizations/42/users/123"
-        assert any(re.search(p, path) for p in patterns), f"No route matched {path}"
+        tool_routes = [m for m in maps if m.mcp_type == MCPType.TOOL]
+        # users/me, models, oauth/tokens/.*, mcp-providers = 4 route entries
+        assert len(tool_routes) == 4, f"Expected 4 tool routes, got {len(tool_routes)}"
 
     def test_user_me_route_matches(self):
         maps = build_route_maps()
@@ -166,22 +118,10 @@ class TestBuildRouteMaps:
         path = "/v1/users/me"
         assert any(re.search(p, path) for p in patterns), f"No route matched {path}"
 
-    def test_sandbox_route_matches(self):
+    def test_models_route_matches(self):
         maps = build_route_maps()
         patterns = [m.pattern for m in maps if m.pattern is not None]
-        path = "/v1/organizations/42/sandbox/abc123/analyze-logs"
-        assert any(re.search(p, path) for p in patterns), f"No route matched {path}"
-
-    def test_setup_commands_route_matches(self):
-        maps = build_route_maps()
-        patterns = [m.pattern for m in maps if m.pattern is not None]
-        path = "/v1/organizations/42/setup-commands/generate"
-        assert any(re.search(p, path) for p in patterns), f"No route matched {path}"
-
-    def test_slack_route_matches(self):
-        maps = build_route_maps()
-        patterns = [m.pattern for m in maps if m.pattern is not None]
-        path = "/v1/slack-connect/generate-token"
+        path = "/v1/organizations/42/models"
         assert any(re.search(p, path) for p in patterns), f"No route matched {path}"
 
     def test_oauth_routes_match(self):
@@ -196,6 +136,29 @@ class TestBuildRouteMaps:
         path = "/v1/mcp-providers"
         assert any(re.search(p, path) for p in patterns), f"No route matched {path}"
 
+    def test_excluded_manual_routes_do_not_match(self):
+        """Routes handled by manual tools must NOT match any route map."""
+        maps = build_route_maps()
+        from fastmcp.server.providers.openapi import MCPType
+
+        tool_patterns = [
+            m.pattern for m in maps
+            if m.pattern is not None and m.mcp_type == MCPType.TOOL
+        ]
+        manual_paths = [
+            "/v1/organizations/42/users",
+            "/v1/organizations/42/users/123",
+            "/v1/organizations/42/prs/456",
+            "/v1/organizations/42/webhooks/agent-run",
+            "/v1/organizations/42/agent/run/unban",
+            "/v1/organizations/42/setup-commands/generate",
+            "/v1/slack-connect/generate-token",
+        ]
+        for path in manual_paths:
+            assert not any(re.search(p, path) for p in tool_patterns), (
+                f"Manual path unexpectedly matched a tool route: {path}"
+            )
+
 
 class TestToolNames:
     def test_all_names_start_with_codegen(self):
@@ -206,20 +169,13 @@ class TestToolNames:
         names = list(TOOL_NAMES.values())
         assert len(names) == len(set(names)), "Duplicate tool names found"
 
-    def test_contains_user_tools(self):
+    def test_contains_current_user(self):
         names = set(TOOL_NAMES.values())
-        assert "codegen_list_users" in names
-        assert "codegen_get_user" in names
         assert "codegen_get_current_user" in names
 
-    def test_contains_setup_tools(self):
+    def test_contains_models(self):
         names = set(TOOL_NAMES.values())
-        assert "codegen_generate_setup_commands" in names
-        assert "codegen_analyze_sandbox_logs" in names
-
-    def test_contains_slack_tool(self):
-        names = set(TOOL_NAMES.values())
-        assert "codegen_generate_slack_token" in names
+        assert "codegen_get_models" in names
 
     def test_contains_oauth_tools(self):
         names = set(TOOL_NAMES.values())
@@ -230,33 +186,31 @@ class TestToolNames:
         names = set(TOOL_NAMES.values())
         assert "codegen_get_mcp_providers" in names
 
-    def test_contains_webhook_tools(self):
-        names = set(TOOL_NAMES.values())
-        assert "codegen_get_webhook" in names
-        assert "codegen_set_webhook" in names
-        assert "codegen_delete_webhook" in names
-        assert "codegen_test_webhook" in names
-
-    def test_contains_pr_tools(self):
-        names = set(TOOL_NAMES.values())
-        assert "codegen_edit_pr" in names
-        assert "codegen_edit_repo_pr" in names
-
-    def test_contains_agent_extras(self):
-        names = set(TOOL_NAMES.values())
-        assert "codegen_unban_run" in names
-        assert "codegen_remove_from_pr" in names
+    def test_no_duplicate_manual_tools(self):
+        """Auto-generated tools must NOT overlap with manual tool names."""
+        # These are covered by manual tools and must NOT be in TOOL_NAMES
+        manual_names = {
+            "codegen_list_users", "codegen_get_user",
+            "codegen_edit_pr", "codegen_edit_repo_pr",
+            "codegen_unban_run", "codegen_remove_from_pr",
+            "codegen_get_webhook", "codegen_set_webhook",
+            "codegen_delete_webhook", "codegen_test_webhook",
+            "codegen_get_integrations", "codegen_get_check_suite",
+            "codegen_set_check_suite", "codegen_generate_setup_commands",
+            "codegen_analyze_sandbox_logs", "codegen_generate_slack_token",
+        }
+        auto_names = set(TOOL_NAMES.values())
+        overlap = auto_names & manual_names
+        assert not overlap, f"Auto tools overlap with manual tools: {overlap}"
 
     def test_total_tool_count(self):
-        """Ensure we have the expected number of auto-generated tool mappings."""
-        # 2 agent extras + 3 users + 2 PR + 4 models/config + 4 webhooks
-        # + 2 setup/sandbox + 1 slack + 2 oauth + 1 mcp-providers = 21
-        assert len(TOOL_NAMES) == 21, f"Expected 21 tool names, got {len(TOOL_NAMES)}"
+        """Only 5 unique auto-generated tools (no manual duplicates)."""
+        # 1 current_user + 1 models + 2 oauth + 1 mcp-providers = 5
+        assert len(TOOL_NAMES) == 5, f"Expected 5 tool names, got {len(TOOL_NAMES)}"
 
     def test_operation_ids_match_spec(self):
         """All operationIds in TOOL_NAMES must exist in the OpenAPI spec."""
         spec = load_and_patch_spec(42)
-        # operationIds in the spec still contain __org_id__ (only paths are patched)
         spec_op_ids = set()
         for path_item in spec["paths"].values():
             for method_data in path_item.values():

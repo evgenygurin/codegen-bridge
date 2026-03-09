@@ -58,11 +58,14 @@ DEFAULT_DANGEROUS_TOOLS: frozenset[str] = frozenset(
     {
         # Manual tools
         "codegen_stop_run",
-        # OpenAPI-generated tools — PR editing
+        # PR editing (manual tools with OpenAPI mirror)
         "codegen_edit_pr",
         "codegen_edit_repo_pr",
-        # OpenAPI-generated tools — webhook deletion
+        # Webhook management — deletion is destructive, set redirects data
         "codegen_delete_webhook",
+        "codegen_set_webhook",
+        # OAuth — token revocation is irreversible
+        "codegen_revoke_oauth_token",
     }
 )
 

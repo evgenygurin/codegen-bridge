@@ -146,6 +146,12 @@ class TestIsDangerous:
     def test_dangerous_by_name_delete_webhook(self):
         assert self.mw.is_dangerous("codegen_delete_webhook") is True
 
+    def test_dangerous_by_name_set_webhook(self):
+        assert self.mw.is_dangerous("codegen_set_webhook") is True
+
+    def test_dangerous_by_name_revoke_oauth(self):
+        assert self.mw.is_dangerous("codegen_revoke_oauth_token") is True
+
     def test_safe_tool_by_name(self):
         assert self.mw.is_dangerous("codegen_list_runs") is False
 
@@ -430,5 +436,11 @@ class TestDefaultDangerousTools:
     def test_is_frozenset(self):
         assert isinstance(DEFAULT_DANGEROUS_TOOLS, frozenset)
 
-    def test_exactly_four_tools(self):
-        assert len(DEFAULT_DANGEROUS_TOOLS) == 4
+    def test_contains_set_webhook(self):
+        assert "codegen_set_webhook" in DEFAULT_DANGEROUS_TOOLS
+
+    def test_contains_revoke_oauth(self):
+        assert "codegen_revoke_oauth_token" in DEFAULT_DANGEROUS_TOOLS
+
+    def test_exactly_six_tools(self):
+        assert len(DEFAULT_DANGEROUS_TOOLS) == 6
