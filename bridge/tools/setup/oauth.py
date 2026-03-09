@@ -11,6 +11,7 @@ import json
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from fastmcp.server.context import Context
+from mcp.types import ToolAnnotations
 
 from bridge.client import CodegenClient
 from bridge.dependencies import CurrentContext, Depends, get_client
@@ -21,7 +22,17 @@ from bridge.icons import ICON_MCP, ICON_OAUTH
 def register_oauth_tools(mcp: FastMCP) -> None:
     """Register OAuth and MCP provider management tools."""
 
-    @mcp.tool(tags={"setup"}, icons=ICON_MCP)
+    @mcp.tool(
+        tags={"setup"},
+        icons=ICON_MCP,
+        timeout=30,
+        annotations=ToolAnnotations(
+            title="Get MCP Providers",
+            readOnlyHint=True,
+            idempotentHint=True,
+            openWorldHint=True,
+        ),
+    )
     async def codegen_get_mcp_providers(
         ctx: Context = CurrentContext(),
         client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
@@ -52,7 +63,17 @@ def register_oauth_tools(mcp: FastMCP) -> None:
             }
         )
 
-    @mcp.tool(tags={"setup"}, icons=ICON_OAUTH)
+    @mcp.tool(
+        tags={"setup"},
+        icons=ICON_OAUTH,
+        timeout=30,
+        annotations=ToolAnnotations(
+            title="Get OAuth Status",
+            readOnlyHint=True,
+            idempotentHint=True,
+            openWorldHint=True,
+        ),
+    )
     async def codegen_get_oauth_status(
         ctx: Context = CurrentContext(),
         client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
@@ -75,7 +96,18 @@ def register_oauth_tools(mcp: FastMCP) -> None:
             }
         )
 
-    @mcp.tool(tags={"setup", "dangerous"}, icons=ICON_OAUTH)
+    @mcp.tool(
+        tags={"setup", "dangerous"},
+        icons=ICON_OAUTH,
+        timeout=30,
+        annotations=ToolAnnotations(
+            title="Revoke OAuth Token",
+            readOnlyHint=False,
+            destructiveHint=True,
+            idempotentHint=False,
+            openWorldHint=True,
+        ),
+    )
     async def codegen_revoke_oauth(
         provider: str,
         confirmed: bool = False,

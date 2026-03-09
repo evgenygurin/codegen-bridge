@@ -15,9 +15,11 @@ import json
 
 from fastmcp import FastMCP
 from fastmcp.server.context import Context
+from mcp.types import ToolAnnotations
 
 from bridge.client import CodegenClient
 from bridge.dependencies import CurrentContext, Depends, get_client
+from bridge.elicitation import confirm_action
 from bridge.icons import ICON_PR_EDIT
 from bridge.models import PRState
 
@@ -25,7 +27,18 @@ from bridge.models import PRState
 def register_pr_tools(mcp: FastMCP) -> None:
     """Register all pull-request management tools on the given FastMCP server."""
 
-    @mcp.tool(tags={"pull-requests", "dangerous"}, icons=ICON_PR_EDIT)
+    @mcp.tool(
+        tags={"pull-requests", "dangerous"},
+        icons=ICON_PR_EDIT,
+        timeout=30,
+        annotations=ToolAnnotations(
+            title="Edit Pull Request",
+            readOnlyHint=False,
+            destructiveHint=True,
+            idempotentHint=False,
+            openWorldHint=True,
+        ),
+    )
     async def codegen_edit_pr(
         repo_id: int,
         pr_id: int,
@@ -45,6 +58,9 @@ def register_pr_tools(mcp: FastMCP) -> None:
             pr_id: Pull request ID to edit.
             state: New state — "open", "closed", "draft", or "ready_for_review".
         """
+        confirmed = await confirm_action(ctx, f"Change PR #{pr_id} state to '{state}'?")
+        if not confirmed:
+            return json.dumps({"cancelled": True, "reason": "User declined"})
         await ctx.info(f"Editing PR: repo_id={repo_id}, pr_id={pr_id}, state={state}")
         result = await client.edit_pr(repo_id=repo_id, pr_id=pr_id, state=state)
         await ctx.info(f"PR edited: success={result.success}, state={result.state}")
@@ -62,7 +78,18 @@ def register_pr_tools(mcp: FastMCP) -> None:
             response["error"] = result.error
         return json.dumps(response)
 
-    @mcp.tool(tags={"pull-requests", "dangerous"}, icons=ICON_PR_EDIT)
+    @mcp.tool(
+        tags={"pull-requests", "dangerous"},
+        icons=ICON_PR_EDIT,
+        timeout=30,
+        annotations=ToolAnnotations(
+            title="Edit Pull Request (Simple)",
+            readOnlyHint=False,
+            destructiveHint=True,
+            idempotentHint=False,
+            openWorldHint=True,
+        ),
+    )
     async def codegen_edit_pr_simple(
         pr_id: int,
         state: PRState,
@@ -79,6 +106,9 @@ def register_pr_tools(mcp: FastMCP) -> None:
             pr_id: Pull request ID to edit.
             state: New state — "open", "closed", "draft", or "ready_for_review".
         """
+        confirmed = await confirm_action(ctx, f"Change PR #{pr_id} state to '{state}'?")
+        if not confirmed:
+            return json.dumps({"cancelled": True, "reason": "User declined"})
         await ctx.info(f"Editing PR (simple): pr_id={pr_id}, state={state}")
         result = await client.edit_pr_simple(pr_id=pr_id, state=state)
         await ctx.info(f"PR edited: success={result.success}, state={result.state}")

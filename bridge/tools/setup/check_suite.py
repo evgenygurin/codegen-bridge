@@ -12,6 +12,7 @@ import json
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from fastmcp.server.context import Context
+from mcp.types import ToolAnnotations
 
 from bridge.client import CodegenClient
 from bridge.dependencies import CurrentContext, Depends, get_client
@@ -21,7 +22,17 @@ from bridge.icons import ICON_CHECK_SUITE
 def register_check_suite_tools(mcp: FastMCP) -> None:
     """Register CI check-suite settings tools (get, update)."""
 
-    @mcp.tool(tags={"setup"}, icons=ICON_CHECK_SUITE)
+    @mcp.tool(
+        tags={"setup"},
+        icons=ICON_CHECK_SUITE,
+        timeout=30,
+        annotations=ToolAnnotations(
+            title="Get Check Suite Settings",
+            readOnlyHint=True,
+            idempotentHint=True,
+            openWorldHint=True,
+        ),
+    )
     async def codegen_get_check_suite_settings(
         repo_id: int,
         ctx: Context = CurrentContext(),
@@ -53,7 +64,17 @@ def register_check_suite_tools(mcp: FastMCP) -> None:
             }
         )
 
-    @mcp.tool(tags={"setup"}, icons=ICON_CHECK_SUITE)
+    @mcp.tool(
+        tags={"setup"},
+        icons=ICON_CHECK_SUITE,
+        timeout=30,
+        annotations=ToolAnnotations(
+            title="Update Check Suite Settings",
+            readOnlyHint=False,
+            idempotentHint=True,
+            openWorldHint=True,
+        ),
+    )
     async def codegen_update_check_suite_settings(
         repo_id: int,
         check_retry_count: int | None = None,

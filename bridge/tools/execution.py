@@ -7,6 +7,7 @@ from typing import Any, Literal
 
 from fastmcp import FastMCP
 from fastmcp.server.context import Context
+from mcp.types import ToolAnnotations
 
 from bridge.client import CodegenClient
 from bridge.context import ContextRegistry
@@ -19,7 +20,18 @@ from bridge.icons import ICON_CONTEXT, ICON_EXECUTION, ICON_RULES
 def register_execution_tools(mcp: FastMCP) -> None:
     """Register all execution context management tools on the given FastMCP server."""
 
-    @mcp.tool(tags={"context"}, icons=ICON_EXECUTION)
+    @mcp.tool(
+        tags={"context"},
+        icons=ICON_EXECUTION,
+        timeout=60,
+        annotations=ToolAnnotations(
+            title="Start Execution",
+            readOnlyHint=False,
+            destructiveHint=False,
+            idempotentHint=False,
+            openWorldHint=True,
+        ),
+    )
     async def codegen_start_execution(
         execution_id: str,
         goal: str,
@@ -117,7 +129,17 @@ def register_execution_tools(mcp: FastMCP) -> None:
             }
         )
 
-    @mcp.tool(tags={"context"}, icons=ICON_CONTEXT)
+    @mcp.tool(
+        tags={"context"},
+        icons=ICON_CONTEXT,
+        timeout=10,
+        annotations=ToolAnnotations(
+            title="Get Execution Context",
+            readOnlyHint=True,
+            idempotentHint=True,
+            openWorldHint=False,
+        ),
+    )
     async def codegen_get_execution_context(
         execution_id: str | None = None,
         ctx: Context = CurrentContext(),
@@ -142,7 +164,17 @@ def register_execution_tools(mcp: FastMCP) -> None:
 
         return exec_ctx.model_dump_json(indent=2)
 
-    @mcp.tool(tags={"context"}, icons=ICON_RULES)
+    @mcp.tool(
+        tags={"context"},
+        icons=ICON_RULES,
+        timeout=30,
+        annotations=ToolAnnotations(
+            title="Get Agent Rules",
+            readOnlyHint=True,
+            idempotentHint=True,
+            openWorldHint=True,
+        ),
+    )
     async def codegen_get_agent_rules(
         ctx: Context = CurrentContext(),
         client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]

@@ -32,6 +32,7 @@ from bridge.providers.registry import (
     create_commands_provider,
     create_skills_provider,
 )
+from bridge.providers.remote import create_remote_proxy
 
 __all__ = [
     "AgentsProvider",
@@ -39,5 +40,6 @@ __all__ = [
     "create_agents_provider",
     "create_all_providers",
     "create_commands_provider",
+    "create_remote_proxy",
     "create_skills_provider",
 ]

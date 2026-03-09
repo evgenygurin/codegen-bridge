@@ -70,6 +70,10 @@ class CachingConfig(BaseModel):
     ``tool_ttl`` and ``resource_ttl`` control per-operation cache
     lifetimes in seconds.  ``max_item_size`` caps individual cached
     items (bytes).
+
+    ``realtime_tools`` lists tool names that must never be cached
+    (e.g. agent status checks, run logs) because their results change
+    frequently and stale data would mislead the LLM.
     """
 
     enabled: bool = True
@@ -77,6 +81,20 @@ class CachingConfig(BaseModel):
     resource_ttl: int = Field(default=30, ge=0)
     list_ttl: int = Field(default=30, ge=0)
     max_item_size: int = Field(default=1_048_576, gt=0)
+    realtime_tools: list[str] = Field(
+        default_factory=lambda: [
+            # Agent lifecycle — status changes in real time
+            "codegen_get_run",
+            "codegen_list_runs",
+            # Execution logs — constantly growing
+            "codegen_get_run_logs",
+            # Execution context — task progress changes
+            "codegen_get_execution_context",
+            # Session state — user modifies during session
+            "codegen_get_session_preferences",
+        ],
+        description="Tool names excluded from caching (real-time data).",
+    )
 
 
 class ResponseLimitingConfig(BaseModel):

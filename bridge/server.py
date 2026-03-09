@@ -43,7 +43,7 @@ from bridge.helpers.repo_detection import RepoCache
 from bridge.middleware import configure_middleware
 from bridge.openapi_utils import create_openapi_provider
 from bridge.prompts import register_prompts
-from bridge.providers import create_all_providers
+from bridge.providers import create_all_providers, create_remote_proxy
 from bridge.resources import register_resources
 from bridge.sampling import SamplingConfig, register_sampling_tools
 from bridge.storage import FileStorage
@@ -52,6 +52,7 @@ from bridge.tools import (
     register_execution_tools,
     register_integration_tools,
     register_pr_tools,
+    register_session_tools,
     register_settings_tools,
     register_setup_tools,
 )
@@ -110,11 +111,21 @@ async def _lifespan(server: FastMCP) -> AsyncIterator[dict[str, Any]]:
                 exc_info=True,
             )
 
+    # Mount remote Codegen MCP server as a proxy (doubles tool surface)
+    try:
+        remote_proxy = create_remote_proxy(api_key=api_key)
+        if remote_proxy is not None:
+            server.mount(remote_proxy, namespace="remote")
+            logger.info("Remote Codegen MCP proxy mounted (namespace='remote')")
+    except Exception:
+        logger.warning("Remote MCP proxy unavailable; local tools only", exc_info=True)
+
     storage = FileStorage()
     registry = ContextRegistry(storage=storage)
     await registry.setup()
     repo_cache = RepoCache()
     sampling_config = SamplingConfig()
+    session_state: dict[str, str] = {}
 
     logger.info("Codegen Bridge ready")
     try:
@@ -124,6 +135,7 @@ async def _lifespan(server: FastMCP) -> AsyncIterator[dict[str, Any]]:
             "registry": registry,
             "repo_cache": repo_cache,
             "sampling_config": sampling_config,
+            "session_state": session_state,
         }
     finally:
         logger.info("Shutting down Codegen Bridge")
@@ -151,6 +163,7 @@ register_pr_tools(mcp)
 register_setup_tools(mcp)
 register_integration_tools(mcp)
 register_settings_tools(mcp)
+register_session_tools(mcp)
 register_resources(mcp)
 register_prompts(mcp)
 register_sampling_tools(mcp)
