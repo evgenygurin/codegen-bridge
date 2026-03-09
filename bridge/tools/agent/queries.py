@@ -5,67 +5,21 @@
 - ``codegen_report_run_result``: Explicit mutation — write TaskReport
   to ContextRegistry and advance execution task index.
 
-The read/write split ensures ``codegen_get_run`` is safe to poll
-without triggering side-effects on execution contexts.
+Business logic lives in ``RunService``; these tools handle MCP
+concerns (logging, JSON serialisation).
 """
 
 from __future__ import annotations
 
 import json
-from typing import Any, Literal
 
 from fastmcp import FastMCP
 from fastmcp.server.context import Context
 
-from bridge.client import CodegenClient
-from bridge.context import ContextRegistry, PRInfo, TaskReport
-from bridge.dependencies import CurrentContext, Depends, get_client, get_registry
-from bridge.helpers.pagination import (
-    DEFAULT_PAGE_SIZE,
-    build_paginated_response,
-    cursor_to_offset,
-)
+from bridge.dependencies import CurrentContext, Depends, get_run_service
+from bridge.helpers.pagination import DEFAULT_PAGE_SIZE
 from bridge.icons import ICON_GET_RUN, ICON_LIST
-from bridge.log_parser import parse_logs
-
-
-def _build_run_result(run: Any) -> tuple[dict[str, Any], list[dict[str, Any]]]:
-    """Build the run result dict and PR list from an API run response.
-
-    Returns (result_dict, pr_list) so both get_run and report_run_result
-    can share the same serialisation logic.
-    """
-    result: dict[str, Any] = {
-        "id": run.id,
-        "status": run.status,
-        "web_url": run.web_url,
-    }
-    if run.result:
-        result["result"] = run.result
-    if run.summary:
-        result["summary"] = run.summary
-    if run.source_type:
-        result["source_type"] = run.source_type
-
-    pr_list: list[dict[str, Any]] = []
-    if run.github_pull_requests:
-        pr_list = [
-            {
-                k: v
-                for k, v in {
-                    "url": pr.url,
-                    "title": pr.title,
-                    "head_branch_name": pr.head_branch_name,
-                    "number": pr.number,
-                    "state": pr.state,
-                }.items()
-                if v is not None
-            }
-            for pr in run.github_pull_requests
-        ]
-        result["pull_requests"] = pr_list
-
-    return result, pr_list
+from bridge.services.runs import RunService
 
 
 def register_query_tools(mcp: FastMCP) -> None:
@@ -77,7 +31,7 @@ def register_query_tools(mcp: FastMCP) -> None:
     async def codegen_get_run(
         run_id: int,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
+        svc: RunService = Depends(get_run_service),  # type: ignore[arg-type]
     ) -> str:
         """Get agent run status, result, summary, and created PRs.
 
@@ -88,8 +42,7 @@ def register_query_tools(mcp: FastMCP) -> None:
             run_id: Agent run ID.
         """
         await ctx.info(f"Fetching run: id={run_id}")
-        run = await client.get_run(run_id)
-        result, _pr_list = _build_run_result(run)
+        result = await svc.get_run(run_id)
         return json.dumps(result)
 
     # ── Report Run Result (explicit mutation) ──────────────
@@ -100,8 +53,7 @@ def register_query_tools(mcp: FastMCP) -> None:
         execution_id: str,
         task_index: int | None = None,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
-        registry: ContextRegistry = Depends(get_registry),  # type: ignore[arg-type]
+        svc: RunService = Depends(get_run_service),  # type: ignore[arg-type]
     ) -> str:
         """Report a completed/failed agent run back to an execution context.
 
@@ -117,78 +69,7 @@ def register_query_tools(mcp: FastMCP) -> None:
             task_index: Task index within the execution (default: current_task_index).
         """
         await ctx.info(f"Reporting run result: run_id={run_id}, execution_id={execution_id}")
-        run = await client.get_run(run_id)
-        result, pr_list = _build_run_result(run)
-
-        # Only report on terminal statuses
-        if run.status not in ("completed", "failed"):
-            result["report_skipped"] = f"Run status is '{run.status}', not terminal"
-            return json.dumps(result)
-
-        exec_ctx = await registry.get(execution_id)
-        if exec_ctx is None:
-            result["report_skipped"] = f"Execution context '{execution_id}' not found"
-            return json.dumps(result)
-
-        idx = task_index if task_index is not None else exec_ctx.current_task_index
-        if idx >= len(exec_ctx.tasks):
-            result["report_skipped"] = f"Task index {idx} out of range"
-            return json.dumps(result)
-
-        # Parse logs for structured data
-        parsed = None
-        try:
-            logs_result = await client.get_logs(run_id, limit=100)
-            parsed = parse_logs(logs_result.logs)
-            result["parsed_logs"] = {
-                "files_changed": parsed.files_changed,
-                "key_decisions": parsed.key_decisions,
-                "test_results": parsed.test_results,
-                "commands_run": parsed.commands_run,
-                "total_steps": parsed.total_steps,
-            }
-        except Exception as exc:
-            await ctx.warning(f"Log parsing failed for run {run_id}: {exc}")
-
-        # Build TaskReport
-        report = TaskReport(
-            summary=run.summary or run.result or "",
-            web_url=run.web_url or "",
-            pull_requests=[
-                PRInfo(
-                    url=pr.get("url", ""),
-                    number=pr.get("number", 0),
-                    title=pr.get("title", ""),
-                    state=pr.get("state", ""),
-                )
-                for pr in pr_list
-            ],
-            files_changed=parsed.files_changed if parsed else [],
-            key_decisions=parsed.key_decisions if parsed else [],
-            test_results=parsed.test_results if parsed else None,
-            agent_notes=parsed.agent_notes if parsed else None,
-            commands_run=parsed.commands_run if parsed else [],
-            total_steps=parsed.total_steps if parsed else 0,
-        )
-
-        task_status: Literal["completed", "failed"] = (
-            "completed" if run.status == "completed" else "failed"
-        )
-        await registry.update_task(
-            execution_id=execution_id,
-            task_index=idx,
-            status=task_status,
-            report=report,
-        )
-
-        # Advance current_task_index if completed
-        if run.status == "completed":
-            exec_ctx.current_task_index = idx + 1
-            await registry._save(exec_ctx)
-
-        result["reported"] = True
-        result["task_index"] = idx
-        result["task_status"] = task_status
+        result = await svc.report_run_result(run_id, execution_id, task_index)
         return json.dumps(result)
 
     # ── List ───────────────────────────────────────────────
@@ -200,7 +81,7 @@ def register_query_tools(mcp: FastMCP) -> None:
         user_id: int | None = None,
         cursor: str | None = None,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
+        svc: RunService = Depends(get_run_service),  # type: ignore[arg-type]
     ) -> str:
         """List recent agent runs with cursor-based pagination.
 
@@ -211,30 +92,11 @@ def register_query_tools(mcp: FastMCP) -> None:
             cursor: Opaque cursor from a previous response's ``next_cursor``
                 field.  Omit or pass ``null`` for the first page.
         """
-        offset = cursor_to_offset(cursor)
         await ctx.info(
-            f"Listing runs: limit={limit}, offset={offset}, source_type={source_type}"
+            f"Listing runs: limit={limit}, source_type={source_type}"
         )
-        page = await client.list_runs(
-            skip=offset, limit=limit, source_type=source_type, user_id=user_id
+        result = await svc.list_runs(
+            limit=limit, cursor=cursor, source_type=source_type, user_id=user_id
         )
-        await ctx.info(f"Listed {len(page.items)} of {page.total} runs")
-        return json.dumps(
-            build_paginated_response(
-                items=[
-                    {
-                        "id": r.id,
-                        "status": r.status,
-                        "created_at": r.created_at,
-                        "web_url": r.web_url,
-                        "summary": r.summary,
-                        "source_type": r.source_type,
-                    }
-                    for r in page.items
-                ],
-                total=page.total,
-                offset=offset,
-                page_size=limit,
-                items_key="runs",
-            )
-        )
+        await ctx.info(f"Listed {len(result.get('runs', []))} runs")
+        return json.dumps(result)
