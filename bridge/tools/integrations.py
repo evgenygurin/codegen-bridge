@@ -153,7 +153,7 @@ def register_integration_tools(mcp: FastMCP) -> None:
         await ctx.info("Webhook configuration deleted")
         return json.dumps({"status": "deleted", "result": result})
 
-    @mcp.tool(tags={"webhooks"}, icons=ICON_WEBHOOK)
+    @mcp.tool(tags={"webhooks", "external-request"}, icons=ICON_WEBHOOK)
     async def codegen_test_webhook(
         url: str,
         ctx: Context = CurrentContext(),
@@ -173,7 +173,7 @@ def register_integration_tools(mcp: FastMCP) -> None:
 
     # ── Sandbox ──────────────────────────────────────────
 
-    @mcp.tool(tags={"sandbox"}, icons=ICON_SANDBOX)
+    @mcp.tool(tags={"sandbox", "creates-agent-run"}, icons=ICON_SANDBOX)
     async def codegen_analyze_sandbox_logs(
         sandbox_id: int,
         ctx: Context = CurrentContext(),

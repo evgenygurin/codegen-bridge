@@ -101,7 +101,7 @@ def register_organization_tools(mcp: FastMCP) -> None:
             )
         )
 
-    @mcp.tool(tags={"setup"}, icons=ICON_SETUP_CMD)
+    @mcp.tool(tags={"setup", "creates-agent-run"}, icons=ICON_SETUP_CMD)
     async def codegen_generate_setup_commands(
         repo_id: int,
         prompt: str | None = None,
