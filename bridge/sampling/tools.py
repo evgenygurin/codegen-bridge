@@ -16,10 +16,11 @@ from fastmcp.server.context import Context
 from bridge.annotations import READ_ONLY
 from bridge.client import CodegenClient
 from bridge.context import ContextRegistry
-from bridge.dependencies import CurrentContext, Depends, get_client, get_registry
+from bridge.dependencies import CurrentContext, Depends, get_client, get_registry, get_run_service
 from bridge.icons import ICON_SAMPLING_ANALYSIS, ICON_SAMPLING_PROMPT, ICON_SAMPLING_SUMMARY
 from bridge.sampling.config import SamplingConfig
 from bridge.sampling.service import SamplingService
+from bridge.services.runs import RunService
 
 
 def _get_sampling_config(ctx: Context) -> SamplingConfig:
@@ -38,7 +39,9 @@ def register_sampling_tools(mcp: FastMCP) -> None:
     async def codegen_summarise_run(
         run_id: int,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),    ) -> str:
+        svc: RunService = Depends(get_run_service),
+        client: CodegenClient = Depends(get_client),
+    ) -> str:
         """Generate an AI-powered summary of an agent run.
 
         Uses server-side LLM sampling to produce a concise, actionable
@@ -49,22 +52,9 @@ def register_sampling_tools(mcp: FastMCP) -> None:
         """
         await ctx.info(f"Sampling: summarising run {run_id}")
 
-        run = await client.get_run(run_id)
-        run_data: dict[str, Any] = {
-            "id": run.id,
-            "status": run.status,
-            "result": run.result,
-            "summary": run.summary,
-            "web_url": run.web_url,
-        }
+        run_data = await svc.get_run(run_id)
 
-        if run.github_pull_requests:
-            run_data["pull_requests"] = [
-                {"url": pr.url, "number": pr.number, "title": pr.title, "state": pr.state}
-                for pr in run.github_pull_requests
-            ]
-
-        # Optionally enrich with parsed logs
+        # Optionally enrich with parsed logs (needs raw AgentLog objects)
         try:
             logs_result = await client.get_logs(run_id, limit=50)
             if logs_result.logs:
@@ -183,7 +173,8 @@ def register_sampling_tools(mcp: FastMCP) -> None:
         run_id: int,
         limit: int = 50,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),    ) -> str:
+        svc: RunService = Depends(get_run_service),
+    ) -> str:
         """Analyse agent execution logs with AI to identify patterns and issues.
 
         Fetches logs for the given run and uses LLM sampling to produce
@@ -196,20 +187,8 @@ def register_sampling_tools(mcp: FastMCP) -> None:
         """
         await ctx.info(f"Sampling: analysing logs for run {run_id}")
 
-        logs_result = await client.get_logs(run_id, limit=limit)
-        log_dicts = [
-            {
-                k: v
-                for k, v in {
-                    "thought": log.thought,
-                    "tool_name": log.tool_name,
-                    "tool_input": log.tool_input,
-                    "tool_output": str(log.tool_output)[:500] if log.tool_output else None,
-                }.items()
-                if v is not None
-            }
-            for log in logs_result.logs
-        ]
+        logs_data = await svc.get_logs(run_id, limit=limit)
+        log_dicts: list[dict[str, Any]] = logs_data["logs"]
 
         cfg = _get_sampling_config(ctx)
         service = SamplingService(ctx, cfg)
