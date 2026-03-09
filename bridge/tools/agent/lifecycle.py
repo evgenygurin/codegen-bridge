@@ -17,6 +17,7 @@ from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from fastmcp.server.context import Context
 
+
 from bridge.annotations import CREATES, DESTRUCTIVE
 from bridge.dependencies import CurrentContext, Depends, get_run_service
 from bridge.elicitation import confirm_action, select_choice
@@ -30,7 +31,7 @@ def register_lifecycle_tools(mcp: FastMCP) -> None:
 
     # ── Create ───────────────────────────────────────────
 
-    @mcp.tool(tags={"execution"}, icons=ICON_RUN, task=CREATE_RUN_TASK, annotations=CREATES)
+    @mcp.tool(tags={"execution"}, icons=ICON_RUN, task=CREATE_RUN_TASK, timeout=60, annotations=CREATES)
     async def codegen_create_run(
         prompt: str,
         repo_id: int | None = None,
@@ -97,8 +98,7 @@ def register_lifecycle_tools(mcp: FastMCP) -> None:
             available_models = ["claude-3-5-sonnet", "claude-3-5-haiku", "gpt-4o", "o3"]
             selected = await select_choice(
                 ctx,
-                "Choose a model for this agent run "
-                "(or decline to use the organization default):",
+                "Choose a model for this agent run (or decline to use the organization default):",
                 available_models,
             )
             if selected is not None:
@@ -108,8 +108,7 @@ def register_lifecycle_tools(mcp: FastMCP) -> None:
         if not confirmed:
             user_confirmed = await confirm_action(
                 ctx,
-                f"Create agent run on repo_id={repo_id} "
-                f"with model={model or 'org default'}?",
+                f"Create agent run on repo_id={repo_id} with model={model or 'org default'}?",
             )
             if not user_confirmed:
                 return json.dumps(
@@ -140,7 +139,7 @@ def register_lifecycle_tools(mcp: FastMCP) -> None:
 
     # ── Resume ────────────────────────────────────────────
 
-    @mcp.tool(tags={"execution"}, icons=ICON_RESUME, annotations=CREATES)
+    @mcp.tool(tags={"execution"}, icons=ICON_RESUME, timeout=30, annotations=CREATES)
     async def codegen_resume_run(
         run_id: int,
         prompt: str,
@@ -163,7 +162,7 @@ def register_lifecycle_tools(mcp: FastMCP) -> None:
 
     # ── Stop (legacy alias for ban) ──────────────────────
 
-    @mcp.tool(tags={"execution", "dangerous"}, icons=ICON_STOP, annotations=DESTRUCTIVE)
+    @mcp.tool(tags={"execution", "dangerous"}, icons=ICON_STOP, timeout=30, annotations=DESTRUCTIVE)
     async def codegen_stop_run(
         run_id: int,
         confirmed: bool = False,
@@ -181,8 +180,7 @@ def register_lifecycle_tools(mcp: FastMCP) -> None:
         if not confirmed:
             user_confirmed = await confirm_action(
                 ctx,
-                f"Are you sure you want to stop agent run {run_id}? "
-                "This action cannot be undone.",
+                f"Are you sure you want to stop agent run {run_id}? This action cannot be undone.",
             )
             if not user_confirmed:
                 return json.dumps(

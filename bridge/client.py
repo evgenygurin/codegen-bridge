@@ -29,6 +29,7 @@ from bridge.models import (
     CheckSuiteSettings,
     EditPRResponse,
     MCPProvider,
+    ModelsResponse,
     OAuthTokenStatus,
     Organization,
     OrganizationIntegrations,
@@ -250,7 +251,7 @@ def _parse_retry_after(response: httpx.Response) -> float | None:
 
 def _compute_delay(attempt: int, config: RetryConfig) -> float:
     """Compute retry delay with exponential backoff and jitter."""
-    base_delay: float = config.backoff_base * (2 ** attempt)
+    base_delay: float = config.backoff_base * (2**attempt)
     capped: float = min(base_delay, config.backoff_max)
     jitter: float = random.uniform(0, config.jitter)
     return capped + jitter
@@ -311,7 +312,8 @@ class CodegenClient:
         self._client = httpx.AsyncClient(
             base_url=base_url,
             headers={"Authorization": f"Bearer {api_key}"},
-            timeout=timeout or httpx.Timeout(
+            timeout=timeout
+            or httpx.Timeout(
                 connect=DEFAULT_CONNECT_TIMEOUT,
                 read=DEFAULT_READ_TIMEOUT,
                 write=DEFAULT_WRITE_TIMEOUT,
@@ -724,6 +726,13 @@ class CodegenClient:
         """Get organization and user agent rules."""
         return await self._get(f"/organizations/{self.org_id}/cli/rules")
 
+    # ── Models ─────────────────────────────────────────────────
+
+    async def list_models(self) -> ModelsResponse:
+        """Get available AI models grouped by provider."""
+        resp = await self._get(f"/organizations/{self.org_id}/models")
+        return ModelsResponse.model_validate(resp)
+
     # ── Core Request Engine ─────────────────────────────────
 
     async def _request(
@@ -789,8 +798,7 @@ class CodegenClient:
                         delay = _compute_delay(attempt, retry)
 
                     logger.warning(
-                        "Retryable %s %s → %d (attempt %d/%d, retry in %.1fs) "
-                        "[request_id=%s]",
+                        "Retryable %s %s → %d (attempt %d/%d, retry in %.1fs) [request_id=%s]",
                         method,
                         path,
                         status,
@@ -810,8 +818,7 @@ class CodegenClient:
 
                 delay = _compute_delay(attempt, retry)
                 logger.warning(
-                    "Retryable %s %s → %s (attempt %d/%d, retry in %.1fs) "
-                    "[request_id=%s]",
+                    "Retryable %s %s → %s (attempt %d/%d, retry in %.1fs) [request_id=%s]",
                     method,
                     path,
                     type(exc).__name__,
@@ -845,9 +852,7 @@ class CodegenClient:
 
     # ── HTTP Helpers ────────────────────────────────────────
 
-    async def _get(
-        self, path: str, *, params: dict[str, Any] | None = None
-    ) -> dict[str, Any]:
+    async def _get(self, path: str, *, params: dict[str, Any] | None = None) -> dict[str, Any]:
         resp = await self._request("GET", path, params=params)
         result: dict[str, Any] = resp.json()
         return result
@@ -878,9 +883,7 @@ class CodegenClient:
         resp = await self._request("PUT", path, json=json, params=params)
         return resp.json()  # type: ignore[no-any-return]
 
-    async def _patch(
-        self, path: str, *, json: dict[str, Any] | None = None
-    ) -> dict[str, Any]:
+    async def _patch(self, path: str, *, json: dict[str, Any] | None = None) -> dict[str, Any]:
         resp = await self._request("PATCH", path, json=json)
         result: dict[str, Any] = resp.json()
         return result

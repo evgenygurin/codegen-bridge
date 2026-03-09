@@ -305,3 +305,112 @@ class TestEditPRSimple:
                 "codegen_edit_pr_simple",
                 {"pr_id": 201, "state": "open"},
             )
+
+
+# ── PR Elicitation ─────────────────────────────────────────
+
+
+from fastmcp.client.elicitation import ElicitResult  # noqa: E402
+
+from bridge.server import mcp as _mcp  # noqa: E402
+
+
+def _accept_handler():
+    async def handler(message, response_type, request_params, context):
+        return ElicitResult(action="accept", content={"value": True})
+
+    return handler
+
+
+def _decline_handler():
+    async def handler(message, response_type, request_params, context):
+        return ElicitResult(action="decline", content=None)
+
+    return handler
+
+
+class TestEditPRElicitation:
+    """Elicitation integration tests for codegen_edit_pr."""
+
+    async def test_edit_pr_proceeds_when_user_confirms(self):
+        async with respx.MockRouter(assert_all_called=False) as router:
+            router.patch("https://api.codegen.com/v1/organizations/42/repos/10/prs/900").mock(
+                return_value=Response(200, json={"success": True, "state": "closed"})
+            )
+            async with Client(_mcp, elicitation_handler=_accept_handler()) as c:
+                result = await c.call_tool(
+                    "codegen_edit_pr",
+                    {"repo_id": 10, "pr_id": 900, "state": "closed"},
+                )
+                data = json.loads(result.data)
+                assert data["success"] is True
+                assert data["state"] == "closed"
+
+    async def test_edit_pr_cancelled_when_user_declines(self):
+        async with (
+            respx.MockRouter(assert_all_called=False),
+            Client(_mcp, elicitation_handler=_decline_handler()) as c,
+        ):
+            result = await c.call_tool(
+                "codegen_edit_pr",
+                {"repo_id": 10, "pr_id": 901, "state": "closed"},
+            )
+            data = json.loads(result.data)
+            assert data["cancelled"] is True
+            assert data["reason"] == "User declined"
+
+    @respx.mock
+    async def test_edit_pr_graceful_degradation(self, client: Client):
+        """Without elicitation handler, edit_pr proceeds (default=True)."""
+        respx.patch("https://api.codegen.com/v1/organizations/42/repos/10/prs/902").mock(
+            return_value=Response(200, json={"success": True, "state": "open"})
+        )
+        result = await client.call_tool(
+            "codegen_edit_pr",
+            {"repo_id": 10, "pr_id": 902, "state": "open"},
+        )
+        data = json.loads(result.data)
+        assert data["success"] is True
+
+
+class TestEditPRSimpleElicitation:
+    """Elicitation integration tests for codegen_edit_pr_simple."""
+
+    async def test_edit_pr_simple_proceeds_when_user_confirms(self):
+        async with respx.MockRouter(assert_all_called=False) as router:
+            router.patch("https://api.codegen.com/v1/organizations/42/prs/910").mock(
+                return_value=Response(200, json={"success": True, "state": "draft"})
+            )
+            async with Client(_mcp, elicitation_handler=_accept_handler()) as c:
+                result = await c.call_tool(
+                    "codegen_edit_pr_simple",
+                    {"pr_id": 910, "state": "draft"},
+                )
+                data = json.loads(result.data)
+                assert data["success"] is True
+                assert data["state"] == "draft"
+
+    async def test_edit_pr_simple_cancelled_when_user_declines(self):
+        async with (
+            respx.MockRouter(assert_all_called=False),
+            Client(_mcp, elicitation_handler=_decline_handler()) as c,
+        ):
+            result = await c.call_tool(
+                "codegen_edit_pr_simple",
+                {"pr_id": 911, "state": "closed"},
+            )
+            data = json.loads(result.data)
+            assert data["cancelled"] is True
+
+    @respx.mock
+    async def test_edit_pr_simple_graceful_degradation(self, client: Client):
+        """Without elicitation handler, edit_pr_simple proceeds (default=True)."""
+        respx.patch("https://api.codegen.com/v1/organizations/42/prs/912").mock(
+            return_value=Response(200, json={"success": True, "state": "open"})
+        )
+        result = await client.call_tool(
+            "codegen_edit_pr_simple",
+            {"pr_id": 912, "state": "open"},
+        )
+        data = json.loads(result.data)
+        assert data["success"] is True

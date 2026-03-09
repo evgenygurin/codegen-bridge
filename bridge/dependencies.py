@@ -35,6 +35,7 @@ __all__ = [
     "get_repo_cache",
     "get_run_service",
     "get_sampling_config",
+    "get_session_state",
 ]
 
 
@@ -100,3 +101,13 @@ async def get_sampling_config(ctx: Context = CurrentContext()) -> SamplingConfig
         cfg: SamplingConfig = lc["sampling_config"]
         return cfg
     return SamplingConfig()
+
+
+async def get_session_state(ctx: Context = CurrentContext()) -> dict[str, str]:
+    """Provide the per-session state dict from lifespan context.
+
+    The dict is shared across all tools within a single MCP session and
+    is reset when the session ends (server restart or client disconnect).
+    """
+    state: dict[str, str] = ctx.lifespan_context["session_state"]
+    return state

@@ -15,6 +15,7 @@ import json
 from fastmcp import FastMCP
 from fastmcp.server.context import Context
 
+
 from bridge.annotations import CREATES, DESTRUCTIVE, READ_ONLY
 from bridge.client import CodegenClient
 from bridge.dependencies import CurrentContext, Depends, get_client
@@ -30,9 +31,9 @@ from bridge.icons import (
 def register_integration_tools(mcp: FastMCP) -> None:
     """Register all integration, webhook, sandbox, and Slack tools."""
 
-    # ── Integrations ─────────────────────────────────────
+    # -- Integrations -------------------------------------------------
 
-    @mcp.tool(tags={"integrations"}, icons=ICON_INTEGRATIONS, annotations=READ_ONLY)
+    @mcp.tool(tags={"integrations"}, icons=ICON_INTEGRATIONS, timeout=30, annotations=READ_ONLY)
     async def codegen_get_integrations(
         ctx: Context = CurrentContext(),
         client: CodegenClient = Depends(get_client),    ) -> str: # type: ignore[arg-type]
@@ -66,9 +67,9 @@ def register_integration_tools(mcp: FastMCP) -> None:
             }
         )
 
-    # ── Webhooks ─────────────────────────────────────────
+    # -- Webhooks -----------------------------------------------------
 
-    @mcp.tool(tags={"webhooks"}, icons=ICON_WEBHOOK, annotations=READ_ONLY)
+    @mcp.tool(tags={"webhooks"}, icons=ICON_WEBHOOK, timeout=30, annotations=READ_ONLY)
     async def codegen_get_webhook_config(
         ctx: Context = CurrentContext(),
         client: CodegenClient = Depends(get_client),    ) -> str: # type: ignore[arg-type]
@@ -91,6 +92,7 @@ def register_integration_tools(mcp: FastMCP) -> None:
     @mcp.tool(
         tags={"webhooks", "dangerous"},
         icons=ICON_WEBHOOK,
+        timeout=30,
         annotations=DESTRUCTIVE,
     )
     async def codegen_set_webhook_config(
@@ -126,7 +128,7 @@ def register_integration_tools(mcp: FastMCP) -> None:
         await ctx.info("Webhook configuration updated")
         return json.dumps({"status": "configured", "result": result})
 
-    @mcp.tool(tags={"webhooks", "dangerous"}, icons=ICON_WEBHOOK, annotations=DESTRUCTIVE)
+    @mcp.tool(tags={"webhooks", "dangerous"}, icons=ICON_WEBHOOK, timeout=30, annotations=DESTRUCTIVE)
     async def codegen_delete_webhook_config(
         confirmed: bool = False,
         ctx: Context = CurrentContext(),
@@ -154,7 +156,7 @@ def register_integration_tools(mcp: FastMCP) -> None:
         await ctx.info("Webhook configuration deleted")
         return json.dumps({"status": "deleted", "result": result})
 
-    @mcp.tool(tags={"webhooks", "external-request"}, icons=ICON_WEBHOOK, annotations=CREATES)
+    @mcp.tool(tags={"webhooks", "external-request"}, icons=ICON_WEBHOOK, timeout=30, annotations=CREATES)
     async def codegen_test_webhook(
         url: str,
         ctx: Context = CurrentContext(),
@@ -171,9 +173,9 @@ def register_integration_tools(mcp: FastMCP) -> None:
         await ctx.info("Webhook test sent")
         return json.dumps({"status": "test_sent", "result": result})
 
-    # ── Sandbox ──────────────────────────────────────────
+    # -- Sandbox ------------------------------------------------------
 
-    @mcp.tool(tags={"sandbox", "creates-agent-run"}, icons=ICON_SANDBOX, annotations=CREATES)
+    @mcp.tool(tags={"sandbox", "creates-agent-run"}, icons=ICON_SANDBOX, timeout=60, annotations=CREATES)
     async def codegen_analyze_sandbox_logs(
         sandbox_id: int,
         ctx: Context = CurrentContext(),
@@ -182,7 +184,7 @@ def register_integration_tools(mcp: FastMCP) -> None:
 
         Creates an AI agent that analyzes the setup logs, identifies errors,
         provides insights, and suggests solutions. The analysis runs
-        asynchronously — use the returned agent_run_id to check results.
+        asynchronously -- use the returned agent_run_id to check results.
 
         Args:
             sandbox_id: Sandbox ID whose logs to analyze.
@@ -200,9 +202,9 @@ def register_integration_tools(mcp: FastMCP) -> None:
             }
         )
 
-    # ── Slack Connect ────────────────────────────────────
+    # -- Slack Connect ------------------------------------------------
 
-    @mcp.tool(tags={"slack"}, icons=ICON_SLACK, annotations=CREATES)
+    @mcp.tool(tags={"slack"}, icons=ICON_SLACK, timeout=30, annotations=CREATES)
     async def codegen_generate_slack_token(
         ctx: Context = CurrentContext(),
         client: CodegenClient = Depends(get_client),    ) -> str: # type: ignore[arg-type]

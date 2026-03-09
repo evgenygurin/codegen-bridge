@@ -13,6 +13,7 @@ from typing import Any
 from fastmcp import FastMCP
 from fastmcp.server.context import Context
 
+
 from bridge.annotations import READ_ONLY
 from bridge.client import CodegenClient
 from bridge.dependencies import CurrentContext, Depends, get_client
@@ -42,7 +43,7 @@ def _user_to_dict(user: User) -> dict[str, Any]:
 def register_user_tools(mcp: FastMCP) -> None:
     """Register user management tools (get current user, list, get by ID)."""
 
-    @mcp.tool(tags={"setup"}, icons=ICON_USER, annotations=READ_ONLY)
+    @mcp.tool(tags={"setup"}, icons=ICON_USER, timeout=30, annotations=READ_ONLY)
     async def codegen_get_current_user(
         ctx: Context = CurrentContext(),
         client: CodegenClient = Depends(get_client),    ) -> str: # type: ignore[arg-type]
@@ -56,7 +57,7 @@ def register_user_tools(mcp: FastMCP) -> None:
         await ctx.info(f"Current user: {user.github_username}")
         return json.dumps({"user": _user_to_dict(user)})
 
-    @mcp.tool(tags={"setup"}, icons=ICON_USERS, annotations=READ_ONLY)
+    @mcp.tool(tags={"setup"}, icons=ICON_USERS, timeout=30, annotations=READ_ONLY)
     async def codegen_list_users(
         limit: int = DEFAULT_PAGE_SIZE,
         cursor: str | None = None,
@@ -85,7 +86,7 @@ def register_user_tools(mcp: FastMCP) -> None:
             )
         )
 
-    @mcp.tool(tags={"setup"}, icons=ICON_USER, annotations=READ_ONLY)
+    @mcp.tool(tags={"setup"}, icons=ICON_USER, timeout=30, annotations=READ_ONLY)
     async def codegen_get_user(
         user_id: int,
         ctx: Context = CurrentContext(),
