@@ -74,7 +74,7 @@ Hooks live in the root `hooks/` directory and run automatically:
 
 ## Plugin Structure
 
-```
+```text
 codegen-bridge/
 ├── .claude-plugin/
 │   ├── plugin.json          # Plugin metadata (name, version, keywords)
@@ -98,7 +98,7 @@ codegen-bridge/
 │   ├── transforms/          # Tool transform chain
 │   └── ...
 ├── tests/                   # Test suite
-└── pyproject.toml           # Python project config (v0.4.0)
+└── pyproject.toml           # Python project config (v0.5.0)
 ```
 
 ## Development
