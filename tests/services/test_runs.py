@@ -245,6 +245,24 @@ class TestStopRun:
             "web_url": "https://codegen.com/run/42",
         }
 
+    async def test_action_payload(self, svc: RunService, mock_client: AsyncMock) -> None:
+        mock_client.stop_run.return_value = MagicMock(
+            id=None,
+            agent_run_id=42,
+            status="success",
+            web_url=None,
+            message="Run stopped",
+        )
+
+        result = await svc.stop_run(42)
+
+        assert result == {
+            "id": 42,
+            "status": "success",
+            "web_url": None,
+            "message": "Run stopped",
+        }
+
 
 class TestReportRunResult:
     async def test_happy_path(

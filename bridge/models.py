@@ -75,6 +75,20 @@ class BanActionResponse(BaseModel):
     status_code: int | None = None
 
 
+class StopRunResponse(BaseModel):
+    """Response from stop/ban endpoint (legacy stop_run alias).
+
+    The API may return either a full AgentRun-like payload or a lightweight
+    action payload with ``agent_run_id`` and ``status``.
+    """
+
+    id: int | None = None
+    agent_run_id: int | None = None
+    status: str | None = None
+    web_url: str | None = None
+    message: str | None = None
+
+
 class AgentRunWithLogs(BaseModel):
     """Agent run with paginated logs.
 
