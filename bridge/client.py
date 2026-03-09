@@ -3,6 +3,7 @@
 Production-grade client with:
 - Structured timeouts (connect / read / write / pool)
 - Automatic retries with exponential backoff + jitter
+- Outbound rate budget (token-bucket throttling)
 - Normalized error hierarchy (``CodegenAPIError`` and subclasses)
 - Request ID tracking for debugging
 
@@ -41,6 +42,7 @@ from bridge.models import (
     User,
     WebhookConfig,
 )
+from bridge.rate_budget import OutboundRateBudget, RateBudgetConfig
 
 logger = logging.getLogger("bridge.client")
 
@@ -273,6 +275,9 @@ class CodegenClient:
         org_id: Organization ID for API calls.
         base_url: Override API base URL (for testing).
         retry: Retry configuration. Pass ``NO_RETRY`` to disable retries.
+        rate_budget: Outbound rate limiting.  ``None``/``True`` → default
+            (60 burst, 1/s sustained).  ``False`` → disabled.
+            ``RateBudgetConfig(...)`` → custom config.
         timeout: Override default httpx timeout.
     """
 
@@ -283,6 +288,7 @@ class CodegenClient:
         *,
         base_url: str = BASE_URL,
         retry: RetryConfig | None = None,
+        rate_budget: RateBudgetConfig | None | bool = None,
         timeout: httpx.Timeout | None = None,
     ) -> None:
         if not api_key:
@@ -292,6 +298,15 @@ class CodegenClient:
 
         self.org_id = org_id
         self._retry = retry if retry is not None else DEFAULT_RETRY
+
+        # Rate budget: None/True → default config, False → disabled
+        if rate_budget is False:
+            self._rate_budget: OutboundRateBudget | None = None
+        elif rate_budget is None or rate_budget is True:
+            self._rate_budget = OutboundRateBudget()
+        else:
+            self._rate_budget = OutboundRateBudget(rate_budget)
+
         self._client = httpx.AsyncClient(
             base_url=base_url,
             headers={"Authorization": f"Bearer {api_key}"},
@@ -302,6 +317,11 @@ class CodegenClient:
                 pool=DEFAULT_POOL_TIMEOUT,
             ),
         )
+
+    @property
+    def rate_budget(self) -> OutboundRateBudget | None:
+        """The outbound rate budget, if configured."""
+        return self._rate_budget
 
     async def close(self) -> None:
         """Close the HTTP client."""
@@ -722,6 +742,10 @@ class CodegenClient:
         last_exc: Exception | None = None
 
         for attempt in range(retry.max_retries + 1):
+            # Acquire rate budget token before each attempt (including retries)
+            if self._rate_budget is not None:
+                await self._rate_budget.acquire()
+
             try:
                 resp = await self._client.request(
                     method,
