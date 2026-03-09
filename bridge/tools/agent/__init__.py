@@ -2,7 +2,7 @@
 
 Decomposed into focused submodules by responsibility:
 - lifecycle: create, resume, stop (run lifecycle management)
-- queries: get, list (read-only status and pagination)
+- queries: get (pure read), list (pagination), report_run_result (explicit mutation)
 - moderation: ban, unban, remove-from-pr (CI/CD check-suite management)
 - logs: get_logs (execution log retrieval)
 

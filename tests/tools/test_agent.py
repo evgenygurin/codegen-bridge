@@ -73,6 +73,8 @@ class TestCreateRun:
 
 
 class TestGetRun:
+    """Tests for codegen_get_run — pure read, no side effects."""
+
     @respx.mock
     async def test_returns_run_with_pr(self, client: Client):
         respx.get("https://api.codegen.com/v1/organizations/42/agent/run/99").mock(
@@ -123,6 +125,24 @@ class TestGetRun:
         assert data["status"] == "running"
         assert "pull_requests" not in data
         assert "source_type" not in data
+
+    @respx.mock
+    async def test_no_execution_id_param(self, client: Client):
+        """Verify get_run no longer accepts execution_id (split to report_run_result)."""
+        respx.get("https://api.codegen.com/v1/organizations/42/agent/run/99").mock(
+            return_value=Response(
+                200,
+                json={"id": 99, "organization_id": 42, "status": "completed"},
+            )
+        )
+
+        # get_run should work with just run_id — no execution_id param
+        result = await client.call_tool("codegen_get_run", {"run_id": 99})
+        data = json.loads(result.data)
+        assert data["status"] == "completed"
+        # Verify no side-effect keys in response
+        assert "reported" not in data
+        assert "parsed_logs" not in data
 
 
 # ── List ──────────────────────────────────────────────────
@@ -465,10 +485,12 @@ class TestCreateRunWithExecution:
         assert body["prompt"] == "Raw prompt only"
 
 
-# ── Get with Execution Context ────────────────────────────
+# ── Report Run Result (explicit mutation) ────────────────
 
 
-class TestGetRunWithExecution:
+class TestReportRunResult:
+    """Tests for codegen_report_run_result — explicit mutation tool."""
+
     @respx.mock
     async def test_parses_logs_and_updates_task_on_completion(self, client: Client):
         # Set up an execution context first
@@ -485,8 +507,8 @@ class TestGetRunWithExecution:
         await client.call_tool(
             "codegen_start_execution",
             {
-                "goal": "Test get_run reporting",
-                "execution_id": "getrun-test",
+                "goal": "Test report_run_result",
+                "execution_id": "report-test",
                 "tasks": [{"title": "Task 1", "description": "Build feature"}],
             },
         )
@@ -512,7 +534,7 @@ class TestGetRunWithExecution:
             )
         )
 
-        # Mock the logs endpoint (updated path — no /alpha/)
+        # Mock the logs endpoint
         respx.get("https://api.codegen.com/v1/alpha/organizations/42/agent/run/300/logs").mock(
             return_value=Response(
                 200,
@@ -532,10 +554,10 @@ class TestGetRunWithExecution:
         )
 
         result = await client.call_tool(
-            "codegen_get_run",
+            "codegen_report_run_result",
             {
                 "run_id": 300,
-                "execution_id": "getrun-test",
+                "execution_id": "report-test",
                 "task_index": 0,
             },
         )
@@ -544,13 +566,83 @@ class TestGetRunWithExecution:
         assert data["pull_requests"][0]["number"] == 10
         assert "parsed_logs" in data
         assert data["parsed_logs"]["total_steps"] == 1
+        assert data["reported"] is True
+        assert data["task_status"] == "completed"
 
         # Verify the execution context was updated
         ctx_result = await client.call_tool(
             "codegen_get_execution_context",
-            {"execution_id": "getrun-test"},
+            {"execution_id": "report-test"},
         )
         ctx_data = json.loads(ctx_result.data)
         assert ctx_data["tasks"][0]["status"] == "completed"
         assert ctx_data["tasks"][0]["report"]["summary"] == "Built the feature"
         assert ctx_data["current_task_index"] == 1
+
+    @respx.mock
+    async def test_skips_report_for_non_terminal_status(self, client: Client):
+        """Non-terminal statuses should return data without mutating context."""
+        respx.get("https://api.codegen.com/v1/organizations/42/cli/rules").mock(
+            return_value=Response(200, json={"organization_rules": ""})
+        )
+        respx.get("https://api.codegen.com/v1/organizations/42/integrations").mock(
+            return_value=Response(200, json={})
+        )
+        respx.get("https://api.codegen.com/v1/organizations/42/repos").mock(
+            return_value=Response(200, json={"items": [], "total": 0})
+        )
+
+        await client.call_tool(
+            "codegen_start_execution",
+            {
+                "goal": "Test skip",
+                "execution_id": "skip-test",
+                "tasks": [{"title": "Task 1", "description": "Running task"}],
+            },
+        )
+
+        respx.get("https://api.codegen.com/v1/organizations/42/agent/run/400").mock(
+            return_value=Response(
+                200,
+                json={
+                    "id": 400,
+                    "organization_id": 42,
+                    "status": "running",
+                    "web_url": "https://codegen.com/run/400",
+                },
+            )
+        )
+
+        result = await client.call_tool(
+            "codegen_report_run_result",
+            {"run_id": 400, "execution_id": "skip-test"},
+        )
+        data = json.loads(result.data)
+        assert data["status"] == "running"
+        assert "report_skipped" in data
+        assert "reported" not in data
+
+    @respx.mock
+    async def test_skips_when_execution_not_found(self, client: Client):
+        """Missing execution context should skip gracefully."""
+        respx.get("https://api.codegen.com/v1/organizations/42/agent/run/500").mock(
+            return_value=Response(
+                200,
+                json={
+                    "id": 500,
+                    "organization_id": 42,
+                    "status": "completed",
+                    "summary": "Done",
+                    "web_url": "https://codegen.com/run/500",
+                },
+            )
+        )
+
+        result = await client.call_tool(
+            "codegen_report_run_result",
+            {"run_id": 500, "execution_id": "nonexistent"},
+        )
+        data = json.loads(result.data)
+        assert data["status"] == "completed"
+        assert "report_skipped" in data
+        assert "not found" in data["report_skipped"]
