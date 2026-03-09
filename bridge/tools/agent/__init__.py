@@ -1,10 +1,13 @@
-"""Agent run management tools: create, get, list, resume, stop, ban, unban, remove-from-pr, logs.
+"""Agent run management tools.
+
+Create, get, list, resume, stop, ban, unban, remove-from-pr, logs, workflow.
 
 Decomposed into focused submodules by responsibility:
 - lifecycle: create, resume, stop (run lifecycle management)
 - queries: get (pure read), list (pagination), report_run_result (explicit mutation)
 - moderation: ban, unban, remove-from-pr (CI/CD check-suite management)
 - logs: get_logs (execution log retrieval)
+- workflow: create_and_monitor (high-level composition)
 
 Endpoints coverage (per Codegen API v1):
 - POST /v1/organizations/{org_id}/agent/run           — create
@@ -29,6 +32,7 @@ from bridge.tools.agent.lifecycle import register_lifecycle_tools
 from bridge.tools.agent.logs import register_log_tools
 from bridge.tools.agent.moderation import register_moderation_tools
 from bridge.tools.agent.queries import register_query_tools
+from bridge.tools.agent.workflow import register_workflow_tools
 
 __all__ = [
     "CREATE_RUN_TASK",
@@ -46,3 +50,4 @@ def register_agent_tools(mcp: FastMCP) -> None:
     register_query_tools(mcp)
     register_moderation_tools(mcp)
     register_log_tools(mcp)
+    register_workflow_tools(mcp)
