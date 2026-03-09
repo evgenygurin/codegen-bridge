@@ -15,7 +15,7 @@ import json
 from fastmcp import FastMCP
 from fastmcp.server.context import Context
 
-from bridge.annotations import CREATES, DESTRUCTIVE, MUTATES, READ_ONLY
+from bridge.annotations import CREATES, DESTRUCTIVE, READ_ONLY
 from bridge.client import CodegenClient
 from bridge.dependencies import CurrentContext, Depends, get_client
 from bridge.elicitation import confirm_action
@@ -88,7 +88,11 @@ def register_integration_tools(mcp: FastMCP) -> None:
             }
         )
 
-    @mcp.tool(tags={"webhooks"}, icons=ICON_WEBHOOK, annotations=MUTATES)
+    @mcp.tool(
+        tags={"webhooks", "dangerous"},
+        icons=ICON_WEBHOOK,
+        annotations=DESTRUCTIVE,
+    )
     async def codegen_set_webhook_config(
         url: str,
         secret: str | None = None,
