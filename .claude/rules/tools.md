@@ -11,15 +11,15 @@ paths:
 
 | Module | Count | Tools |
 |--------|-------|-------|
-| `tools/agent.py` | 9 | `create_run`, `get_run`, `list_runs`, `resume_run`, `stop_run`, `ban_run`, `unban_run`, `remove_from_pr`, `get_logs` |
+| `tools/agent/` | 11 | `create_run`, `get_run`, `report_run_result`, `list_runs`, `resume_run`, `stop_run`, `ban_run`, `unban_run`, `remove_from_pr`, `get_logs`, `create_and_monitor` |
 | `tools/execution.py` | 3 | `start_execution`, `get_execution_context`, `get_agent_rules` |
-| `tools/pr.py` | 2 | `edit_pr`, `edit_repo_pr` |
-| `tools/setup.py` | 12 | `list_users`, `list_orgs`, `get_user`, `list_repos`, `get_organization`, `update_organization`, `get_project`, `update_project`, `create_project`, `get_check_suite_settings`, `set_check_suite_settings`, `generate_setup_commands` |
+| `tools/pr.py` | 2 | `edit_pr`, `edit_pr_simple` |
+| `tools/setup/` | 12 | `list_users`, `list_orgs`, `get_user`, `list_repos`, `get_organization_settings`, `get_current_user`, `get_mcp_providers`, `get_oauth_status`, `revoke_oauth`, `get_check_suite_settings`, `update_check_suite_settings`, `generate_setup_commands` |
 | `tools/integrations.py` | 7 | `get_integrations`, `get_webhook_config`, `set_webhook_config`, `delete_webhook_config`, `test_webhook`, `analyze_sandbox_logs`, `generate_slack_token` |
 | `tools/settings.py` | 2 | `get_settings`, `update_settings` |
 | `sampling/tools.py` | 4 | `summarise_run`, `summarise_execution`, `generate_task_prompt`, `analyse_run_logs` |
-| **Total manual** | **39** | |
-| Auto-generated (OpenAPI) | ~21 | Via `OpenAPIProvider` from `openapi_spec.json` |
+| **Total manual** | **41** | |
+| Auto-generated (OpenAPI) | 5 | Via `OpenAPIProvider` from `openapi_spec.json` |
 
 ## Naming Convention
 
