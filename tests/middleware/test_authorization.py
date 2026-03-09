@@ -140,14 +140,14 @@ class TestIsDangerous:
     def test_dangerous_by_name_edit_pr(self):
         assert self.mw.is_dangerous("codegen_edit_pr") is True
 
-    def test_dangerous_by_name_edit_repo_pr(self):
-        assert self.mw.is_dangerous("codegen_edit_repo_pr") is True
+    def test_dangerous_by_name_edit_pr_simple(self):
+        assert self.mw.is_dangerous("codegen_edit_pr_simple") is True
 
-    def test_dangerous_by_name_delete_webhook(self):
-        assert self.mw.is_dangerous("codegen_delete_webhook") is True
+    def test_dangerous_by_name_delete_webhook_config(self):
+        assert self.mw.is_dangerous("codegen_delete_webhook_config") is True
 
-    def test_dangerous_by_name_set_webhook(self):
-        assert self.mw.is_dangerous("codegen_set_webhook") is True
+    def test_dangerous_by_name_set_webhook_config(self):
+        assert self.mw.is_dangerous("codegen_set_webhook_config") is True
 
     def test_dangerous_by_name_revoke_oauth(self):
         assert self.mw.is_dangerous("codegen_revoke_oauth_token") is True
@@ -230,14 +230,14 @@ class TestOnCallTool:
         with pytest.raises(ToolError, match="codegen_edit_pr"):
             await mw.on_call_tool(ctx, call_next)
 
-    async def test_blocks_delete_webhook(self):
+    async def test_blocks_delete_webhook_config(self):
         mw = DangerousToolGuardMiddleware(config=AuthorizationConfig(allow_dangerous=False))
-        ctx = _make_context("codegen_delete_webhook")
+        ctx = _make_context("codegen_delete_webhook_config")
         call_next = AsyncMock()
 
         from fastmcp.exceptions import ToolError
 
-        with pytest.raises(ToolError, match="codegen_delete_webhook"):
+        with pytest.raises(ToolError, match="codegen_delete_webhook_config"):
             await mw.on_call_tool(ctx, call_next)
 
     async def test_passthrough_when_disabled(self):
@@ -427,17 +427,17 @@ class TestDefaultDangerousTools:
     def test_contains_edit_pr(self):
         assert "codegen_edit_pr" in DEFAULT_DANGEROUS_TOOLS
 
-    def test_contains_edit_repo_pr(self):
-        assert "codegen_edit_repo_pr" in DEFAULT_DANGEROUS_TOOLS
+    def test_contains_edit_pr_simple(self):
+        assert "codegen_edit_pr_simple" in DEFAULT_DANGEROUS_TOOLS
 
-    def test_contains_delete_webhook(self):
-        assert "codegen_delete_webhook" in DEFAULT_DANGEROUS_TOOLS
+    def test_contains_delete_webhook_config(self):
+        assert "codegen_delete_webhook_config" in DEFAULT_DANGEROUS_TOOLS
 
     def test_is_frozenset(self):
         assert isinstance(DEFAULT_DANGEROUS_TOOLS, frozenset)
 
-    def test_contains_set_webhook(self):
-        assert "codegen_set_webhook" in DEFAULT_DANGEROUS_TOOLS
+    def test_contains_set_webhook_config(self):
+        assert "codegen_set_webhook_config" in DEFAULT_DANGEROUS_TOOLS
 
     def test_contains_revoke_oauth(self):
         assert "codegen_revoke_oauth_token" in DEFAULT_DANGEROUS_TOOLS

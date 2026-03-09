@@ -232,14 +232,14 @@ Changed in: `bridge/middleware/config.py`, `bridge/middleware/stack.py`
 frozenset({
     "codegen_stop_run",
     "codegen_edit_pr",
-    "codegen_edit_repo_pr",
-    "codegen_delete_webhook",
-    "codegen_set_webhook",        # NEW
-    "codegen_revoke_oauth_token", # NEW
+    "codegen_edit_pr_simple",
+    "codegen_delete_webhook_config",
+    "codegen_set_webhook_config",
+    "codegen_revoke_oauth_token",
 })
 ```
 
-**Known issue:** 3 names in the list don't match actual tool names (`codegen_edit_repo_pr` vs `codegen_edit_pr_simple`, `codegen_delete_webhook` vs `codegen_delete_webhook_config`, `codegen_set_webhook` vs `codegen_set_webhook_config`). Tools are still protected by the `"dangerous"` tag fallback in the guard strategy.
+All 6 names now match actual tool function names (3 stale names fixed post-P0).
 
 ### P0-C: Auto-Generated Tools Trimmed
 
@@ -300,9 +300,9 @@ frozenset({
 
 | Item | Original Phase | Why Deferred | Target |
 |------|---------------|-------------|--------|
-| Service extraction for PR, integrations, setup tools | Phase 1.4 | Direct `client.xyz()` is acceptable for simple tools | PR-2/PR-3 |
+| Service extraction for PR, integrations, setup tools | Phase 1.4 | Direct `client.xyz()` is acceptable for simple tools | Deferred |
 | Full serialization cleanup | Phase 6 | Partial consolidation via RunService sufficient | PR-7 |
-| Fix dangerous tool name mismatches | P0 follow-up | Protected by tag fallback, not urgent | PR-2 |
+| ~~Fix dangerous tool name mismatches~~ | P0 follow-up | **DONE** — 3 stale names corrected | ✅ |
 | Rename misleading tools | Not planned | Would break existing sessions | Consider for v0.6 |
 | Workflow engine + policies | Audit plan | Not in original v0.5 scope | PR-4/PR-5 |
 | Observability cleanup | Audit plan | Not in original v0.5 scope | PR-7 |
