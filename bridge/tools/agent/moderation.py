@@ -1,8 +1,8 @@
 """Agent run moderation tools: ban, unban, remove-from-pr.
 
 Tools for managing CI/CD check-suite bans on PRs associated with
-agent runs. Banning prevents future check-suite events from being
-processed and stops all current agents for the PR.
+agent runs.  Business logic lives in ``RunService``; these tools
+handle elicitation, MCP logging, and JSON serialisation.
 """
 
 from __future__ import annotations
@@ -12,10 +12,10 @@ import json
 from fastmcp import FastMCP
 from fastmcp.server.context import Context
 
-from bridge.client import CodegenClient
-from bridge.dependencies import CurrentContext, Depends, get_client
+from bridge.dependencies import CurrentContext, Depends, get_run_service
 from bridge.elicitation import confirm_action
 from bridge.icons import ICON_BAN, ICON_REMOVE_FROM_PR, ICON_UNBAN
+from bridge.services.runs import RunService
 
 
 def register_moderation_tools(mcp: FastMCP) -> None:
@@ -30,7 +30,7 @@ def register_moderation_tools(mcp: FastMCP) -> None:
         after_card_order_id: str | None = None,
         confirmed: bool = False,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
+        svc: RunService = Depends(get_run_service),  # type: ignore[arg-type]
     ) -> str:
         """Ban all checks for a PR and stop all related agents.
 
@@ -56,19 +56,13 @@ def register_moderation_tools(mcp: FastMCP) -> None:
                 )
 
         await ctx.warning(f"Banning checks for run: id={run_id}")
-        result = await client.ban_run(
+        result = await svc.ban_run(
             run_id,
             before_card_order_id=before_card_order_id,
             after_card_order_id=after_card_order_id,
         )
         await ctx.info(f"Checks banned for run: id={run_id}")
-        return json.dumps(
-            {
-                "run_id": run_id,
-                "action": "banned",
-                "message": result.message,
-            }
-        )
+        return json.dumps(result)
 
     # ── Unban ─────────────────────────────────────────────
 
@@ -78,7 +72,7 @@ def register_moderation_tools(mcp: FastMCP) -> None:
         before_card_order_id: str | None = None,
         after_card_order_id: str | None = None,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
+        svc: RunService = Depends(get_run_service),  # type: ignore[arg-type]
     ) -> str:
         """Unban all checks for a PR.
 
@@ -92,19 +86,13 @@ def register_moderation_tools(mcp: FastMCP) -> None:
             after_card_order_id: Kanban order key for the card after this run.
         """
         await ctx.info(f"Unbanning checks for run: id={run_id}")
-        result = await client.unban_run(
+        result = await svc.unban_run(
             run_id,
             before_card_order_id=before_card_order_id,
             after_card_order_id=after_card_order_id,
         )
         await ctx.info(f"Checks unbanned for run: id={run_id}")
-        return json.dumps(
-            {
-                "run_id": run_id,
-                "action": "unbanned",
-                "message": result.message,
-            }
-        )
+        return json.dumps(result)
 
     # ── Remove from PR ────────────────────────────────────
 
@@ -115,7 +103,7 @@ def register_moderation_tools(mcp: FastMCP) -> None:
         after_card_order_id: str | None = None,
         confirmed: bool = False,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
+        svc: RunService = Depends(get_run_service),  # type: ignore[arg-type]
     ) -> str:
         """Remove Codegen from a PR.
 
@@ -145,16 +133,10 @@ def register_moderation_tools(mcp: FastMCP) -> None:
                 )
 
         await ctx.warning(f"Removing Codegen from PR for run: id={run_id}")
-        result = await client.remove_from_pr(
+        result = await svc.remove_from_pr(
             run_id,
             before_card_order_id=before_card_order_id,
             after_card_order_id=after_card_order_id,
         )
         await ctx.info(f"Codegen removed from PR for run: id={run_id}")
-        return json.dumps(
-            {
-                "run_id": run_id,
-                "action": "removed_from_pr",
-                "message": result.message,
-            }
-        )
+        return json.dumps(result)
