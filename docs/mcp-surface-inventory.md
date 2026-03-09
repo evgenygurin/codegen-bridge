@@ -255,9 +255,9 @@ Generated from `openapi_spec.json` via `OpenAPIProvider`. **Reduced from ~21 to 
 DEFAULT_DANGEROUS_TOOLS = frozenset({
     "codegen_stop_run",
     "codegen_edit_pr",
-    "codegen_edit_repo_pr",
-    "codegen_delete_webhook",
-    "codegen_set_webhook",
+    "codegen_edit_pr_simple",
+    "codegen_delete_webhook_config",
+    "codegen_set_webhook_config",
     "codegen_revoke_oauth_token",
 })
 ```
@@ -270,15 +270,7 @@ The `DangerousToolGuardMiddleware` blocks a tool when **either**:
 
 Unless `CODEGEN_ALLOW_DANGEROUS_TOOLS=true` or the tool receives `confirmed=True`.
 
-### 13.3 Known Discrepancy
-
-| Guard Name | Actual Tool | Status |
-|-----------|-------------|--------|
-| `codegen_edit_repo_pr` | `codegen_edit_pr_simple` | **Mismatch** — guard references non-existent name |
-| `codegen_delete_webhook` | `codegen_delete_webhook_config` | **Mismatch** — guard references non-existent name |
-| `codegen_set_webhook` | `codegen_set_webhook_config` | **Mismatch** — guard references non-existent name |
-
-These tools are **still protected** by the `"dangerous"` tag check (fallback path). The name-based check is a belt-and-suspenders layer that currently has stale names.
+All 6 names in `DEFAULT_DANGEROUS_TOOLS` now match their actual tool function names.
 
 ---
 
