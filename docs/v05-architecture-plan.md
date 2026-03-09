@@ -289,9 +289,9 @@ All 6 names now match actual tool function names (3 stale names fixed post-P0).
 [x] P0-C — Trim auto-generated tools (~21→5)
 [x] ─── COMMIT: "fix(safety): close three P0 security gaps" ───
 
-[ ] Update CLAUDE.md with new architecture
-[ ] Update plugin version to 0.5.0
-[ ] ─── COMMIT: "chore: bump to v0.5.0" ───
+[x] Update CLAUDE.md with new architecture
+[x] Update plugin version to 0.5.0
+[x] ─── COMMIT: "chore: bump to v0.5.0" ───
 ```
 
 ---
