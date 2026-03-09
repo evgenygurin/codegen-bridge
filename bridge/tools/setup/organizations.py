@@ -11,6 +11,7 @@ import json
 from fastmcp import FastMCP
 from fastmcp.server.context import Context
 
+from bridge.annotations import CREATES, READ_ONLY
 from bridge.client import CodegenClient
 from bridge.dependencies import CurrentContext, Depends, get_client
 from bridge.helpers.pagination import (
@@ -24,11 +25,10 @@ from bridge.icons import ICON_ORG, ICON_ORG_SETTINGS, ICON_REPO, ICON_SETUP_CMD
 def register_organization_tools(mcp: FastMCP) -> None:
     """Register organization and repository management tools."""
 
-    @mcp.tool(tags={"setup"}, icons=ICON_ORG)
+    @mcp.tool(tags={"setup"}, icons=ICON_ORG, annotations=READ_ONLY)
     async def codegen_list_orgs(
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
-    ) -> str:
+        client: CodegenClient = Depends(get_client),    ) -> str:
         """List Codegen organizations the authenticated user belongs to."""
         await ctx.info("Listing organizations")
         page = await client.list_orgs()
@@ -39,11 +39,10 @@ def register_organization_tools(mcp: FastMCP) -> None:
             }
         )
 
-    @mcp.tool(tags={"setup"}, icons=ICON_ORG_SETTINGS)
+    @mcp.tool(tags={"setup"}, icons=ICON_ORG_SETTINGS, annotations=READ_ONLY)
     async def codegen_get_organization_settings(
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
-    ) -> str:
+        client: CodegenClient = Depends(get_client),    ) -> str:
         """Get organization feature-flag settings.
 
         Returns the current feature flags for the configured organization,
@@ -62,13 +61,12 @@ def register_organization_tools(mcp: FastMCP) -> None:
             }
         )
 
-    @mcp.tool(tags={"setup"}, icons=ICON_REPO)
+    @mcp.tool(tags={"setup"}, icons=ICON_REPO, annotations=READ_ONLY)
     async def codegen_list_repos(
         limit: int = DEFAULT_PAGE_SIZE,
         cursor: str | None = None,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
-    ) -> str:
+        client: CodegenClient = Depends(get_client),    ) -> str:
         """List repositories in the configured Codegen organization.
 
         Supports cursor-based pagination for large repository lists.
@@ -101,14 +99,13 @@ def register_organization_tools(mcp: FastMCP) -> None:
             )
         )
 
-    @mcp.tool(tags={"setup", "creates-agent-run"}, icons=ICON_SETUP_CMD)
+    @mcp.tool(tags={"setup", "creates-agent-run"}, icons=ICON_SETUP_CMD, annotations=CREATES)
     async def codegen_generate_setup_commands(
         repo_id: int,
         prompt: str | None = None,
         trigger_source: str = "setup-commands",
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
-    ) -> str:
+        client: CodegenClient = Depends(get_client),    ) -> str:
         """Generate setup commands for a repository.
 
         Creates an agent that analyzes the repository structure and generates
