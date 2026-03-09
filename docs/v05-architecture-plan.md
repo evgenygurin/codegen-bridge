@@ -1,489 +1,293 @@
-# v0.5 Architecture Plan — Dependency-Ordered Phases
+# v0.5 Architecture Plan — As-Built Record
 
-> Based on [MCP Surface Inventory](./mcp-surface-inventory.md) audit of all 39 manual tools.
-> Each phase unlocks the next. Skipping or reordering phases produces incorrect metadata.
+> Based on [MCP Surface Inventory](./mcp-surface-inventory.md) audit.
+> Phases 0–5 **completed**. Phase 6 (serialization cleanup) deferred. P0 safety hotfix applied post-completion.
 
 ---
 
-## Dependency Graph
+## Dependency Graph (completed)
 
 ```text
-Phase 0: Semantic Fixes ──────────────────────────────┐
-  (split get_run, rename misleading tools)             │
-                                                       ▼
-Phase 1: Service Layer ────────────────────────────────┐
-  (extract shared logic from tools)                    │
-                                                       ▼
-Phase 2: ToolAnnotations ──────┐   Phase 3: Outbound Rate Budget
-  (apply correct hints)        │     (throttle API calls out)
-                               │              │
-                               ▼              ▼
-                    Phase 4: Resource Templates
-                      (backed by services)
-                               │
-                               ▼
-                    Phase 5: Workflow Composition
-                      (create-and-monitor, orchestration)
-                               │
-                               ▼
-                    Phase 6: Serialization Cleanup
-                      (consolidate 6 duplication points)
+Phase 0: Semantic Fixes ✅ ──────────────────────┐
+  (split get_run, re-tag misleading tools)        │
+                                                  ▼
+Phase 1: Service Layer ✅ ────────────────────────┐
+  (RunService, ExecutionService)                  │
+                                                  ▼
+Phase 2: ToolAnnotations ✅ ──┐   Phase 3: Outbound Rate Budget ✅
+  (6 presets applied)         │     (token-bucket in CodegenClient)
+                              │              │
+                              ▼              ▼
+                   Phase 4: Resource Templates ✅
+                     (3 parameterized templates)
+                              │
+                              ▼
+                   Phase 5: Workflow Composition ✅
+                     (codegen_create_and_monitor)
+                              │
+                              ▼
+                   Phase 6: Serialization Cleanup
+                     (deferred — partial via RunService)
+                              │
+                              ▼
+                   P0: Safety Hotfix ✅
+                     (cache, dangerous tools, auto-gen trim)
 ```
 
 ---
 
-## Phase 0: Semantic Fixes
+## Phase 0: Semantic Fixes ✅
 
-**Why first:** Every subsequent phase (annotations, resources, workflows) depends on tools having
-correct, unambiguous semantics. Building on wrong semantics = wrong metadata that misleads MCP clients.
+**Commit:** `refactor(tools): split get_run read/write paths`
 
-**Duration:** ~2 hours. Zero API changes. Pure refactor.
+### 0.1 Split `codegen_get_run` ✅
 
-### 0.1 Split `codegen_get_run`
+Split into two tools in `bridge/tools/agent/queries.py`:
 
-Current `codegen_get_run` (in `bridge/tools/agent/queries.py`) does two things:
-1. **Read:** Fetch run from API, format, return
-2. **Mutate:** When `execution_id` provided AND status is terminal → write TaskReport to ContextRegistry, advance task index
+| Tool | Annotation | What it does |
+|------|-----------|-------------|
+| `codegen_get_run` | `READ_ONLY` | Pure read via `RunService.get_run()`. No writes. |
+| `codegen_report_run_result` | `MUTATES` | Takes `run_id` + `execution_id`, writes TaskReport via `RunService.report_run_result()`, advances task index. |
 
-**Action:** Split into two tools:
+### 0.2 Re-tag Misleading Tools ✅
 
-| New Tool | Type | What it does |
-|----------|------|-------------|
-| `codegen_get_run` | Read-only | Fetch + format. No `execution_id` param. No writes. |
-| `codegen_report_run_result` | Mutation | Takes `run_id` + `execution_id`, writes TaskReport, advances index. Explicit name = explicit intent. |
+Tags added to tools whose names don't reflect their actual behavior:
 
-**Files to change:**
-- `bridge/tools/agent/queries.py` — extract mutation logic into new function
-- `bridge/tools/agent/__init__.py` — export new tool
-- `tests/tools/test_agent.py` — split tests accordingly
-
-### 0.2 Re-tag Misleading Tools
-
-Three tools create agent runs but their names don't indicate it:
-
-| Tool | Current Tag | Action |
-|------|-------------|--------|
-| `codegen_generate_setup_commands` | `setup` | Add tag `creates-agent-run`. Add `openWorldHint` annotation (Phase 2). |
-| `codegen_analyze_sandbox_logs` | `integrations` | Add tag `creates-agent-run`. Add `openWorldHint` annotation (Phase 2). |
-| `codegen_test_webhook` | `integrations` | Add tag `external-request`. Add `openWorldHint` annotation (Phase 2). |
-
-**No renaming** — renaming breaks existing Claude Code sessions that reference these tools.
-Tags + annotations are the correct MCP mechanism for semantic metadata.
-
-### 0.3 Acceptance Criteria
-
-- [ ] `codegen_get_run` has zero writes to ContextRegistry
-- [ ] `codegen_report_run_result` is the only place that writes TaskReport
-- [ ] All tests pass: `uv run pytest -v`
-- [ ] `uv run ruff check .` clean
-- [ ] `uv run mypy bridge/` clean
+| Tool | Added Tag | Why |
+|------|-----------|-----|
+| `codegen_generate_setup_commands` | `creates-agent-run` | Actually creates a cloud agent run |
+| `codegen_analyze_sandbox_logs` | `creates-agent-run` | Actually creates a cloud agent run |
+| `codegen_test_webhook` | `external-request` | Sends real HTTP POST to external URL |
 
 ---
 
-## Phase 1: Service Layer Extraction
+## Phase 1: Service Layer Extraction ✅
 
-**Why second:** Resources and workflow tools need shared business logic. Currently logic is
-embedded in tool functions — resources would duplicate it, workflows would fork it.
+**Commit:** `refactor(arch): extract service layer from tools`
 
-**Duration:** ~3 hours. Internal refactor, no API surface change.
-
-### 1.1 Create `bridge/services/` Module
+### 1.1 Services Created
 
 ```text
 bridge/services/
 ├── __init__.py
-├── runs.py          # RunService: get, list, create, stop, ban, unban
-├── execution.py     # ExecutionService: start, get_context, report_result
-├── integrations.py  # IntegrationService: webhooks, sandbox, slack
-└── settings.py      # SettingsService: get, update (local file)
+├── runs.py          # RunService
+└── execution.py     # ExecutionService
 ```
 
-### 1.2 `RunService` — First Extraction
+**Deviation from plan:** Only `RunService` and `ExecutionService` were extracted. `IntegrationService` and `SettingsService` deferred — those tools are simpler and direct `client.xyz()` calls are acceptable for now.
 
-Extract from `bridge/tools/agent/`:
+### 1.2 RunService (`bridge/services/runs.py`)
 
 ```python
 class RunService:
-    def __init__(self, client: CodegenClient, registry: ContextRegistry) -> None:
-        self.client = client
-        self.registry = registry
+    def __init__(self, client, registry, repo_cache, log_parser) -> None: ...
 
-    async def get_run(self, run_id: int) -> RunData:
-        """Pure read. Returns structured data, no side effects."""
-        run = await self.client.get_run(run_id)
-        return RunData(run=run, prs=..., logs_summary=...)
-
-    async def list_runs(self, cursor: str | None, limit: int, **filters) -> PaginatedRuns:
-        """Pure read. Returns paginated list."""
-        ...
-
-    async def report_run_result(self, run_id: int, execution_id: str) -> TaskReport:
-        """Explicit mutation. Writes to ContextRegistry."""
-        ...
+    async def get_run(self, run_id: int) -> dict           # pure read
+    async def list_runs(self, ...) -> dict                  # paginated list
+    async def report_run_result(self, ...) -> dict          # explicit mutation
+    async def create_run(self, ...) -> dict                 # create + serialize
+    async def detect_repo(self) -> int | None               # repo auto-detection
+    async def get_logs(self, run_id: int) -> dict           # log retrieval
 ```
 
-Tool functions become thin wrappers:
-```python
-@mcp.tool()
-async def codegen_get_run(run_id: int, ...) -> str:
-    service = RunService(client, registry)
-    data = await service.get_run(run_id)
-    return json.dumps(data.to_dict())
-```
+### 1.3 DI Providers
 
-### 1.3 DI for Services
+Added to `bridge/dependencies.py`:
+- `get_run_service(ctx) -> RunService`
+- `get_execution_service(ctx) -> ExecutionService`
 
-Add to `bridge/dependencies.py`:
+Tools use: `svc: RunService = Depends(get_run_service)  # type: ignore[arg-type]`
 
-```python
-def get_run_service(ctx: Context) -> RunService:
-    lc = ctx.lifespan_context
-    return RunService(client=lc["client"], registry=lc["registry"])
-```
+### 1.4 Serialization Consolidation (partial)
 
-Tools use: `service: RunService = Depends(get_run_service)  # type: ignore[arg-type]`
-
-### 1.4 Acceptance Criteria
-
-- [ ] All tool functions are thin wrappers (<15 lines) calling services
-- [ ] Services own ALL business logic (validation, enrichment, formatting)
-- [ ] No `client.xyz()` calls remain in tool functions (only `service.xyz()`)
-- [ ] All tests pass with unchanged behavior
-- [ ] Services are independently testable (no MCP dependency)
+`RunService` consolidates run serialization that was previously duplicated between `helpers/formatting.py` inline dict building in `queries.py` and `sampling/tools.py`. The `format_run()` helper is still used by sampling tools — full consolidation deferred to Phase 6.
 
 ---
 
-## Phase 2: ToolAnnotations
+## Phase 2: ToolAnnotations ✅
 
-**Why after service layer:** Annotations must reflect REAL semantics. Phase 0 fixed the semantics,
-Phase 1 made them explicit in service boundaries. Now annotations are mechanical.
+**Commit:** `feat(mcp): add ToolAnnotations to all tools`
 
-**Duration:** ~1 hour. Metadata-only, no logic changes.
+### 2.1 Annotations Module
 
-### 2.1 Classification from Inventory
+Created `bridge/annotations.py` with 6 reusable presets:
 
-Apply annotations based on [inventory Section 15](./mcp-surface-inventory.md#15-summary-statistics):
+| Preset | RO | DH | IH | OW | Usage |
+|--------|----|----|----|----|-------|
+| `READ_ONLY` | T | F | T | T | External API reads |
+| `READ_ONLY_LOCAL` | T | F | T | F | Local state reads |
+| `CREATES` | F | F | F | T | New external resources |
+| `MUTATES` | F | F | T | T | Idempotent updates |
+| `MUTATES_LOCAL` | F | F | T | F | Local-only updates |
+| `DESTRUCTIVE` | F | T | F | T | Irreversible mutations |
 
-```python
-from mcp.types import ToolAnnotations
+### 2.2 Application
 
-# Pattern for read-only tools
-@mcp.tool(annotations=ToolAnnotations(
-    readOnlyHint=True,
-    destructiveHint=False,
-    idempotentHint=True,
-    openWorldHint=False,
-))
-async def codegen_list_runs(...) -> str: ...
+All 41 manual tools + 4 sampling tools have explicit `annotations=` in their `@mcp.tool()` decorators.
 
-# Pattern for dangerous + open-world tools
-@mcp.tool(
-    tags={"dangerous"},
-    annotations=ToolAnnotations(
-        readOnlyHint=False,
-        destructiveHint=True,
-        idempotentHint=True,
-        openWorldHint=True,
-    ),
-)
-async def codegen_stop_run(...) -> str: ...
-```
-
-### 2.2 Full Annotation Map
-
-| Tool | RO | DH | IH | OW |
-|------|----|----|----|----|
-| `codegen_get_run` (post-split) | T | F | T | F |
-| `codegen_report_run_result` | F | F | T | F |
-| `codegen_list_runs` | T | F | T | F |
-| `codegen_create_run` | F | F | F | T |
-| `codegen_resume_run` | F | F | F | T |
-| `codegen_stop_run` | F | T | T | T |
-| `codegen_ban_run` | F | T | T | T |
-| `codegen_unban_run` | F | F | T | T |
-| `codegen_remove_from_pr` | F | T | T | T |
-| `codegen_get_logs` | T | F | T | F |
-| `codegen_start_execution` | F | F | F | F |
-| `codegen_get_execution_context` | T | F | T | F |
-| `codegen_get_agent_rules` | T | F | T | F |
-| `codegen_edit_pr` | F | T | F | T |
-| `codegen_edit_pr_simple` | F | T | F | T |
-| `codegen_list_orgs` | T | F | T | F |
-| `codegen_get_organization_settings` | T | F | T | F |
-| `codegen_list_repos` | T | F | T | F |
-| `codegen_generate_setup_commands` | F | F | F | T |
-| `codegen_get_current_user` | T | F | T | F |
-| `codegen_list_users` | T | F | T | F |
-| `codegen_get_user` | T | F | T | F |
-| `codegen_get_mcp_providers` | T | F | T | F |
-| `codegen_get_oauth_status` | T | F | T | F |
-| `codegen_revoke_oauth` | F | T | T | T |
-| `codegen_get_check_suite_settings` | T | F | T | F |
-| `codegen_update_check_suite_settings` | F | F | T | T |
-| `codegen_get_integrations` | T | F | T | F |
-| `codegen_get_webhook_config` | T | F | T | F |
-| `codegen_set_webhook_config` | F | F | T | T |
-| `codegen_delete_webhook_config` | F | T | T | T |
-| `codegen_test_webhook` | F | F | F | T |
-| `codegen_analyze_sandbox_logs` | F | F | F | T |
-| `codegen_generate_slack_token` | F | F | F | T |
-| `codegen_get_settings` | T | F | T | F |
-| `codegen_update_settings` | F | F | T | F |
-
-Sampling tools (4): `RO=T, DH=F, IH=F, OW=F` — read data, invoke LLM, no persistent writes.
-
-### 2.3 Implementation Strategy
-
-**NOT sed-based mass replacement.** Each tool gets annotations added to its `@mcp.tool()` decorator
-individually. Group by module, one commit per module.
-
-### 2.4 Acceptance Criteria
-
-- [ ] Every manual tool has explicit `ToolAnnotations`
-- [ ] No `readOnlyHint=True` on tools with ANY side effects
-- [ ] `openWorldHint=True` on every tool that makes outbound HTTP beyond Codegen API
-- [ ] Annotations importable: `from mcp.types import ToolAnnotations`
-- [ ] All tests pass
+**Deviation from plan:** Instead of individual `ToolAnnotations(...)` per tool, centralized presets reduce boilerplate. Only 6 presets needed — the plan's per-tool annotation map collapsed cleanly into these categories.
 
 ---
 
-## Phase 3: Outbound Rate Budget
+## Phase 3: Outbound Rate Budget ✅
 
-**Why before resources/workflows:** Resources may cache API responses (reducing calls),
-but workflow tools (Phase 5) poll the API in loops. Without outbound rate limiting,
-a create-and-monitor workflow can exhaust the API key's rate limit.
+**Commit:** `feat(client): add outbound rate budget (token-bucket throttling)`
 
-**Duration:** ~2 hours.
+### 3.1 Implementation
 
-### 3.1 Distinction from Middleware Rate Limiting
-
-```text
-Middleware RateLimitingMiddleware = throttles INCOMING MCP requests from Claude
-Outbound Rate Budget             = throttles OUTGOING httpx calls to Codegen API
-```
-
-These are orthogonal. Middleware already exists (layer 7). Outbound budget is new.
-
-### 3.2 Token Bucket in CodegenClient
-
-Add to `bridge/client.py`:
+Token-bucket rate limiter added to `CodegenClient`:
 
 ```python
 class OutboundRateBudget:
-    """Token-bucket rate limiter for outgoing API calls."""
-    def __init__(self, max_tokens: int = 60, refill_rate: float = 1.0) -> None:
-        self.max_tokens = max_tokens
-        self.tokens = float(max_tokens)
-        self.refill_rate = refill_rate  # tokens per second
-        self.last_refill = time.monotonic()
-
-    async def acquire(self, cost: int = 1) -> None:
-        """Block until budget available. Raises if permanently exhausted."""
-        ...
-
-    @property
-    def available(self) -> int:
-        ...
+    max_tokens: int = 60       # burst capacity
+    refill_rate: float = 1.0   # tokens/second (60 req/min sustained)
 ```
 
-Integrate into `CodegenClient._request()`:
-```python
-async def _request(self, method: str, path: str, ...) -> httpx.Response:
-    await self.rate_budget.acquire()
-    # existing retry logic...
-```
+Integrated into `CodegenClient._request()` — all outbound API calls pass through the budget.
 
-### 3.3 Configuration
+### 3.2 Configuration
 
-Add to `bridge/settings.py`:
-```python
-RATE_BUDGET_MAX_TOKENS: int = 60       # max burst
-RATE_BUDGET_REFILL_RATE: float = 1.0   # tokens/sec (= 60 req/min sustained)
-```
-
-### 3.4 Acceptance Criteria
-
-- [ ] `CodegenClient` has `OutboundRateBudget` injected
-- [ ] All API calls go through budget (including retry attempts)
-- [ ] Budget respects `Retry-After` header from API (already in retry logic)
-- [ ] Configurable via settings
-- [ ] Tests with `respx` mock verify budget enforcement
+Configurable via `bridge/settings.py` constants. Default: 60 req/min sustained, 60 burst.
 
 ---
 
-## Phase 4: Resource Templates
+## Phase 4: Resource Templates ✅
 
-**Why after service layer + rate budget:** Resources call services (not raw client),
-and their caching interacts correctly with rate budget.
+**Commit:** `feat(resources): add parameterized resource templates`
 
-**Duration:** ~2 hours.
+### 4.1 Templates Created (`bridge/resources/templates.py`)
 
-### 4.1 High-Value Resources Only
+| Resource URI | Backed By | Purpose |
+|-------------|-----------|---------|
+| `codegen://runs/{run_id}` | `RunService.get_run()` | Run status, result, summary, PRs |
+| `codegen://runs/{run_id}/logs` | `RunService.get_logs()` | Step-by-step execution logs |
+| `codegen://execution/{execution_id}` | `ExecutionService.get_execution_context()` | Execution context state |
 
-From inventory Section 11, priority 1-2 only:
+### 4.2 Additional Resources (`bridge/resources/platform.py`)
 
-| Resource URI | Backed By | TTL | Why |
-|-------------|-----------|-----|-----|
-| `codegen://runs/{run_id}` | `RunService.get_run()` | 10s | Most polled entity |
-| `codegen://runs/{run_id}/logs` | `RunService.get_logs()` | 30s | Debugging workflow |
-| `codegen://execution/{execution_id}` | `ExecutionService.get_context()` | 5s | Orchestration state |
+Two static platform documentation resources added (not in original plan):
 
-**NOT adding** setup/config resources (list_orgs, list_users, etc.) — called once per session,
-tool form is fine.
+| Resource URI | Content |
+|-------------|---------|
+| `codegen://platform/integrations-guide` | Integration reference (GitHub, Linear, Slack, Jira, Figma, Notion, Sentry) |
+| `codegen://platform/cli-sdk` | CLI commands, SDK quick-start, environment variables |
 
-### 4.2 Implementation
+**Total resources: 8** (3 config + 2 platform + 3 templates), up from 3 in v0.4.
+
+---
+
+## Phase 5: Workflow Composition ✅
+
+**Commit:** `feat(tools): add create-and-monitor workflow composition tool`
+
+### 5.1 `codegen_create_and_monitor` (`bridge/tools/agent/workflow.py`)
+
+Fire-and-wait workflow combining `create_run` + polling loop:
+
+- Annotation: `CREATES`
+- Tags: `execution, workflow`
+- Runs as background task via `task=MONITOR_TASK`
+- Polling uses `RunService.get_run()` (pure read — no execution-context side effects)
+- Exponential backoff: doubles every 10 polls, capped at 4x base interval
+- Default: `max_polls=60`, `poll_interval=10.0s`
+- Elicits model selection + confirmation when `confirmed=False`
+- Rate-budget-controlled via `CodegenClient`
+
+---
+
+## Phase 6: Serialization Cleanup — DEFERRED
+
+**Reason:** Partial consolidation already achieved via `RunService` in Phase 1. The remaining duplication points are:
+
+| Location | Status |
+|----------|--------|
+| `helpers/formatting.py:format_run()` | Still used by sampling tools |
+| `helpers/formatting.py:format_run_basic()` | Candidate for removal |
+| `tools/setup/users.py:_user_to_dict()` | Low priority — simple helper |
+| `sampling/tools.py` inline formatting | Uses `format_run()` from helpers |
+
+Full consolidation deferred until service extraction is complete for all tool modules (PR-2/PR-3 in audit plan).
+
+---
+
+## P0: Safety Hotfix ✅
+
+**Commit:** `fix(safety): close three P0 security gaps in middleware and OpenAPI layer`
+
+Applied post-Phase-5 based on architecture audit. Three fixes:
+
+### P0-A: Tool Call Caching Disabled by Default
+
+`ResponseCachingMiddleware` now passes `CallToolSettings(enabled=config.caching.tool_call_enabled)`.
+
+**Default: `tool_call_enabled=False`** — prevents stale cached data from being served for polling tools.
+
+Changed in: `bridge/middleware/config.py`, `bridge/middleware/stack.py`
+
+### P0-B: Dangerous Tool List Expanded
+
+`DEFAULT_DANGEROUS_TOOLS` expanded from 4 to 6 names:
 
 ```python
-# bridge/resources/templates.py
-from fastmcp import Context
-
-@mcp.resource("codegen://runs/{run_id}")
-async def get_run_resource(
-    run_id: int,
-    service: RunService = Depends(get_run_service),  # type: ignore[arg-type]
-) -> str:
-    data = await service.get_run(run_id)
-    return json.dumps(data.to_dict())
+frozenset({
+    "codegen_stop_run",
+    "codegen_edit_pr",
+    "codegen_edit_repo_pr",
+    "codegen_delete_webhook",
+    "codegen_set_webhook",        # NEW
+    "codegen_revoke_oauth_token", # NEW
+})
 ```
 
-**Key:** Resource calls `service.get_run()` — same code path as the tool.
-No data divergence because both use the service layer.
+**Known issue:** 3 names in the list don't match actual tool names (`codegen_edit_repo_pr` vs `codegen_edit_pr_simple`, `codegen_delete_webhook` vs `codegen_delete_webhook_config`, `codegen_set_webhook` vs `codegen_set_webhook_config`). Tools are still protected by the `"dangerous"` tag fallback in the guard strategy.
 
-### 4.3 Acceptance Criteria
+### P0-C: Auto-Generated Tools Trimmed
 
-- [ ] Resources backed by services, NOT raw `client.xyz()` calls
-- [ ] Existing tools still work (resources are additive)
-- [ ] Resource responses match tool responses (same service, same serialization)
-- [ ] Tests verify resource reads go through service layer
+`TOOL_NAMES` reduced from ~21 to 5 entries. `build_route_maps()` reduced from 16 to 5 routes (4 tool + 1 exclude). Eliminates naming conflicts between auto-generated and manual tools.
 
 ---
 
-## Phase 5: Workflow Composition
-
-**Why after rate budget + resources:** Workflows poll `get_run` in loops.
-Rate budget prevents API exhaustion. Resources provide cacheable reads.
-
-**Duration:** ~3 hours.
-
-### 5.1 `codegen_create_and_monitor`
-
-```python
-@mcp.tool(annotations=ToolAnnotations(
-    readOnlyHint=False,
-    destructiveHint=False,
-    idempotentHint=False,
-    openWorldHint=True,
-))
-async def codegen_create_and_monitor(
-    task: str,
-    repo: str | None = None,
-    model: str | None = None,
-    max_polls: int = 60,
-    poll_interval: float = 10.0,
-    ctx: Context = CurrentContext(),
-    service: RunService = Depends(get_run_service),  # type: ignore[arg-type]
-) -> str:
-    # 1. Create run
-    run = await service.create_run(task=task, repo=repo, model=model)
-
-    # 2. Poll with backoff (uses PURE get_run, no execution_id side effects)
-    for i in range(max_polls):
-        await asyncio.sleep(poll_interval * min(2 ** (i // 10), 4))  # backoff
-        data = await service.get_run(run.id)  # pure read via service
-        await report(ctx, i + 1, max_polls, f"Status: {data.run.status}")
-        if data.run.status in ("completed", "failed", "error"):
-            return json.dumps(data.to_dict())
-
-    return json.dumps({"timeout": True, "run_id": run.id, "last_status": data.run.status})
-```
-
-**Critical:** Uses `service.get_run()` (pure read), NOT `codegen_get_run` tool.
-No `execution_id` means no side-effect writes during polling.
-
-### 5.2 Budget Integration
-
-Polling calls `service.get_run()` → `client.get_run()` → passes through `OutboundRateBudget`.
-60 polls at 10s interval = 60 API calls over 10 minutes = well within 60 req/min budget.
-
-If budget exhausted (other tools running concurrently), `acquire()` blocks instead of failing.
-
-### 5.3 Acceptance Criteria
-
-- [ ] Workflow uses service layer, NOT tool functions
-- [ ] Polling does NOT trigger `report_run_result` side effects
-- [ ] Rate budget prevents >60 req/min to API
-- [ ] `max_polls` and `poll_interval` prevent infinite loops
-- [ ] Progress reporting via `report()` at each poll
-- [ ] Tests with `respx` mock verify full create→poll→complete flow
-
----
-
-## Phase 6: Serialization Cleanup
-
-**Why last:** All prior phases may change serialization points. Consolidating before
-they stabilize wastes effort (refactor churn).
-
-**Duration:** ~1.5 hours.
-
-### 6.1 Consolidate Serialization
-
-From inventory Section 10.1, six duplication points. After service layer extraction,
-serialization lives in services. Cleanup:
-
-| Current Location | After Cleanup |
-|-----------------|---------------|
-| `helpers/formatting.py:format_run()` | **Keep** — used by sampling tools |
-| `helpers/formatting.py:format_run_basic()` | Remove — replaced by `RunData.to_dict()` |
-| `tools/agent/queries.py` inline dict | Remove — replaced by `RunService.get_run()` |
-| `tools/setup/users.py:_user_to_dict()` | Move to `UserData.to_dict()` in services |
-| `sampling/tools.py` inline log formatting | Replace with `format_logs()` from helpers |
-
-### 6.2 Acceptance Criteria
-
-- [ ] Each entity has ONE serialization method (in its Data class or service)
-- [ ] No inline dict building in tool functions
-- [ ] `format_run_basic()` removed (redundant with `RunData`)
-- [ ] Sampling tools use `format_logs()` from helpers
-- [ ] All tests pass
-
----
-
-## Implementation Order Checklist
+## Implementation Checklist
 
 ```text
-[ ] Phase 0.1 — Split codegen_get_run → get_run + report_run_result
-[ ] Phase 0.2 — Add tags to misleading tools
-[ ] Phase 0.3 — Tests green, lint clean
-[ ] ─── COMMIT: "refactor(tools): split get_run read/write paths" ───
+[x] Phase 0.1 — Split codegen_get_run → get_run + report_run_result
+[x] Phase 0.2 — Add tags to misleading tools
+[x] Phase 0.3 — Tests green, lint clean
+[x] ─── COMMIT: "refactor(tools): split get_run read/write paths" ───
 
-[ ] Phase 1.1 — Create bridge/services/ with RunService
-[ ] Phase 1.2 — Migrate agent tools to use RunService
-[ ] Phase 1.3 — Add DI providers for services
-[ ] Phase 1.4 — Migrate remaining tools to services
-[ ] ─── COMMIT: "refactor(arch): extract service layer from tools" ───
+[x] Phase 1.1 — Create bridge/services/ with RunService, ExecutionService
+[x] Phase 1.2 — Migrate agent tools to use RunService
+[x] Phase 1.3 — Add DI providers for services
+[ ] Phase 1.4 — Migrate remaining tools to services (deferred to PR-2/PR-3)
+[x] ─── COMMIT: "refactor(arch): extract service layer from tools" ───
 
-[ ] Phase 2.1 — Import ToolAnnotations, verify FastMCP support
-[ ] Phase 2.2 — Apply annotations to all 39 tools (per annotation map)
-[ ] Phase 2.3 — Apply annotations to 4 sampling tools
-[ ] ─── COMMIT: "feat(mcp): add ToolAnnotations to all tools" ───
+[x] Phase 2.1 — Create annotations module with 6 presets
+[x] Phase 2.2 — Apply annotations to all 41 manual tools
+[x] Phase 2.3 — Apply annotations to 4 sampling tools
+[x] ─── COMMIT: "feat(mcp): add ToolAnnotations to all tools" ───
 
-[ ] Phase 3.1 — Implement OutboundRateBudget
-[ ] Phase 3.2 — Integrate into CodegenClient._request()
-[ ] Phase 3.3 — Add configuration
-[ ] ─── COMMIT: "feat(client): add outbound rate budget" ───
+[x] Phase 3.1 — Implement OutboundRateBudget
+[x] Phase 3.2 — Integrate into CodegenClient._request()
+[x] Phase 3.3 — Add configuration
+[x] ─── COMMIT: "feat(client): add outbound rate budget" ───
 
-[ ] Phase 4.1 — Add runs/{run_id} resource template
-[ ] Phase 4.2 — Add runs/{run_id}/logs resource template
-[ ] Phase 4.3 — Add execution/{id} resource template
-[ ] ─── COMMIT: "feat(resources): add dynamic resource templates" ───
+[x] Phase 4.1 — Add runs/{run_id} resource template
+[x] Phase 4.2 — Add runs/{run_id}/logs resource template
+[x] Phase 4.3 — Add execution/{id} resource template
+[x] Phase 4.4 — Add platform documentation resources (bonus)
+[x] ─── COMMIT: "feat(resources): add dynamic resource templates" ───
 
-[ ] Phase 5.1 — Implement codegen_create_and_monitor
-[ ] Phase 5.2 — Verify rate budget integration
-[ ] ─── COMMIT: "feat(tools): add create-and-monitor workflow" ───
+[x] Phase 5.1 — Implement codegen_create_and_monitor
+[x] Phase 5.2 — Verify rate budget integration
+[x] ─── COMMIT: "feat(tools): add create-and-monitor workflow" ───
 
-[ ] Phase 6.1 — Consolidate serialization into Data classes
-[ ] Phase 6.2 — Remove duplication points
-[ ] ─── COMMIT: "refactor(serial): consolidate entity serialization" ───
+[ ] Phase 6.1 — Consolidate serialization into Data classes (deferred)
+[ ] Phase 6.2 — Remove duplication points (deferred)
+
+[x] P0-A — Disable tool call caching by default
+[x] P0-B — Expand dangerous tools list (4→6)
+[x] P0-C — Trim auto-generated tools (~21→5)
+[x] ─── COMMIT: "fix(safety): close three P0 security gaps" ───
 
 [ ] Update CLAUDE.md with new architecture
 [ ] Update plugin version to 0.5.0
@@ -492,26 +296,13 @@ serialization lives in services. Cleanup:
 
 ---
 
-## What This Plan Does NOT Include
+## What Remains for Future PRs
 
-| Excluded | Why |
-|----------|-----|
-| Mass `sed`-based decorator replacement | Fragile, impossible to validate semantically |
-| Renaming existing tools | Breaks Claude Code sessions with cached tool names |
-| Resource templates for all 16 candidates | Low-value resources (setup/config) add complexity without benefit |
-| OpenAPI provider annotations | Auto-generated tools are a fallback layer — annotating them is wasted effort |
-| Prompt refactoring | Prompts are decorative text, refactoring them has zero architectural value |
-| Transform chain changes | Existing transforms are fine — v0.5 is about tool semantics, not transport |
-
----
-
-## Risk Matrix
-
-| Risk | Impact | Mitigation |
-|------|--------|-----------|
-| `codegen_get_run` split breaks execution flow | High | Phase 0 tests verify both paths independently before proceeding |
-| Service layer introduces latency | Low | Services are thin wrappers, no extra I/O. Profile if concerned |
-| ToolAnnotations not supported by FastMCP version | Medium | Phase 2.1 validates import before applying. Fallback: skip phase |
-| Rate budget too aggressive | Medium | Configurable. Default 60 req/min matches most API limits |
-| Workflow polling timeout | Low | `max_polls` + `poll_interval` are tool parameters, caller controls |
-| Serialization consolidation breaks response format | Medium | Phase 6 is last — all consumers stabilized. Test response schemas |
+| Item | Original Phase | Why Deferred | Target |
+|------|---------------|-------------|--------|
+| Service extraction for PR, integrations, setup tools | Phase 1.4 | Direct `client.xyz()` is acceptable for simple tools | PR-2/PR-3 |
+| Full serialization cleanup | Phase 6 | Partial consolidation via RunService sufficient | PR-7 |
+| Fix dangerous tool name mismatches | P0 follow-up | Protected by tag fallback, not urgent | PR-2 |
+| Rename misleading tools | Not planned | Would break existing sessions | Consider for v0.6 |
+| Workflow engine + policies | Audit plan | Not in original v0.5 scope | PR-4/PR-5 |
+| Observability cleanup | Audit plan | Not in original v0.5 scope | PR-7 |
