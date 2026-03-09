@@ -58,11 +58,14 @@ DEFAULT_DANGEROUS_TOOLS: frozenset[str] = frozenset(
     {
         # Manual tools
         "codegen_stop_run",
-        # OpenAPI-generated tools — PR editing
+        # PR editing — both manual tools
         "codegen_edit_pr",
-        "codegen_edit_repo_pr",
-        # OpenAPI-generated tools — webhook deletion
-        "codegen_delete_webhook",
+        "codegen_edit_pr_simple",
+        # Webhook management — deletion is destructive, set redirects data
+        "codegen_delete_webhook_config",
+        "codegen_set_webhook_config",
+        # OAuth — token revocation is irreversible
+        "codegen_revoke_oauth_token",
     }
 )
 
@@ -186,8 +189,13 @@ class DangerousToolGuardMiddleware(Middleware):
         if not self.config.enabled:
             return await call_next(context)
 
+        # Apply known argument defaults before policy checks and execution.
+        # Needed for OpenAPI-generated tools where optional defaults may not
+        # be propagated to the outbound HTTP request builder.
+        context = self._with_default_arguments(context)
+
         tool_name = context.message.name
-        tool_tags = self._get_tool_tags(context, tool_name)
+        tool_tags = await self._get_tool_tags(context, tool_name)
 
         if self.is_dangerous(tool_name, tool_tags):
             allowed = await self._check_policy(tool_name, tool_tags)
@@ -245,20 +253,50 @@ class DangerousToolGuardMiddleware(Middleware):
     # ── Helpers ──────────────────────────────────────────
 
     @staticmethod
-    def _get_tool_tags(context: MiddlewareContext, tool_name: str) -> set[str]:
-        """Extract tool tags from the FastMCP context if available."""
+    async def _get_tool_tags(
+        context: MiddlewareContext,
+        tool_name: str,
+    ) -> set[str]:
+        """Extract tool tags from FastMCP server registry."""
         try:
             fastmcp_ctx = context.fastmcp_context
             if fastmcp_ctx is not None:
                 server = fastmcp_ctx.fastmcp
-                # FastMCP stores tools in _tool_manager
-                manager = getattr(server, "_tool_manager", None)
-                if manager is not None:
-                    store = getattr(manager, "_tools", {})
-                    tool = store.get(tool_name)
-                    if tool is not None:
-                        return getattr(tool, "tags", set()) or set()
+                tool = await server.get_tool(tool_name)
+                if tool is not None:
+                    tags = getattr(tool, "tags", set()) or set()
+                    return set(tags)
         except Exception:
             # Fail open for tag lookup — name-based check is the primary guard
             logger.debug("Could not resolve tags for tool '%s'", tool_name, exc_info=True)
         return set()
+
+    @staticmethod
+    def _with_default_arguments(
+        context: MiddlewareContext[mt.CallToolRequestParams],
+    ) -> MiddlewareContext[mt.CallToolRequestParams]:
+        """Inject known default args required by upstream APIs.
+
+        FastMCP/OpenAPI tooling validates optional query params but does not
+        always materialize schema defaults into request arguments. For
+        ``codegen_revoke_oauth_token`` we must pass ``org_id`` explicitly.
+        """
+        if context.message.name != "codegen_revoke_oauth_token":
+            return context
+
+        args = dict(context.message.arguments or {})
+        if args.get("org_id") is not None:
+            return context
+
+        fastmcp_ctx = context.fastmcp_context
+        if fastmcp_ctx is None:
+            return context
+
+        lifespan = fastmcp_ctx.lifespan_context or {}
+        org_id = lifespan.get("org_id")
+        if not isinstance(org_id, int):
+            return context
+
+        args["org_id"] = org_id
+        patched_message = context.message.model_copy(update={"arguments": args})
+        return context.copy(message=patched_message)

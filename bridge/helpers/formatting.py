@@ -22,36 +22,6 @@ def format_run(run: AgentRun) -> dict[str, Any]:
     return result
 
 
-def format_run_basic(run: AgentRun) -> str:
-    """Format an AgentRun into a JSON string with id, status, web_url."""
-    return json.dumps(
-        {
-            "id": run.id,
-            "status": run.status,
-            "web_url": run.web_url,
-        }
-    )
-
-
-def format_run_list(runs: list[AgentRun], total: int) -> str:
-    """Format a list of AgentRuns into a JSON string."""
-    return json.dumps(
-        {
-            "total": total,
-            "runs": [
-                {
-                    "id": r.id,
-                    "status": r.status,
-                    "created_at": r.created_at,
-                    "web_url": r.web_url,
-                    "summary": r.summary,
-                }
-                for r in runs
-            ],
-        }
-    )
-
-
 def format_logs(result: AgentRunWithLogs) -> str:
     """Format agent run logs into a JSON string."""
     return json.dumps(

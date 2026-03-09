@@ -14,7 +14,7 @@ paths:
 ```json
 {
   "name": "codegen-bridge",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "keywords": ["codegen", "agent", "execution", "delegation", "mcp"]
 }
 ```

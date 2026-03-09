@@ -3,6 +3,9 @@
 These tools manage the lifecycle of agent runs — creating new runs
 (with optional execution context enrichment and repo auto-detection),
 resuming paused runs, and stopping active runs.
+
+Business logic lives in ``RunService``; these tools handle MCP
+concerns: elicitation, progress reporting, and JSON serialisation.
 """
 
 from __future__ import annotations
@@ -14,14 +17,11 @@ from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from fastmcp.server.context import Context
 
-from bridge.client import CodegenClient
-from bridge.context import ContextRegistry
-from bridge.dependencies import CurrentContext, Depends, get_client, get_registry, get_repo_cache
+from bridge.annotations import CREATES, DESTRUCTIVE
+from bridge.dependencies import CurrentContext, Depends, get_run_service
 from bridge.elicitation import confirm_action, select_choice
-from bridge.helpers.formatting import format_run_basic
-from bridge.helpers.repo_detection import RepoCache, detect_repo_id
 from bridge.icons import ICON_RESUME, ICON_RUN, ICON_STOP
-from bridge.prompt_builder import build_task_prompt
+from bridge.services.runs import RunService
 from bridge.tools.agent._progress import CREATE_RUN_STEPS, CREATE_RUN_TASK, report
 
 
@@ -30,7 +30,7 @@ def register_lifecycle_tools(mcp: FastMCP) -> None:
 
     # ── Create ───────────────────────────────────────────
 
-    @mcp.tool(tags={"execution"}, icons=ICON_RUN, task=CREATE_RUN_TASK)
+    @mcp.tool(tags={"execution"}, icons=ICON_RUN, task=CREATE_RUN_TASK, annotations=CREATES)
     async def codegen_create_run(
         prompt: str,
         repo_id: int | None = None,
@@ -41,10 +41,7 @@ def register_lifecycle_tools(mcp: FastMCP) -> None:
         task_index: int | None = None,
         confirmed: bool = False,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
-        registry: ContextRegistry = Depends(get_registry),  # type: ignore[arg-type]
-        repo_cache: RepoCache = Depends(get_repo_cache),  # type: ignore[arg-type]
-    ) -> str:
+        svc: RunService = Depends(get_run_service),    ) -> str:
         """Create a new Codegen agent run.
 
         The agent will execute the task in a cloud sandbox and may create a PR.
@@ -66,33 +63,26 @@ def register_lifecycle_tools(mcp: FastMCP) -> None:
         step = 0
 
         # Step 1: Validate input
-        has_exec = execution_id is not None
         await report(ctx, step, total, "Validating input")
-        await ctx.info(f"Creating agent run: agent_type={agent_type}, has_execution={has_exec}")
-        effective_prompt = prompt
+        await ctx.info(
+            f"Creating agent run: agent_type={agent_type}, "
+            f"has_execution={execution_id is not None}"
+        )
         step += 1
 
         # Step 2: Enrich prompt from execution context
         await report(ctx, step, total, "Enriching prompt")
-        if execution_id is not None:
-            exec_ctx = await registry.get(execution_id)
-            if exec_ctx is not None:
-                idx = task_index if task_index is not None else exec_ctx.current_task_index
-                if idx < len(exec_ctx.tasks):
-                    effective_prompt = build_task_prompt(exec_ctx, idx)
-                    await registry.update_task(
-                        execution_id=execution_id,
-                        task_index=idx,
-                        status="running",
-                    )
-                if repo_id is None and exec_ctx.repo_id is not None:
-                    repo_id = exec_ctx.repo_id
+        effective_prompt, ctx_repo_id = await svc.enrich_prompt(
+            prompt, execution_id, task_index
+        )
+        if repo_id is None and ctx_repo_id is not None:
+            repo_id = ctx_repo_id
         step += 1
 
         # Step 3: Detect repository
         await report(ctx, step, total, "Detecting repository")
         if repo_id is None:
-            repo_id = await detect_repo_id(client, repo_cache)
+            repo_id = await svc.detect_repo()
             if repo_id is None:
                 await ctx.error("Auto-detect repository failed; no repo_id provided")
                 raise ToolError(
@@ -114,7 +104,7 @@ def register_lifecycle_tools(mcp: FastMCP) -> None:
             if selected is not None:
                 model = selected
 
-        # Elicit repo confirmation when auto-detected (not explicitly provided)
+        # Elicit repo confirmation
         if not confirmed:
             user_confirmed = await confirm_action(
                 ctx,
@@ -131,49 +121,33 @@ def register_lifecycle_tools(mcp: FastMCP) -> None:
 
         # Step 4: Create the agent run
         await report(ctx, step, total, "Creating agent run")
-        run = await client.create_run(
+        result = await svc.create_run(
             effective_prompt,
             repo_id=repo_id,
             model=model,
             agent_type=agent_type,
             images=images,
         )
-        await ctx.info(f"Agent run created: id={run.id}, status={run.status}")
+        await ctx.info(f"Agent run created: id={result['id']}, status={result['status']}")
         step += 1
 
         # Step 5: Track in execution context
         await report(ctx, step, total, "Tracking in execution context")
-        if execution_id is not None:
-            exec_ctx = await registry.get(execution_id)
-            if exec_ctx is not None:
-                idx = task_index if task_index is not None else exec_ctx.current_task_index
-                if idx < len(exec_ctx.tasks):
-                    await registry.update_task(
-                        execution_id=execution_id,
-                        task_index=idx,
-                        run_id=run.id,
-                    )
+        await svc.track_run_in_execution(result["id"], execution_id, task_index)
 
         await report(ctx, total, total, "Agent run created")
-        return json.dumps(
-            {
-                "id": run.id,
-                "status": run.status,
-                "web_url": run.web_url,
-            }
-        )
+        return json.dumps(result)
 
     # ── Resume ────────────────────────────────────────────
 
-    @mcp.tool(tags={"execution"}, icons=ICON_RESUME)
+    @mcp.tool(tags={"execution"}, icons=ICON_RESUME, annotations=CREATES)
     async def codegen_resume_run(
         run_id: int,
         prompt: str,
         model: str | None = None,
         images: list[str] | None = None,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
-    ) -> str:
+        svc: RunService = Depends(get_run_service),    ) -> str:
         """Resume a paused or blocked agent run with new instructions.
 
         Args:
@@ -183,19 +157,18 @@ def register_lifecycle_tools(mcp: FastMCP) -> None:
             images: Optional list of base64-encoded data URIs for image input.
         """
         await ctx.info(f"Resuming run: id={run_id}")
-        run = await client.resume_run(run_id, prompt, model=model, images=images)
-        await ctx.info(f"Run resumed: id={run.id}, status={run.status}")
-        return format_run_basic(run)
+        result = await svc.resume_run(run_id, prompt, model=model, images=images)
+        await ctx.info(f"Run resumed: id={result['id']}, status={result['status']}")
+        return json.dumps(result)
 
     # ── Stop (legacy alias for ban) ──────────────────────
 
-    @mcp.tool(tags={"execution", "dangerous"}, icons=ICON_STOP)
+    @mcp.tool(tags={"execution", "dangerous"}, icons=ICON_STOP, annotations=DESTRUCTIVE)
     async def codegen_stop_run(
         run_id: int,
         confirmed: bool = False,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
-    ) -> str:
+        svc: RunService = Depends(get_run_service),    ) -> str:
         """Stop a running agent. Use when a task needs to be cancelled.
 
         Asks for user confirmation before stopping unless ``confirmed=True``.
@@ -217,6 +190,6 @@ def register_lifecycle_tools(mcp: FastMCP) -> None:
                 )
 
         await ctx.warning(f"Stopping run: id={run_id}")
-        run = await client.stop_run(run_id)
+        result = await svc.stop_run(run_id)
         await ctx.info(f"Run stopped: id={run_id}")
-        return format_run_basic(run)
+        return json.dumps(result)

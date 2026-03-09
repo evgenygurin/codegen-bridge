@@ -15,7 +15,9 @@ from dataclasses import dataclass
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
+import mcp.types as mt
 import pytest
+from fastmcp.server.middleware.middleware import MiddlewareContext
 
 from bridge.middleware.authorization import (
     DEFAULT_DANGEROUS_TAG,
@@ -140,11 +142,17 @@ class TestIsDangerous:
     def test_dangerous_by_name_edit_pr(self):
         assert self.mw.is_dangerous("codegen_edit_pr") is True
 
-    def test_dangerous_by_name_edit_repo_pr(self):
-        assert self.mw.is_dangerous("codegen_edit_repo_pr") is True
+    def test_dangerous_by_name_edit_pr_simple(self):
+        assert self.mw.is_dangerous("codegen_edit_pr_simple") is True
 
-    def test_dangerous_by_name_delete_webhook(self):
-        assert self.mw.is_dangerous("codegen_delete_webhook") is True
+    def test_dangerous_by_name_delete_webhook_config(self):
+        assert self.mw.is_dangerous("codegen_delete_webhook_config") is True
+
+    def test_dangerous_by_name_set_webhook_config(self):
+        assert self.mw.is_dangerous("codegen_set_webhook_config") is True
+
+    def test_dangerous_by_name_revoke_oauth(self):
+        assert self.mw.is_dangerous("codegen_revoke_oauth_token") is True
 
     def test_safe_tool_by_name(self):
         assert self.mw.is_dangerous("codegen_list_runs") is False
@@ -194,6 +202,44 @@ class TestOnCallTool:
         # call_next should NOT be called
         call_next.assert_not_called()
 
+    async def test_blocks_tool_by_resolved_dangerous_tag(self):
+        """Tools outside name allowlist must still be blocked by resolved tags."""
+        mw = DangerousToolGuardMiddleware(config=AuthorizationConfig(allow_dangerous=False))
+        params = mt.CallToolRequestParams(name="codegen_ban_run", arguments={"run_id": 1})
+        fastmcp = MagicMock()
+        fastmcp.get_tool = AsyncMock(return_value=MagicMock(tags={"dangerous"}))
+        fastmcp_context = MagicMock(fastmcp=fastmcp, lifespan_context={"org_id": 42})
+        ctx = MiddlewareContext(message=params, fastmcp_context=fastmcp_context)
+        call_next = AsyncMock(return_value="result")
+
+        from fastmcp.exceptions import ToolError
+
+        with pytest.raises(ToolError, match="dangerous operation"):
+            await mw.on_call_tool(ctx, call_next)
+
+        call_next.assert_not_called()
+
+    async def test_injects_org_id_for_revoke_oauth_token(self):
+        mw = DangerousToolGuardMiddleware(config=AuthorizationConfig(allow_dangerous=True))
+        params = mt.CallToolRequestParams(
+            name="codegen_revoke_oauth_token",
+            arguments={"provider": "linear-mcp"},
+        )
+        fastmcp = MagicMock()
+        fastmcp.get_tool = AsyncMock(return_value=MagicMock(tags={"dangerous"}))
+        fastmcp_context = MagicMock(fastmcp=fastmcp, lifespan_context={"org_id": 42})
+        ctx = MiddlewareContext(message=params, fastmcp_context=fastmcp_context)
+        call_next = AsyncMock(return_value="ok")
+
+        result = await mw.on_call_tool(ctx, call_next)
+
+        assert result == "ok"
+        forwarded_ctx = call_next.await_args.args[0]
+        assert forwarded_ctx.message.arguments == {
+            "provider": "linear-mcp",
+            "org_id": 42,
+        }
+
     async def test_allows_dangerous_tool_when_permitted(self):
         """Dangerous tool call should proceed when allowed."""
         mw = DangerousToolGuardMiddleware(config=AuthorizationConfig(allow_dangerous=True))
@@ -224,14 +270,14 @@ class TestOnCallTool:
         with pytest.raises(ToolError, match="codegen_edit_pr"):
             await mw.on_call_tool(ctx, call_next)
 
-    async def test_blocks_delete_webhook(self):
+    async def test_blocks_delete_webhook_config(self):
         mw = DangerousToolGuardMiddleware(config=AuthorizationConfig(allow_dangerous=False))
-        ctx = _make_context("codegen_delete_webhook")
+        ctx = _make_context("codegen_delete_webhook_config")
         call_next = AsyncMock()
 
         from fastmcp.exceptions import ToolError
 
-        with pytest.raises(ToolError, match="codegen_delete_webhook"):
+        with pytest.raises(ToolError, match="codegen_delete_webhook_config"):
             await mw.on_call_tool(ctx, call_next)
 
     async def test_passthrough_when_disabled(self):
@@ -421,14 +467,20 @@ class TestDefaultDangerousTools:
     def test_contains_edit_pr(self):
         assert "codegen_edit_pr" in DEFAULT_DANGEROUS_TOOLS
 
-    def test_contains_edit_repo_pr(self):
-        assert "codegen_edit_repo_pr" in DEFAULT_DANGEROUS_TOOLS
+    def test_contains_edit_pr_simple(self):
+        assert "codegen_edit_pr_simple" in DEFAULT_DANGEROUS_TOOLS
 
-    def test_contains_delete_webhook(self):
-        assert "codegen_delete_webhook" in DEFAULT_DANGEROUS_TOOLS
+    def test_contains_delete_webhook_config(self):
+        assert "codegen_delete_webhook_config" in DEFAULT_DANGEROUS_TOOLS
 
     def test_is_frozenset(self):
         assert isinstance(DEFAULT_DANGEROUS_TOOLS, frozenset)
 
-    def test_exactly_four_tools(self):
-        assert len(DEFAULT_DANGEROUS_TOOLS) == 4
+    def test_contains_set_webhook_config(self):
+        assert "codegen_set_webhook_config" in DEFAULT_DANGEROUS_TOOLS
+
+    def test_contains_revoke_oauth(self):
+        assert "codegen_revoke_oauth_token" in DEFAULT_DANGEROUS_TOOLS
+
+    def test_exactly_six_tools(self):
+        assert len(DEFAULT_DANGEROUS_TOOLS) == 6

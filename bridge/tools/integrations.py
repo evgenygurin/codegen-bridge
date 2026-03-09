@@ -15,6 +15,7 @@ import json
 from fastmcp import FastMCP
 from fastmcp.server.context import Context
 
+from bridge.annotations import CREATES, DESTRUCTIVE, READ_ONLY
 from bridge.client import CodegenClient
 from bridge.dependencies import CurrentContext, Depends, get_client
 from bridge.elicitation import confirm_action
@@ -31,11 +32,10 @@ def register_integration_tools(mcp: FastMCP) -> None:
 
     # ── Integrations ─────────────────────────────────────
 
-    @mcp.tool(tags={"integrations"}, icons=ICON_INTEGRATIONS)
+    @mcp.tool(tags={"integrations"}, icons=ICON_INTEGRATIONS, annotations=READ_ONLY)
     async def codegen_get_integrations(
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
-    ) -> str:
+        client: CodegenClient = Depends(get_client),    ) -> str:
         """Get all integration statuses for the organization.
 
         Returns a comprehensive overview of configured integrations including
@@ -68,11 +68,10 @@ def register_integration_tools(mcp: FastMCP) -> None:
 
     # ── Webhooks ─────────────────────────────────────────
 
-    @mcp.tool(tags={"webhooks"}, icons=ICON_WEBHOOK)
+    @mcp.tool(tags={"webhooks"}, icons=ICON_WEBHOOK, annotations=READ_ONLY)
     async def codegen_get_webhook_config(
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
-    ) -> str:
+        client: CodegenClient = Depends(get_client),    ) -> str:
         """Get webhook configuration for agent run completion events.
 
         Returns the current webhook URL, enabled status, and whether a secret
@@ -89,15 +88,18 @@ def register_integration_tools(mcp: FastMCP) -> None:
             }
         )
 
-    @mcp.tool(tags={"webhooks"}, icons=ICON_WEBHOOK)
+    @mcp.tool(
+        tags={"webhooks", "dangerous"},
+        icons=ICON_WEBHOOK,
+        annotations=DESTRUCTIVE,
+    )
     async def codegen_set_webhook_config(
         url: str,
         secret: str | None = None,
         enabled: bool = True,
         confirmed: bool = False,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
-    ) -> str:
+        client: CodegenClient = Depends(get_client),    ) -> str:
         """Configure webhook for agent run completion events.
 
         Set the URL where notifications will be sent when agent runs complete.
@@ -124,12 +126,11 @@ def register_integration_tools(mcp: FastMCP) -> None:
         await ctx.info("Webhook configuration updated")
         return json.dumps({"status": "configured", "result": result})
 
-    @mcp.tool(tags={"webhooks", "dangerous"}, icons=ICON_WEBHOOK)
+    @mcp.tool(tags={"webhooks", "dangerous"}, icons=ICON_WEBHOOK, annotations=DESTRUCTIVE)
     async def codegen_delete_webhook_config(
         confirmed: bool = False,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
-    ) -> str:
+        client: CodegenClient = Depends(get_client),    ) -> str:
         """Remove webhook configuration for agent run completion events.
 
         Deletes the webhook URL, secret, and disables notifications.
@@ -153,12 +154,11 @@ def register_integration_tools(mcp: FastMCP) -> None:
         await ctx.info("Webhook configuration deleted")
         return json.dumps({"status": "deleted", "result": result})
 
-    @mcp.tool(tags={"webhooks"}, icons=ICON_WEBHOOK)
+    @mcp.tool(tags={"webhooks", "external-request"}, icons=ICON_WEBHOOK, annotations=CREATES)
     async def codegen_test_webhook(
         url: str,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
-    ) -> str:
+        client: CodegenClient = Depends(get_client),    ) -> str:
         """Send a test webhook to verify the endpoint is reachable.
 
         Sends a test payload to the provided URL to verify connectivity.
@@ -173,12 +173,11 @@ def register_integration_tools(mcp: FastMCP) -> None:
 
     # ── Sandbox ──────────────────────────────────────────
 
-    @mcp.tool(tags={"sandbox"}, icons=ICON_SANDBOX)
+    @mcp.tool(tags={"sandbox", "creates-agent-run"}, icons=ICON_SANDBOX, annotations=CREATES)
     async def codegen_analyze_sandbox_logs(
         sandbox_id: int,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
-    ) -> str:
+        client: CodegenClient = Depends(get_client),    ) -> str:
         """Analyze sandbox setup logs using an AI agent.
 
         Creates an AI agent that analyzes the setup logs, identifies errors,
@@ -203,11 +202,10 @@ def register_integration_tools(mcp: FastMCP) -> None:
 
     # ── Slack Connect ────────────────────────────────────
 
-    @mcp.tool(tags={"slack"}, icons=ICON_SLACK)
+    @mcp.tool(tags={"slack"}, icons=ICON_SLACK, annotations=CREATES)
     async def codegen_generate_slack_token(
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
-    ) -> str:
+        client: CodegenClient = Depends(get_client),    ) -> str:
         """Generate a temporary token for Slack account connection.
 
         The token expires in 10 minutes and can only be used once.
