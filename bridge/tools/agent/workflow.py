@@ -44,7 +44,7 @@ def register_workflow_tools(mcp: FastMCP) -> None:
         poll_interval: float = 10.0,
         confirmed: bool = False,
         ctx: Context = CurrentContext(),
-        svc: RunService = Depends(get_run_service),
+        svc: RunService = Depends(get_run_service), # type: ignore[arg-type]
     ) -> str:
         """Create an agent run and poll until completion.
 

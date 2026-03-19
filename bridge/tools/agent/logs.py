@@ -32,7 +32,7 @@ def register_log_tools(mcp: FastMCP) -> None:
         reverse: bool = True,
         cursor: str | None = None,
         ctx: Context = CurrentContext(),
-        svc: RunService = Depends(get_run_service),    ) -> str:
+        svc: RunService = Depends(get_run_service),    ) -> str: # type: ignore[arg-type]
         """Get step-by-step agent execution logs with cursor-based pagination.
 
         Shows agent thoughts, tool calls, and outputs for debugging.

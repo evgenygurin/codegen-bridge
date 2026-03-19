@@ -31,7 +31,7 @@ def register_moderation_tools(mcp: FastMCP) -> None:
         after_card_order_id: str | None = None,
         confirmed: bool = False,
         ctx: Context = CurrentContext(),
-        svc: RunService = Depends(get_run_service),    ) -> str:
+        svc: RunService = Depends(get_run_service),    ) -> str: # type: ignore[arg-type]
         """Ban all checks for a PR and stop all related agents.
 
         Flags the PR to prevent future CI/CD check suite events from
@@ -72,7 +72,7 @@ def register_moderation_tools(mcp: FastMCP) -> None:
         before_card_order_id: str | None = None,
         after_card_order_id: str | None = None,
         ctx: Context = CurrentContext(),
-        svc: RunService = Depends(get_run_service),    ) -> str:
+        svc: RunService = Depends(get_run_service),    ) -> str: # type: ignore[arg-type]
         """Unban all checks for a PR.
 
         Removes the ban flag from the PR to allow future CI/CD check suite
@@ -102,7 +102,7 @@ def register_moderation_tools(mcp: FastMCP) -> None:
         after_card_order_id: str | None = None,
         confirmed: bool = False,
         ctx: Context = CurrentContext(),
-        svc: RunService = Depends(get_run_service),    ) -> str:
+        svc: RunService = Depends(get_run_service),    ) -> str: # type: ignore[arg-type]
         """Remove Codegen from a PR.
 
         Performs the same action as banning all checks but with more

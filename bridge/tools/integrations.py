@@ -35,7 +35,7 @@ def register_integration_tools(mcp: FastMCP) -> None:
     @mcp.tool(tags={"integrations"}, icons=ICON_INTEGRATIONS, annotations=READ_ONLY)
     async def codegen_get_integrations(
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),    ) -> str:
+        client: CodegenClient = Depends(get_client),    ) -> str: # type: ignore[arg-type]
         """Get all integration statuses for the organization.
 
         Returns a comprehensive overview of configured integrations including
@@ -71,7 +71,7 @@ def register_integration_tools(mcp: FastMCP) -> None:
     @mcp.tool(tags={"webhooks"}, icons=ICON_WEBHOOK, annotations=READ_ONLY)
     async def codegen_get_webhook_config(
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),    ) -> str:
+        client: CodegenClient = Depends(get_client),    ) -> str: # type: ignore[arg-type]
         """Get webhook configuration for agent run completion events.
 
         Returns the current webhook URL, enabled status, and whether a secret
@@ -99,7 +99,7 @@ def register_integration_tools(mcp: FastMCP) -> None:
         enabled: bool = True,
         confirmed: bool = False,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),    ) -> str:
+        client: CodegenClient = Depends(get_client),    ) -> str: # type: ignore[arg-type]
         """Configure webhook for agent run completion events.
 
         Set the URL where notifications will be sent when agent runs complete.
@@ -130,7 +130,7 @@ def register_integration_tools(mcp: FastMCP) -> None:
     async def codegen_delete_webhook_config(
         confirmed: bool = False,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),    ) -> str:
+        client: CodegenClient = Depends(get_client),    ) -> str: # type: ignore[arg-type]
         """Remove webhook configuration for agent run completion events.
 
         Deletes the webhook URL, secret, and disables notifications.
@@ -158,7 +158,7 @@ def register_integration_tools(mcp: FastMCP) -> None:
     async def codegen_test_webhook(
         url: str,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),    ) -> str:
+        client: CodegenClient = Depends(get_client),    ) -> str: # type: ignore[arg-type]
         """Send a test webhook to verify the endpoint is reachable.
 
         Sends a test payload to the provided URL to verify connectivity.
@@ -177,7 +177,7 @@ def register_integration_tools(mcp: FastMCP) -> None:
     async def codegen_analyze_sandbox_logs(
         sandbox_id: int,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),    ) -> str:
+        client: CodegenClient = Depends(get_client),    ) -> str: # type: ignore[arg-type]
         """Analyze sandbox setup logs using an AI agent.
 
         Creates an AI agent that analyzes the setup logs, identifies errors,
@@ -205,7 +205,7 @@ def register_integration_tools(mcp: FastMCP) -> None:
     @mcp.tool(tags={"slack"}, icons=ICON_SLACK, annotations=CREATES)
     async def codegen_generate_slack_token(
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),    ) -> str:
+        client: CodegenClient = Depends(get_client),    ) -> str: # type: ignore[arg-type]
         """Generate a temporary token for Slack account connection.
 
         The token expires in 10 minutes and can only be used once.

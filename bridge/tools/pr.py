@@ -32,7 +32,7 @@ def register_pr_tools(mcp: FastMCP) -> None:
         pr_id: int,
         state: PRState,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),    ) -> str:
+        client: CodegenClient = Depends(get_client),    ) -> str: # type: ignore[arg-type]
         """Edit pull request properties (RESTful endpoint).
 
         Update the state of a pull request (open, closed, draft, ready_for_review).
@@ -67,7 +67,7 @@ def register_pr_tools(mcp: FastMCP) -> None:
         pr_id: int,
         state: PRState,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),    ) -> str:
+        client: CodegenClient = Depends(get_client),    ) -> str: # type: ignore[arg-type]
         """Edit pull request properties (simple endpoint).
 
         Update the state of a pull request (open, closed, draft, ready_for_review).

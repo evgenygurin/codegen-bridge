@@ -41,7 +41,7 @@ def register_lifecycle_tools(mcp: FastMCP) -> None:
         task_index: int | None = None,
         confirmed: bool = False,
         ctx: Context = CurrentContext(),
-        svc: RunService = Depends(get_run_service),    ) -> str:
+        svc: RunService = Depends(get_run_service),    ) -> str: # type: ignore[arg-type]
         """Create a new Codegen agent run.
 
         The agent will execute the task in a cloud sandbox and may create a PR.
@@ -147,7 +147,7 @@ def register_lifecycle_tools(mcp: FastMCP) -> None:
         model: str | None = None,
         images: list[str] | None = None,
         ctx: Context = CurrentContext(),
-        svc: RunService = Depends(get_run_service),    ) -> str:
+        svc: RunService = Depends(get_run_service),    ) -> str: # type: ignore[arg-type]
         """Resume a paused or blocked agent run with new instructions.
 
         Args:
@@ -168,7 +168,7 @@ def register_lifecycle_tools(mcp: FastMCP) -> None:
         run_id: int,
         confirmed: bool = False,
         ctx: Context = CurrentContext(),
-        svc: RunService = Depends(get_run_service),    ) -> str:
+        svc: RunService = Depends(get_run_service),    ) -> str: # type: ignore[arg-type]
         """Stop a running agent. Use when a task needs to be cancelled.
 
         Asks for user confirmation before stopping unless ``confirmed=True``.

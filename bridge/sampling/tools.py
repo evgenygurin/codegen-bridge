@@ -39,8 +39,8 @@ def register_sampling_tools(mcp: FastMCP) -> None:
     async def codegen_summarise_run(
         run_id: int,
         ctx: Context = CurrentContext(),
-        svc: RunService = Depends(get_run_service),
-        client: CodegenClient = Depends(get_client),
+        svc: RunService = Depends(get_run_service), # type: ignore[arg-type]
+        client: CodegenClient = Depends(get_client), # type: ignore[arg-type]
     ) -> str:
         """Generate an AI-powered summary of an agent run.
 
@@ -81,7 +81,7 @@ def register_sampling_tools(mcp: FastMCP) -> None:
     async def codegen_summarise_execution(
         execution_id: str | None = None,
         ctx: Context = CurrentContext(),
-        registry: ContextRegistry = Depends(get_registry),    ) -> str:
+        registry: ContextRegistry = Depends(get_registry),    ) -> str: # type: ignore[arg-type]
         """Generate an AI-powered summary of a full execution plan.
 
         Summarises all tasks, their statuses, PRs, and key decisions
@@ -120,7 +120,7 @@ def register_sampling_tools(mcp: FastMCP) -> None:
         architecture: str | None = None,
         execution_id: str | None = None,
         ctx: Context = CurrentContext(),
-        registry: ContextRegistry = Depends(get_registry),    ) -> str:
+        registry: ContextRegistry = Depends(get_registry),    ) -> str: # type: ignore[arg-type]
         """Use AI to generate a detailed, optimised prompt for a Codegen agent.
 
         The LLM produces a structured, self-contained prompt based on the
@@ -173,7 +173,7 @@ def register_sampling_tools(mcp: FastMCP) -> None:
         run_id: int,
         limit: int = 50,
         ctx: Context = CurrentContext(),
-        svc: RunService = Depends(get_run_service),
+        svc: RunService = Depends(get_run_service), # type: ignore[arg-type]
     ) -> str:
         """Analyse agent execution logs with AI to identify patterns and issues.
 

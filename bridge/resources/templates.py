@@ -30,7 +30,7 @@ def register_resource_templates(mcp: FastMCP) -> None:
     @mcp.resource("codegen://runs/{run_id}", icons=ICON_GET_RUN)
     async def get_run_resource(
         run_id: str,
-        svc: RunService = Depends(get_run_service),
+        svc: RunService = Depends(get_run_service), # type: ignore[arg-type]
     ) -> str:
         """Agent run status, result, summary, and created PRs.
 
@@ -44,7 +44,7 @@ def register_resource_templates(mcp: FastMCP) -> None:
     @mcp.resource("codegen://runs/{run_id}/logs", icons=ICON_LOGS)
     async def get_run_logs_resource(
         run_id: str,
-        svc: RunService = Depends(get_run_service),
+        svc: RunService = Depends(get_run_service), # type: ignore[arg-type]
     ) -> str:
         """Step-by-step agent execution logs for debugging.
 
@@ -57,7 +57,7 @@ def register_resource_templates(mcp: FastMCP) -> None:
     @mcp.resource("codegen://execution/{execution_id}", icons=ICON_CONTEXT)
     async def get_execution_resource(
         execution_id: str,
-        svc: ExecutionService = Depends(get_execution_service),
+        svc: ExecutionService = Depends(get_execution_service), # type: ignore[arg-type]
     ) -> str:
         """Execution context state — tasks, progress, metadata.
 

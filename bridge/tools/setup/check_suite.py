@@ -26,7 +26,7 @@ def register_check_suite_tools(mcp: FastMCP) -> None:
     async def codegen_get_check_suite_settings(
         repo_id: int,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),    ) -> str:
+        client: CodegenClient = Depends(get_client),    ) -> str: # type: ignore[arg-type]
         """Get CI check-suite settings for a repository.
 
         Returns retry counts, ignored checks, custom prompts, high-priority
@@ -62,7 +62,7 @@ def register_check_suite_tools(mcp: FastMCP) -> None:
         custom_prompts: dict[str, str] | None = None,
         high_priority_apps: list[str] | None = None,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),    ) -> str:
+        client: CodegenClient = Depends(get_client),    ) -> str: # type: ignore[arg-type]
         """Update CI check-suite settings for a repository.
 
         Only the fields you provide will be updated; omitted fields

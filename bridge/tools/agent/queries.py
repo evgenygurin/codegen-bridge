@@ -32,7 +32,7 @@ def register_query_tools(mcp: FastMCP) -> None:
     async def codegen_get_run(
         run_id: int,
         ctx: Context = CurrentContext(),
-        svc: RunService = Depends(get_run_service),    ) -> str:
+        svc: RunService = Depends(get_run_service),    ) -> str: # type: ignore[arg-type]
         """Get agent run status, result, summary, and created PRs.
 
         Pure read — safe to poll repeatedly without side effects.
@@ -53,7 +53,7 @@ def register_query_tools(mcp: FastMCP) -> None:
         execution_id: str,
         task_index: int | None = None,
         ctx: Context = CurrentContext(),
-        svc: RunService = Depends(get_run_service),    ) -> str:
+        svc: RunService = Depends(get_run_service),    ) -> str: # type: ignore[arg-type]
         """Report a completed/failed agent run back to an execution context.
 
         Fetches the run, parses its logs, writes a TaskReport to the
@@ -80,7 +80,7 @@ def register_query_tools(mcp: FastMCP) -> None:
         user_id: int | None = None,
         cursor: str | None = None,
         ctx: Context = CurrentContext(),
-        svc: RunService = Depends(get_run_service),    ) -> str:
+        svc: RunService = Depends(get_run_service),    ) -> str: # type: ignore[arg-type]
         """List recent agent runs with cursor-based pagination.
 
         Args:
