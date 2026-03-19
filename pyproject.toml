@@ -24,14 +24,17 @@ dev = [
     "ruff>=0.15.2",
     "mypy>=1.15",
     "opentelemetry-sdk>=1.20.0",
+    "pytest-xdist>=3.8.0",
 ]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+addopts = "-n auto --dist loadscope"
 
 [tool.ruff]
 line-length = 99
 target-version = "py312"
+exclude = [".claude/worktrees"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "N", "UP", "B", "SIM", "RUF"]

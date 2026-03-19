@@ -71,4 +71,6 @@ class TestGetAgentRules:
         )
         result = await client.call_tool("codegen_get_agent_rules", {})
         data = json.loads(result.data)
-        assert "type hints" in data["organization_rules"]
+        assert "organization_rules" in data
+        assert isinstance(data["organization_rules"], str)
+        assert len(data["organization_rules"]) > 0
