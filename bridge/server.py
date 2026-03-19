@@ -121,14 +121,17 @@ async def _lifespan(server: FastMCP) -> AsyncIterator[dict[str, Any]]:
                 exc_info=True,
             )
 
-    # Mount remote Codegen MCP server as a proxy (doubles tool surface)
-    try:
-        remote_proxy = create_remote_proxy(api_key=api_key)
-        if remote_proxy is not None:
-            server.mount(remote_proxy, namespace="remote")
-            logger.info("Remote Codegen MCP proxy mounted (namespace='remote')")
-    except (ImportError, ValueError, OSError, ConnectionError, RuntimeError):
-        logger.warning("Remote MCP proxy unavailable; local tools only", exc_info=True)
+    # Mount remote Codegen MCP server as a proxy (doubles tool surface).
+    # Disabled by default — remote proxy blocks lifespan shutdown.
+    # Set CODEGEN_ENABLE_REMOTE_PROXY=true to enable.
+    if os.environ.get("CODEGEN_ENABLE_REMOTE_PROXY", "").lower() == "true":
+        try:
+            remote_proxy = create_remote_proxy(api_key=api_key)
+            if remote_proxy is not None:
+                server.mount(remote_proxy, namespace="remote")
+                logger.info("Remote Codegen MCP proxy mounted (namespace='remote')")
+        except (ImportError, ValueError, OSError, ConnectionError, RuntimeError):
+            logger.warning("Remote MCP proxy unavailable; local tools only", exc_info=True)
 
     storage = FileStorage()
     registry = ContextRegistry(storage=storage)
