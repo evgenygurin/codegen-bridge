@@ -14,6 +14,8 @@ from __future__ import annotations
 import logging
 from typing import Any, Literal
 
+import httpx
+
 from bridge.client import CodegenClient
 from bridge.context import ContextRegistry, PRInfo, TaskReport
 from bridge.helpers.pagination import (
@@ -376,7 +378,7 @@ class RunService:
                 "commands_run": parsed.commands_run,
                 "total_steps": parsed.total_steps,
             }
-        except Exception as exc:
+        except (httpx.HTTPError, KeyError, ValueError) as exc:
             logger.warning("Log parsing failed for run %d: %s", run_id, exc)
 
         # Build TaskReport

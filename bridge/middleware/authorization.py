@@ -266,7 +266,7 @@ class DangerousToolGuardMiddleware(Middleware):
                 if tool is not None:
                     tags = getattr(tool, "tags", set()) or set()
                     return set(tags)
-        except Exception:
+        except (AttributeError, KeyError, TypeError, RuntimeError):
             # Fail open for tag lookup — name-based check is the primary guard
             logger.debug("Could not resolve tags for tool '%s'", tool_name, exc_info=True)
         return set()

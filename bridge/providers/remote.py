@@ -70,6 +70,6 @@ def create_remote_proxy(
         proxy = create_proxy(client, name=f"Codegen Remote ({namespace})")
         logger.info("Remote MCP proxy created successfully")
         return proxy
-    except Exception:
+    except (ImportError, ValueError, OSError, ConnectionError, RuntimeError):
         logger.warning("Failed to create remote MCP proxy", exc_info=True)
         return None

@@ -78,7 +78,7 @@ def load_settings(path: str | Path | None = None) -> PluginSettings:
     except (json.JSONDecodeError, OSError) as exc:
         logger.warning("Failed to read settings file %s: %s — using defaults", settings_path, exc)
         return PluginSettings()
-    except Exception as exc:
+    except (ValueError, TypeError) as exc:
         logger.warning("Invalid settings in %s: %s — using defaults", settings_path, exc)
         return PluginSettings()
 

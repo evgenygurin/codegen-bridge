@@ -14,6 +14,8 @@ from __future__ import annotations
 import logging
 from typing import Any, Literal
 
+import httpx
+
 from bridge.client import CodegenClient
 from bridge.context import ContextRegistry, ExecutionContext
 from bridge.helpers.repo_detection import RepoCache, detect_repo_id
@@ -57,7 +59,7 @@ class ExecutionService:
             org_rules = rules.get("organization_rules", "")
             user_prompt = rules.get("user_custom_prompt", "")
             return "\n\n".join(filter(None, [org_rules, user_prompt]))
-        except Exception as exc:
+        except (httpx.HTTPError, KeyError, ValueError) as exc:
             logger.warning("Rules enrichment failed: %s", exc)
             return ""
 

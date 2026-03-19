@@ -99,7 +99,7 @@ class CommandsProvider(Provider):
             try:
                 resource = self._file_to_resource(path)
                 resources.append(resource)
-            except Exception:
+            except (OSError, ValueError, UnicodeDecodeError):
                 logger.warning("Failed to load command: %s", path.name, exc_info=True)
         logger.debug("CommandsProvider listed %d resources", len(resources))
         return resources

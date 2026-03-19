@@ -16,6 +16,7 @@ from contextlib import suppress
 from datetime import timedelta
 from typing import Any
 
+import httpx
 from fastmcp import FastMCP
 from fastmcp.server.context import Context
 from fastmcp.server.tasks import TaskConfig
@@ -103,7 +104,7 @@ def register_sampling_tools(mcp: FastMCP) -> None:
                     "test_results": parsed.test_results,
                     "total_steps": parsed.total_steps,
                 }
-        except Exception:
+        except (httpx.HTTPError, KeyError, ValueError):
             await ctx.warning(f"Could not fetch logs for run {run_id}; summarising without them")
         step += 1
 

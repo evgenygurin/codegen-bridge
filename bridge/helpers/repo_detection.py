@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import subprocess
 
+import httpx
+
 from bridge.client import CodegenClient
 
 
@@ -64,7 +66,7 @@ def _parse_remote_url() -> str | None:
             return f"{parts[-2]}/{parts[-1]}"
 
         return None
-    except Exception:
+    except (subprocess.SubprocessError, OSError, ValueError):
         return None
 
 
@@ -99,5 +101,5 @@ async def detect_repo_id(
 
         return None
 
-    except Exception:
+    except (httpx.HTTPError, OSError, ValueError):
         return None

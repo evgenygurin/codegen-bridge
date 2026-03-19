@@ -78,7 +78,7 @@ async def confirm_action(
     except McpError:
         logger.debug("Elicitation not supported; using default=%s", default)
         return default
-    except Exception:
+    except (NotImplementedError, AttributeError, RuntimeError, TypeError):
         logger.debug("Elicitation failed; using default=%s", default, exc_info=True)
         return default
 
@@ -117,7 +117,7 @@ async def confirm_with_schema[T](
     except McpError:
         logger.debug("Elicitation not supported; returning default")
         return default_on_unsupported
-    except Exception:
+    except (NotImplementedError, AttributeError, RuntimeError, TypeError):
         logger.debug("Elicitation failed; returning default", exc_info=True)
         return default_on_unsupported
 
@@ -156,7 +156,7 @@ async def select_choice(
     except McpError:
         logger.debug("Elicitation not supported; using default=%s", default)
         return default
-    except Exception:
+    except (NotImplementedError, AttributeError, RuntimeError, TypeError):
         logger.debug("Elicitation failed; using default=%s", default, exc_info=True)
         return default
 

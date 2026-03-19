@@ -105,7 +105,7 @@ async def _lifespan(server: FastMCP) -> AsyncIterator[dict[str, Any]]:
     try:
         provider = create_openapi_provider(http_client, org_id)
         server.add_provider(provider)
-    except Exception:
+    except (ImportError, ValueError, OSError):
         logger.warning("OpenAPI provider unavailable; manual tools only", exc_info=True)
 
     # Add filesystem-based providers (skills + commands)
@@ -113,7 +113,7 @@ async def _lifespan(server: FastMCP) -> AsyncIterator[dict[str, Any]]:
         try:
             server.add_provider(fs_provider)
             logger.info("Registered provider: %s", type(fs_provider).__name__)
-        except Exception:
+        except (ImportError, ValueError, OSError):
             logger.warning(
                 "Failed to register provider: %s",
                 type(fs_provider).__name__,
@@ -126,7 +126,7 @@ async def _lifespan(server: FastMCP) -> AsyncIterator[dict[str, Any]]:
         if remote_proxy is not None:
             server.mount(remote_proxy, namespace="remote")
             logger.info("Remote Codegen MCP proxy mounted (namespace='remote')")
-    except Exception:
+    except (ImportError, ValueError, OSError, ConnectionError, RuntimeError):
         logger.warning("Remote MCP proxy unavailable; local tools only", exc_info=True)
 
     storage = FileStorage()
