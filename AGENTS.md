@@ -66,23 +66,34 @@ bridge/
 ├── server.py         — FastMCP instance, lifespan, registration order
 ├── client.py         — Async httpx REST client → Codegen API v1
 ├── models.py         — Pydantic response types (NOT types.py — stdlib shadow)
-├── dependencies.py   — DI: get_client, get_org_id, get_registry, get_repo_cache, get_sampling_config
+├── annotations.py    — 6 ToolAnnotations presets (READ_ONLY, CREATES, MUTATES, DESTRUCTIVE)
+├── rate_budget.py    — OutboundRateBudget — token-bucket for API calls
+├── dependencies.py   — DI: get_client, get_org_id, get_registry, get_repo_cache, get_sampling_config, get_run_service, get_execution_service, get_session_state
 ├── context.py        — ExecutionContext, TaskContext, ContextRegistry
-├── elicitation.py    — confirm_action, confirm_with_schema, select_choice
-├── storage.py        — MemoryStorage / FileStorage (Strategy, py-key-value-aio)
+├── elicitation.py    — confirm_action, confirm_with_schema, select_choice, select_multiple (Pydantic)
+├── storage.py        — MemoryStorage / FileStorage (Strategy, py-key-value-aio, TTL support)
 ├── openapi_utils.py  — Load openapi_spec.json, patch {org_id}, build OpenAPIProvider
 ├── prompt_builder.py — Static prompt assembly for agent tasks
 ├── log_parser.py     — Structured parsing of agent execution logs
 ├── settings.py       — App configuration (reads env vars at import time)
-├── tools/            — 6 modules, 39 manual tools total
+├── services/         — RunService (runs.py), ExecutionService (execution.py)
+├── tools/            — 8 modules, 49 manual tools total
+│   ├── agent/        — 13 tools (create, get, list, resume, stop, ban, unban, remove, logs, monitor, bulk, workflow, report)
+│   ├── execution.py  — 3 tools (start, get_context, get_rules)
+│   ├── pr.py         — 2 tools (edit_pr, edit_pr_simple)
+│   ├── setup/        — 13 tools (users, orgs, repos, oauth, check_suite, models, setup_commands)
+│   ├── integrations.py — 8 tools (integrations, webhooks, sandbox, slack, health_check)
+│   ├── analytics.py  — 1 tool (get_run_analytics)
+│   ├── settings.py   — 2 tools (get, update)
+│   └── session.py    — 3 tools (set, get, clear preferences)
 ├── sampling/         — 4 tools via ctx.sample(), SamplingService
 ├── middleware/       — 9-layer stack (error→ping→auth→log→telemetry→timing→ratelimit→cache→limit)
 ├── transforms/       — 4 stages (Namespace→ToolTransform→Visibility→VersionFilter)
-├── providers/        — OpenAPIProvider, SkillsDir, Commands, Agents
-├── resources/        — Config state + platform docs
-├── prompts/          — 4 workflow templates
+├── providers/        — OpenAPIProvider, SkillsDir, Commands, Agents, Remote proxy
+├── resources/        — 8 resources: config(3) + platform(2) + templates(3)
+├── prompts/          — 8 prompt templates for workflows
 ├── helpers/          — formatting, pagination, repo_detection
-└── telemetry/        — OpenTelemetry integration
+└── telemetry/        — OpenTelemetry OTLP config, span helpers, middleware
 ```
 
 **Data flow:**
@@ -217,7 +228,9 @@ register_execution_tools(mcp)
 register_pr_tools(mcp)
 register_setup_tools(mcp)
 register_integration_tools(mcp)
+register_analytics_tools(mcp)
 register_settings_tools(mcp)
+register_session_tools(mcp)
 register_resources(mcp)            # 3. Resources
 register_prompts(mcp)              # 4. Prompts
 register_sampling_tools(mcp)       # 5. Sampling
@@ -227,6 +240,7 @@ server.add_provider(openapi_provider)    # 7. Providers
 server.add_provider(skills_provider)
 server.add_provider(commands_provider)
 server.add_provider(agents_provider)
+# Optional: server.mount(remote_proxy)  # 8. Remote proxy (CODEGEN_ENABLE_REMOTE_PROXY=true)
 ```
 
 ## Adding New Code

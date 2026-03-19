@@ -12,7 +12,7 @@ Claude Code plugin (v0.6.0) that bridges to the [Codegen](https://codegen.com) c
 # Install dependencies
 uv sync --dev
 
-# Run all tests (60 test files)
+# Run all tests (1347 tests, parallel via xdist)
 uv run pytest -v
 
 # Run a single test file / single test
@@ -73,6 +73,7 @@ uv run python -m bridge.server
 | `CODEGEN_API_KEY` | Yes | Bearer token from codegen.com |
 | `CODEGEN_ORG_ID` | Yes | Organization ID (integer) |
 | `CODEGEN_ALLOW_DANGEROUS_TOOLS` | No | Set `"true"` to bypass dangerous tool guard middleware |
+| `CODEGEN_ENABLE_REMOTE_PROXY` | No | Set `"true"` to mount remote Codegen MCP server proxy |
 
 ## Style
 
@@ -99,7 +100,7 @@ uv run python -m bridge.server
 
 **Rate Budget:** `OutboundRateBudget` in `bridge/rate_budget.py` — token-bucket rate limiter throttling outgoing API calls to prevent 429s. Orthogonal to inbound `RateLimitingMiddleware`.
 
-**Remote Proxy:** Codegen's hosted MCP server mounted via `create_remote_proxy()` under `namespace="remote"`. Doubles tool surface with server-side tools. Falls back gracefully if unavailable.
+**Remote Proxy:** Codegen's hosted MCP server mounted via `create_remote_proxy()` under `namespace="remote"`. Doubles tool surface with server-side tools. **Disabled by default** — set `CODEGEN_ENABLE_REMOTE_PROXY=true` to enable (blocks lifespan shutdown if remote is slow).
 
 **Session State:** Per-session in-memory key/value store (`session_state` dict) managed via `get_session_state` DI provider. Reset on server restart or client disconnect.
 
