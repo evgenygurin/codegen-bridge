@@ -29,6 +29,7 @@ from bridge.tools.agent._progress import CREATE_RUN_TASK, GET_LOGS_TASK
 from bridge.tools.agent._progress import GET_LOGS_STEPS as _GET_LOGS_STEPS
 from bridge.tools.agent._progress import report as _report
 from bridge.tools.agent.background import register_background_tools
+from bridge.tools.agent.bulk import register_bulk_tools
 from bridge.tools.agent.lifecycle import register_lifecycle_tools
 from bridge.tools.agent.logs import register_log_tools
 from bridge.tools.agent.moderation import register_moderation_tools
@@ -53,3 +54,4 @@ def register_agent_tools(mcp: FastMCP) -> None:
     register_log_tools(mcp)
     register_workflow_tools(mcp)
     register_background_tools(mcp)
+    register_bulk_tools(mcp)
