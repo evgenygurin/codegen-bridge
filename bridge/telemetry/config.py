@@ -1,19 +1,24 @@
-"""Telemetry configuration model.
+"""Telemetry configuration model and OTLP exporter setup.
 
 Uses Pydantic ``BaseModel`` for validation and serialisation.
 Configures OpenTelemetry tracing and metrics for the Codegen Bridge
 MCP server.
 
-The actual OpenTelemetry SDK setup is optional and controlled externally
-(via ``opentelemetry-instrument`` CLI or programmatic SDK configuration).
-This module only controls *what* gets instrumented, not *how* it is exported.
+When ``OTEL_EXPORTER_OTLP_ENDPOINT`` is set, ``setup_otlp_exporter``
+configures the SDK TracerProvider with an OTLP span exporter.  Without
+that env var, all operations remain no-ops with zero overhead.
 
 Follows the same pattern as ``bridge.middleware.config``.
 """
 
 from __future__ import annotations
 
+import logging
+import os
+
 from pydantic import BaseModel, Field
+
+logger = logging.getLogger("bridge.telemetry")
 
 
 class TracingConfig(BaseModel):
@@ -67,3 +72,78 @@ class TelemetryConfig(BaseModel):
     )
     tracing: TracingConfig = Field(default_factory=TracingConfig)
     metrics: MetricsConfig = Field(default_factory=MetricsConfig)
+
+
+def telemetry_config_from_env() -> TelemetryConfig:
+    """Build a ``TelemetryConfig`` from environment variables.
+
+    Reads:
+    - ``OTEL_SERVICE_NAME`` — overrides default service name
+    - ``OTEL_EXPORTER_OTLP_ENDPOINT`` — when absent, telemetry stays disabled
+
+    Returns a config with ``enabled=False`` when no OTLP endpoint is set.
+    """
+    endpoint = os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT", "")
+    service_name = os.environ.get("OTEL_SERVICE_NAME", "codegen-bridge")
+    enabled = bool(endpoint)
+    return TelemetryConfig(enabled=enabled, service_name=service_name)
+
+
+def setup_otlp_exporter(config: TelemetryConfig | None = None) -> bool:
+    """Configure the OpenTelemetry SDK with an OTLP exporter.
+
+    Reads ``OTEL_EXPORTER_OTLP_ENDPOINT`` to determine the collector
+    address.  When the env var is absent or empty, returns ``False``
+    and leaves the SDK unconfigured (all operations remain no-ops).
+
+    Parameters
+    ----------
+    config:
+        Telemetry config to use.  When ``None``, reads from env vars
+        via ``telemetry_config_from_env()``.
+
+    Returns
+    -------
+    bool
+        ``True`` if the exporter was configured, ``False`` otherwise.
+    """
+    if config is None:
+        config = telemetry_config_from_env()
+
+    endpoint = os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT", "")
+    if not endpoint:
+        logger.debug("OTEL_EXPORTER_OTLP_ENDPOINT not set — OTLP export disabled")
+        return False
+
+    if not config.enabled:
+        logger.debug("Telemetry disabled in config — OTLP export skipped")
+        return False
+
+    try:
+        from opentelemetry import trace
+        from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
+            OTLPSpanExporter,
+        )
+        from opentelemetry.sdk.resources import Resource
+        from opentelemetry.sdk.trace import TracerProvider
+        from opentelemetry.sdk.trace.export import BatchSpanProcessor
+    except ImportError:
+        logger.warning(
+            "opentelemetry-sdk or opentelemetry-exporter-otlp not installed — "
+            "OTLP export unavailable"
+        )
+        return False
+
+    resource = Resource.create({"service.name": config.service_name})
+    exporter = OTLPSpanExporter(endpoint=endpoint)
+    processor = BatchSpanProcessor(exporter)
+    provider = TracerProvider(resource=resource)
+    provider.add_span_processor(processor)
+    trace.set_tracer_provider(provider)
+
+    logger.info(
+        "OTLP exporter configured: endpoint=%s, service=%s",
+        endpoint,
+        config.service_name,
+    )
+    return True

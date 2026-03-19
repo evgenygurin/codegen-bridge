@@ -197,6 +197,43 @@ def tool_span(
 # ── Metrics-only helpers ────────────────────────────────────
 
 
+def set_span_attributes(
+    span: Any,
+    *,
+    tool_name: str | None = None,
+    run_id: int | None = None,
+    org_id: int | None = None,
+    duration: float | None = None,
+) -> None:
+    """Set standard bridge attributes on a span.
+
+    Safe to call with a ``None`` span (e.g. when tracing is disabled).
+
+    Parameters
+    ----------
+    span:
+        An OpenTelemetry span (or ``None``).
+    tool_name:
+        Name of the tool being invoked.
+    run_id:
+        Agent run ID.
+    org_id:
+        Organisation ID.
+    duration:
+        Execution duration in seconds.
+    """
+    if span is None:
+        return
+    if tool_name is not None:
+        span.set_attribute("bridge.tool.name", tool_name)
+    if run_id is not None:
+        span.set_attribute("bridge.run_id", run_id)
+    if org_id is not None:
+        span.set_attribute("bridge.org_id", org_id)
+    if duration is not None:
+        span.set_attribute("bridge.duration_s", duration)
+
+
 def record_tool_call(
     tool_name: str,
     duration_s: float,

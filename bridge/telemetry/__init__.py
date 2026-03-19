@@ -33,12 +33,19 @@ Usage::
 
 from __future__ import annotations
 
-from bridge.telemetry.config import MetricsConfig, TelemetryConfig, TracingConfig
+from bridge.telemetry.config import (
+    MetricsConfig,
+    TelemetryConfig,
+    TracingConfig,
+    setup_otlp_exporter,
+    telemetry_config_from_env,
+)
 from bridge.telemetry.helpers import (
     bridge_span,
     configure,
     get_config,
     record_tool_call,
+    set_span_attributes,
     tool_span,
 )
 from bridge.telemetry.middleware import TelemetryMiddleware
@@ -52,6 +59,9 @@ __all__ = [
     "configure_telemetry",
     "get_config",
     "record_tool_call",
+    "set_span_attributes",
+    "setup_otlp_exporter",
+    "telemetry_config_from_env",
     "tool_span",
 ]
 
