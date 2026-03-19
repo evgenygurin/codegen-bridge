@@ -35,64 +35,24 @@ SPEC_PATH = Path(__file__).parent / "openapi_spec.json"
 # operationId -> human-readable MCP tool name
 #
 # Keys are exact operationIds from the OpenAPI spec.
-# Endpoints handled by manual tools (in bridge.tools.*) are NOT listed here:
-#   - create_agent_run, get_agent_run, list_agent_runs, resume_agent_run,
-#     ban_all_checks (codegen_stop_run), get_agent_run_logs
-#   - get_organizations, get_repositories, get_cli_rules
+#
+# ONLY tools that have NO manual equivalent belong here.
+# All other endpoints are covered by manual tools in bridge.tools.*
+# which provide elicitation, safety annotations, and richer error handling.
+#
+# Manual tools cover: agent runs (create/get/list/resume/stop/ban/unban/
+# remove_from_pr/logs), execution, PRs (edit_pr, edit_repo_pr), setup
+# (users, orgs, repos, projects, check_suite, setup_commands), integrations
+# (webhooks, sandbox, slack), and settings.
 TOOL_NAMES: dict[str, str] = {
-    # ── Agent run management (ban excluded — manual codegen_stop_run) ──
-    "unban_all_checks_for_agent_run_v1_organizations__org_id__agent_run_unban_post": (
-        "codegen_unban_run"
-    ),
-    "remove_codegen_from_pr_v1_organizations__org_id__agent_run_remove_from_pr_post": (
-        "codegen_remove_from_pr"
-    ),
-    # ── Users ──────────────────────────────────────────────────────────
-    "get_users_v1_organizations__org_id__users_get": "codegen_list_users",
-    "get_user_v1_organizations__org_id__users__user_id__get": "codegen_get_user",
+    # ── Users (global — no org-scoped manual equivalent) ───────────────
     "get_current_user_info_v1_users_me_get": "codegen_get_current_user",
-    # ── PR management ──────────────────────────────────────────────────
-    "edit_pull_request_simple_v1_organizations__org_id__prs__pr_id__patch": ("codegen_edit_pr"),
-    "edit_pull_request_v1_organizations__org_id__repos__repo_id__prs__pr_id__patch": (
-        "codegen_edit_repo_pr"
-    ),
-    # ── Models & config ────────────────────────────────────────────────
-    "get_available_models_v1_organizations__org_id__models_get": ("codegen_get_models"),
-    "get_organization_integrations_endpoint_v1_organizations__org_id__integrations_get": (
-        "codegen_get_integrations"
-    ),
-    "get_check_suite_settings_v1_organizations__org_id__repos_check_suite_settings_get": (
-        "codegen_get_check_suite"
-    ),
-    "update_check_suite_settings_v1_organizations__org_id__repos_check_suite_settings_put": (
-        "codegen_set_check_suite"
-    ),
-    # ── Webhooks ───────────────────────────────────────────────────────
-    "get_webhook_config_v1_organizations__org_id__webhooks_agent_run_get": ("codegen_get_webhook"),
-    "set_webhook_config_v1_organizations__org_id__webhooks_agent_run_post": (
-        "codegen_set_webhook"
-    ),
-    "delete_webhook_config_v1_organizations__org_id__webhooks_agent_run_delete": (
-        "codegen_delete_webhook"
-    ),
-    "test_webhook_v1_organizations__org_id__webhooks_agent_run_test_post": (
-        "codegen_test_webhook"
-    ),
-    # ── Setup & sandbox ────────────────────────────────────────────────
-    "generate_setup_commands_v1_organizations__org_id__setup_commands_generate_post": (
-        "codegen_generate_setup_commands"
-    ),
-    "analyze_sandbox_logs_v1_organizations__org_id__sandbox__sandbox_id__analyze_logs_post": (
-        "codegen_analyze_sandbox_logs"
-    ),
-    # ── Slack ──────────────────────────────────────────────────────────
-    "generate_slack_connect_token_endpoint_v1_slack_connect_generate_token_post": (
-        "codegen_generate_slack_token"
-    ),
-    # ── OAuth ──────────────────────────────────────────────────────────
+    # ── Models (read-only, no manual equivalent) ───────────────────────
+    "get_available_models_v1_organizations__org_id__models_get": "codegen_get_models",
+    # ── OAuth (no manual equivalents) ──────────────────────────────────
     "revoke_oauth_token_v1_oauth_tokens_revoke_post": "codegen_revoke_oauth_token",
     "get_oauth_token_status_v1_oauth_tokens_status_get": "codegen_get_oauth_status",
-    # ── MCP providers ──────────────────────────────────────────────────
+    # ── MCP providers (no manual equivalent) ───────────────────────────
     "get_mcp_providers_v1_mcp_providers_get": "codegen_get_mcp_providers",
 }
 
@@ -113,11 +73,34 @@ def load_and_patch_spec(org_id: int) -> dict[str, Any]:
             if not isinstance(method_data, dict):
                 continue
             if "parameters" in method_data:
-                method_data["parameters"] = [
-                    p
-                    for p in method_data["parameters"]
-                    if not (isinstance(p, dict) and p.get("name") == "org_id")
-                ]
+                patched_params: list[Any] = []
+                for param in method_data["parameters"]:
+                    if not isinstance(param, dict):
+                        patched_params.append(param)
+                        continue
+
+                    if param.get("name") != "org_id":
+                        patched_params.append(param)
+                        continue
+
+                    # Most endpoints use {org_id} in the path, so org_id
+                    # should not be exposed as a tool argument.
+                    #
+                    # OAuth revoke is different: org_id is a required query
+                    # parameter even though the path is global. Keep it in the
+                    # spec with a default so callers don't need to pass it.
+                    if new_path == "/v1/oauth/tokens/revoke":
+                        org_param = copy.deepcopy(param)
+                        org_param["required"] = False
+                        schema = org_param.get("schema")
+                        if isinstance(schema, dict):
+                            schema["default"] = org_id
+                        patched_params.append(org_param)
+                        continue
+
+                    # Drop org_id from all other operations.
+
+                method_data["parameters"] = patched_params
 
         patched_paths[new_path] = path_item
 
@@ -127,88 +110,30 @@ def load_and_patch_spec(org_id: int) -> dict[str, Any]:
 
 
 def build_route_maps() -> list[RouteMap]:
-    """Build route maps for all endpoints NOT covered by manual tools.
+    """Build route maps for endpoints that have NO manual tool equivalent.
 
-    Manual tools (excluded here) handle:
-    - POST /agent/run (create), GET /agent/run/{id} (get), GET /agent/runs (list)
-    - POST /agent/run/resume, POST /agent/run/ban (stop)
-    - GET /alpha/.../agent/run/{id}/logs
-    - GET /organizations (list orgs)
-    - GET /repos (list repos)
-    - GET /cli/rules (agent rules)
+    Only 5 endpoints are exposed via OpenAPI auto-generation.
+    Everything else is handled by manual tools in bridge.tools.*
+    which provide elicitation, safety annotations, and richer UX.
     """
     return [
-        # ── Agent management extras (ban excluded — manual codegen_stop_run) ──
-        RouteMap(
-            pattern=r".*/agent/run/unban$",
-            methods=["POST"],
-            mcp_type=MCPType.TOOL,
-        ),
-        RouteMap(
-            pattern=r".*/agent/run/remove-from-pr$",
-            methods=["POST"],
-            mcp_type=MCPType.TOOL,
-        ),
-        # ── Users (org-scoped) ────────────────────────────────────────
-        RouteMap(
-            pattern=r".*/organizations/\d+/users/\d+$",
-            methods=["GET"],
-            mcp_type=MCPType.TOOL,
-        ),
-        RouteMap(
-            pattern=r".*/organizations/\d+/users$",
-            methods=["GET"],
-            mcp_type=MCPType.TOOL,
-        ),
-        # ── Users (global) ────────────────────────────────────────────
+        # ── Users (global /users/me — no manual equivalent) ───────────
         RouteMap(
             pattern=r".*/users/me$",
             methods=["GET"],
             mcp_type=MCPType.TOOL,
         ),
-        # ── PR management ─────────────────────────────────────────────
-        RouteMap(
-            pattern=r".*/prs/.*",
-            methods=["PATCH"],
-            mcp_type=MCPType.TOOL,
-        ),
-        # ── Models & config ───────────────────────────────────────────
+        # ── Models (read-only, no manual equivalent) ──────────────────
         RouteMap(pattern=r".*/models$", methods=["GET"], mcp_type=MCPType.TOOL),
-        RouteMap(
-            pattern=r".*/integrations$",
-            methods=["GET"],
-            mcp_type=MCPType.TOOL,
-        ),
-        RouteMap(pattern=r".*/check-suite-settings$", mcp_type=MCPType.TOOL),
-        # ── Webhooks ──────────────────────────────────────────────────
-        RouteMap(pattern=r".*/webhooks/.*", mcp_type=MCPType.TOOL),
-        # ── Setup & sandbox ───────────────────────────────────────────
-        RouteMap(
-            pattern=r".*/setup-commands/generate$",
-            methods=["POST"],
-            mcp_type=MCPType.TOOL,
-        ),
-        RouteMap(
-            pattern=r".*/sandbox/.*/analyze-logs$",
-            methods=["POST"],
-            mcp_type=MCPType.TOOL,
-        ),
-        # ── Slack ─────────────────────────────────────────────────────
-        RouteMap(
-            pattern=r".*/slack-connect/.*",
-            methods=["POST"],
-            mcp_type=MCPType.TOOL,
-        ),
-        # ── OAuth ─────────────────────────────────────────────────────
+        # ── OAuth (no manual equivalents) ─────────────────────────────
         RouteMap(pattern=r".*/oauth/tokens/.*", mcp_type=MCPType.TOOL),
-        # ── MCP providers ─────────────────────────────────────────────
+        # ── MCP providers (no manual equivalent) ──────────────────────
         RouteMap(
             pattern=r".*/mcp-providers$",
             methods=["GET"],
             mcp_type=MCPType.TOOL,
         ),
-        # ── Exclude manual-only endpoints (create, get, list, resume,
-        #    ban, logs, organizations, repos, cli/rules) ───────────────
+        # ── Exclude everything else (covered by manual tools) ─────────
         RouteMap(mcp_type=MCPType.EXCLUDE),
     ]
 

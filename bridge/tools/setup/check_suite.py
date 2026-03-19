@@ -13,6 +13,7 @@ from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from fastmcp.server.context import Context
 
+from bridge.annotations import MUTATES, READ_ONLY
 from bridge.client import CodegenClient
 from bridge.dependencies import CurrentContext, Depends, get_client
 from bridge.icons import ICON_CHECK_SUITE
@@ -21,12 +22,11 @@ from bridge.icons import ICON_CHECK_SUITE
 def register_check_suite_tools(mcp: FastMCP) -> None:
     """Register CI check-suite settings tools (get, update)."""
 
-    @mcp.tool(tags={"setup"}, icons=ICON_CHECK_SUITE)
+    @mcp.tool(tags={"setup"}, icons=ICON_CHECK_SUITE, annotations=READ_ONLY)
     async def codegen_get_check_suite_settings(
         repo_id: int,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
-    ) -> str:
+        client: CodegenClient = Depends(get_client),    ) -> str: # type: ignore[arg-type]
         """Get CI check-suite settings for a repository.
 
         Returns retry counts, ignored checks, custom prompts, high-priority
@@ -53,7 +53,7 @@ def register_check_suite_tools(mcp: FastMCP) -> None:
             }
         )
 
-    @mcp.tool(tags={"setup"}, icons=ICON_CHECK_SUITE)
+    @mcp.tool(tags={"setup"}, icons=ICON_CHECK_SUITE, annotations=MUTATES)
     async def codegen_update_check_suite_settings(
         repo_id: int,
         check_retry_count: int | None = None,
@@ -62,8 +62,7 @@ def register_check_suite_tools(mcp: FastMCP) -> None:
         custom_prompts: dict[str, str] | None = None,
         high_priority_apps: list[str] | None = None,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
-    ) -> str:
+        client: CodegenClient = Depends(get_client),    ) -> str: # type: ignore[arg-type]
         """Update CI check-suite settings for a repository.
 
         Only the fields you provide will be updated; omitted fields

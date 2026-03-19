@@ -70,9 +70,15 @@ class CachingConfig(BaseModel):
     ``tool_ttl`` and ``resource_ttl`` control per-operation cache
     lifetimes in seconds.  ``max_item_size`` caps individual cached
     items (bytes).
+
+    **Safety:** ``tool_call_enabled`` defaults to ``False`` because
+    caching mutating tool calls (create_run, stop_run, etc.) would
+    silently replay stale results.  Enable with an explicit allowlist
+    only after confirming which tools are safe to cache.
     """
 
     enabled: bool = True
+    tool_call_enabled: bool = False
     tool_ttl: int = Field(default=60, ge=0)
     resource_ttl: int = Field(default=30, ge=0)
     list_ttl: int = Field(default=30, ge=0)

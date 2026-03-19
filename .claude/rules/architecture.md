@@ -17,13 +17,18 @@ Claude Code ──MCP──▶ FastMCP Server (bridge/server.py)
                     │         │
                     └────┬────┘
                          ▼
-                   Tool Functions
-                   (bridge/tools/)
-                         │
-              ┌──────────┼──────────┐
-              ▼          ▼          ▼
-        CodegenClient  Storage   Sampling
-        (httpx→API)  (FileTree) (ctx.sample)
+                   Tool Functions        Resources
+                   (bridge/tools/)    (bridge/resources/)
+                         │                  │
+                         └────────┬─────────┘
+                                  ▼
+                            Service Layer
+                         (bridge/services/)
+                                  │
+                    ┌─────────────┼──────────────┐
+                    ▼             ▼              ▼
+              CodegenClient    Storage       Sampling
+              (httpx→API)    (FileTree)    (ctx.sample)
 ```
 
 ## Module Map
@@ -33,20 +38,22 @@ Claude Code ──MCP──▶ FastMCP Server (bridge/server.py)
 | Entry | `server.py` | FastMCP instance, lifespan, registration |
 | Client | `client.py` | Async httpx REST client (Pydantic models) |
 | Models | `models.py` | API response types (named `models` not `types` — stdlib shadow) |
-| DI | `dependencies.py` | 5 DI providers for lifespan resources |
+| Annotations | `annotations.py` | 6 `ToolAnnotations` presets (READ_ONLY, CREATES, MUTATES, etc.) |
+| DI | `dependencies.py` | 7 DI providers for lifespan resources + services |
 | Context | `context.py` | Execution/task tracking with `ContextRegistry` |
 | Storage | `storage.py` | `MemoryStorage`/`FileStorage` (Strategy pattern, py-key-value-aio) |
 | Elicitation | `elicitation.py` | Interactive user prompts (`confirm_action`, `select_choice`) |
-| Tools | `tools/` | 6 modules, 35 tools total |
+| Services | `services/` | `RunService` (runs.py), `ExecutionService` (execution.py) |
+| Tools | `tools/` | 6 modules, 41 tools total |
 | Sampling | `sampling/` | 4 tools via `ctx.sample()`, `SamplingService` |
-| Resources | `resources/` | Config state + platform docs |
+| Resources | `resources/` | 8 resources: config (3) + platform (2) + templates (3) |
 | Prompts | `prompts/` | 4 workflow templates |
 | Providers | `providers/` | OpenAPI, Skills, Commands, Agents |
 | Middleware | `middleware/` | 9-layer request pipeline |
 | Transforms | `transforms/` | 4-stage component transformation |
 | Helpers | `helpers/` | Formatting, pagination, repo detection |
 | Telemetry | `telemetry/` | OpenTelemetry integration |
-| OpenAPI | `openapi_utils.py` + `openapi_spec.json` | Auto-generate ~21 tools from spec |
+| OpenAPI | `openapi_utils.py` + `openapi_spec.json` | Auto-generate 5 tools from spec |
 
 ## Middleware Stack (outermost → innermost)
 
@@ -81,7 +88,7 @@ Registered during lifespan in `server.py`.
 
 | Provider | Source | What it provides |
 |----------|--------|-----------------|
-| `OpenAPIProvider` | `openapi_utils.py` | ~21 auto-generated tools from REST API spec |
+| `OpenAPIProvider` | `openapi_utils.py` | 5 auto-generated tools from REST API spec |
 | `SkillsDirectoryProvider` | `providers/agents.py` | Skill resources from `skills/` directory |
 | `CommandsProvider` | `providers/commands.py` | Command resources from `commands/` directory |
 | `AgentsProvider` | `providers/agents.py` | Agent resources from `agents/` directory |

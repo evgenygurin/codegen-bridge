@@ -83,6 +83,15 @@ async def _lifespan(server: FastMCP) -> AsyncIterator[dict[str, Any]]:
         raise ToolError("CODEGEN_ORG_ID not set.")
 
     logger.info("Starting Codegen Bridge: org_id=%s", org_id)
+
+    # Providers are registered in lifespan, so remove previously attached
+    # external providers to avoid stale duplicates across Client() sessions.
+    # Keep FastMCP's built-in LocalProvider (manual tools/resources/prompts).
+    server.providers[:] = [
+        provider for provider in server.providers
+        if provider is server.local_provider
+    ]
+
     client = CodegenClient(api_key=api_key, org_id=org_id)
 
     http_client = httpx.AsyncClient(

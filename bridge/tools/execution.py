@@ -1,25 +1,28 @@
-"""Execution context management tools: start, get context, agent rules."""
+"""Execution context management tools: start, get context, agent rules.
+
+Business logic lives in ``ExecutionService``; these tools handle
+elicitation, MCP logging, and JSON serialisation.
+"""
 
 from __future__ import annotations
 
 import json
-from typing import Any, Literal
+from typing import Literal
 
 from fastmcp import FastMCP
 from fastmcp.server.context import Context
 
-from bridge.client import CodegenClient
-from bridge.context import ContextRegistry
-from bridge.dependencies import CurrentContext, Depends, get_client, get_registry, get_repo_cache
+from bridge.annotations import CREATES, READ_ONLY, READ_ONLY_LOCAL
+from bridge.dependencies import CurrentContext, Depends, get_execution_service
 from bridge.elicitation import confirm_action
-from bridge.helpers.repo_detection import RepoCache, detect_repo_id
 from bridge.icons import ICON_CONTEXT, ICON_EXECUTION, ICON_RULES
+from bridge.services.execution import ExecutionService
 
 
 def register_execution_tools(mcp: FastMCP) -> None:
     """Register all execution context management tools on the given FastMCP server."""
 
-    @mcp.tool(tags={"context"}, icons=ICON_EXECUTION)
+    @mcp.tool(tags={"context"}, icons=ICON_EXECUTION, annotations=CREATES)
     async def codegen_start_execution(
         execution_id: str,
         goal: str,
@@ -30,10 +33,7 @@ def register_execution_tools(mcp: FastMCP) -> None:
         repo_structure: str | None = None,
         confirmed: bool = False,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
-        registry: ContextRegistry = Depends(get_registry),  # type: ignore[arg-type]
-        repo_cache: RepoCache = Depends(get_repo_cache),  # type: ignore[arg-type]
-    ) -> str:
+        svc: ExecutionService = Depends(get_execution_service),    ) -> str: # type: ignore[arg-type]
         """Initialize an execution context, load agent rules and integrations.
 
         Call this at the start of a plan or ad-hoc task to set up full context
@@ -53,76 +53,46 @@ def register_execution_tools(mcp: FastMCP) -> None:
         """
         await ctx.info(f"Starting execution: id={execution_id}, mode={mode}")
 
-        # Build task tuples from dicts
-        task_tuples: list[tuple[str, str]] | None = None
-        if tasks:
-            task_tuples = [(t["title"], t.get("description", t["title"])) for t in tasks]
-
-        # Build extra kwargs for ExecutionContext
-        kwargs: dict[str, Any] = {}
-        if tech_stack:
-            kwargs["tech_stack"] = tech_stack
-        if architecture:
-            kwargs["architecture"] = architecture
-        if repo_structure:
-            kwargs["repo_structure"] = repo_structure
-
         # Detect repo
-        repo_id = await detect_repo_id(client, repo_cache)
-        if repo_id is not None:
-            # Elicit confirmation for auto-detected repository
-            if not confirmed:
-                user_confirmed = await confirm_action(
-                    ctx,
-                    f"Start execution '{goal}' using detected repo_id={repo_id}?",
+        repo_id = await svc.detect_repo()
+        if repo_id is not None and not confirmed:
+            user_confirmed = await confirm_action(
+                ctx,
+                f"Start execution '{goal}' using detected repo_id={repo_id}?",
+            )
+            if not user_confirmed:
+                return json.dumps(
+                    {
+                        "action": "cancelled",
+                        "reason": "User declined to use detected repository",
+                    }
                 )
-                if not user_confirmed:
-                    return json.dumps(
-                        {
-                            "action": "cancelled",
-                            "reason": "User declined to use detected repository",
-                        }
-                    )
-            kwargs["repo_id"] = repo_id
 
         # Load agent rules
-        try:
-            rules = await client.get_rules()
-            org_rules = rules.get("organization_rules", "")
-            user_prompt = rules.get("user_custom_prompt", "")
-            combined = "\n\n".join(filter(None, [org_rules, user_prompt]))
-            if combined:
-                kwargs["agent_rules"] = combined
-        except Exception as exc:
-            await ctx.warning(f"Rules enrichment failed, continuing without rules: {exc}")
+        agent_rules = await svc.load_agent_rules()
 
-        exec_ctx = await registry.start_execution(
+        result = await svc.start_execution(
             execution_id=execution_id,
-            mode=mode,
             goal=goal,
-            tasks=task_tuples,
-            **kwargs,
+            mode=mode,
+            tasks=tasks,
+            tech_stack=tech_stack,
+            architecture=architecture,
+            repo_structure=repo_structure,
+            repo_id=repo_id,
+            agent_rules=agent_rules or None,
         )
         await ctx.info(
-            f"Execution started: id={exec_ctx.id}, tasks={len(exec_ctx.tasks)}, "
-            f"has_rules={bool(exec_ctx.agent_rules)}"
+            f"Execution started: id={result['execution_id']}, "
+            f"tasks={result['tasks']}, has_rules={result['has_rules']}"
         )
-        return json.dumps(
-            {
-                "execution_id": exec_ctx.id,
-                "mode": exec_ctx.mode,
-                "status": exec_ctx.status,
-                "tasks": len(exec_ctx.tasks),
-                "has_rules": bool(exec_ctx.agent_rules),
-            }
-        )
+        return json.dumps(result)
 
-    @mcp.tool(tags={"context"}, icons=ICON_CONTEXT)
+    @mcp.tool(tags={"context"}, icons=ICON_CONTEXT, annotations=READ_ONLY_LOCAL)
     async def codegen_get_execution_context(
         execution_id: str | None = None,
         ctx: Context = CurrentContext(),
-        registry: ContextRegistry = Depends(get_registry),  # type: ignore[arg-type]
-    ) -> str:
+        svc: ExecutionService = Depends(get_execution_service),    ) -> str: # type: ignore[arg-type]
         """Get full execution context — active or by ID.
 
         Returns the complete execution state including tasks, rules, and metadata.
@@ -131,10 +101,7 @@ def register_execution_tools(mcp: FastMCP) -> None:
             execution_id: Specific execution ID. If not provided, returns the active execution.
         """
         await ctx.info(f"Fetching execution context: id={execution_id or 'active'}")
-        if execution_id:
-            exec_ctx = await registry.get(execution_id)
-        else:
-            exec_ctx = await registry.get_active()
+        exec_ctx = await svc.get_execution_context(execution_id)
 
         if exec_ctx is None:
             await ctx.warning(f"No execution context found for id={execution_id or 'active'}")
@@ -142,17 +109,16 @@ def register_execution_tools(mcp: FastMCP) -> None:
 
         return exec_ctx.model_dump_json(indent=2)
 
-    @mcp.tool(tags={"context"}, icons=ICON_RULES)
+    @mcp.tool(tags={"context"}, icons=ICON_RULES, annotations=READ_ONLY)
     async def codegen_get_agent_rules(
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
-    ) -> str:
+        svc: ExecutionService = Depends(get_execution_service),    ) -> str: # type: ignore[arg-type]
         """Fetch organization agent rules from the Codegen API.
 
         Returns organization-level rules and user custom prompts that should
         guide agent behavior.
         """
         await ctx.info("Fetching agent rules")
-        rules = await client.get_rules()
+        rules = await svc.get_agent_rules()
         await ctx.info("Agent rules fetched successfully")
         return json.dumps(rules)

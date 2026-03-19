@@ -22,14 +22,18 @@ from bridge.helpers.repo_detection import RepoCache
 
 if TYPE_CHECKING:
     from bridge.sampling.config import SamplingConfig
+    from bridge.services.execution import ExecutionService
+    from bridge.services.runs import RunService
 
 __all__ = [
     "CurrentContext",
     "Depends",
     "get_client",
+    "get_execution_service",
     "get_org_id",
     "get_registry",
     "get_repo_cache",
+    "get_run_service",
     "get_sampling_config",
 ]
 
@@ -59,6 +63,32 @@ async def get_repo_cache(ctx: Context = CurrentContext()) -> RepoCache:
     """Provide the ``RepoCache`` from lifespan context."""
     repo_cache: RepoCache = ctx.lifespan_context["repo_cache"]
     return repo_cache
+
+
+async def get_run_service(ctx: Context = CurrentContext()) -> RunService:
+    """Provide a ``RunService`` constructed from lifespan context.
+
+    Created per-request rather than stored in the lifespan dict — keeps
+    ``server.py`` unchanged while giving tools a high-level API.
+    """
+    from bridge.services.runs import RunService
+
+    return RunService(
+        client=ctx.lifespan_context["client"],
+        registry=ctx.lifespan_context["registry"],
+        repo_cache=ctx.lifespan_context["repo_cache"],
+    )
+
+
+async def get_execution_service(ctx: Context = CurrentContext()) -> ExecutionService:
+    """Provide an ``ExecutionService`` constructed from lifespan context."""
+    from bridge.services.execution import ExecutionService
+
+    return ExecutionService(
+        client=ctx.lifespan_context["client"],
+        registry=ctx.lifespan_context["registry"],
+        repo_cache=ctx.lifespan_context["repo_cache"],
+    )
 
 
 async def get_sampling_config(ctx: Context = CurrentContext()) -> SamplingConfig:
