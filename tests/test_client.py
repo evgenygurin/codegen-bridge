@@ -278,6 +278,59 @@ class TestRetryConfig:
         assert NO_RETRY.max_retries == 0
 
 
+# ── _request_json Helper ────────────────────────────────────────
+
+
+class TestRequestJson:
+    """Verify the unified _request_json helper."""
+
+    @respx.mock
+    async def test_returns_json_dict(self):
+        respx.get("https://api.codegen.com/v1/test-path").mock(
+            return_value=Response(200, json={"key": "value", "num": 42})
+        )
+
+        async with CodegenClient(api_key="test", org_id=42, retry=NO_RETRY) as client:
+            result = await client._request_json("GET", "/test-path")
+
+        assert result == {"key": "value", "num": 42}
+
+    @respx.mock
+    async def test_forwards_json_body(self):
+        route = respx.post("https://api.codegen.com/v1/test-path").mock(
+            return_value=Response(200, json={"created": True})
+        )
+
+        async with CodegenClient(api_key="test", org_id=42, retry=NO_RETRY) as client:
+            result = await client._request_json(
+                "POST", "/test-path", json_body={"name": "test"}
+            )
+
+        assert result == {"created": True}
+        assert b"name" in route.calls[0].request.content
+
+    @respx.mock
+    async def test_forwards_params(self):
+        route = respx.get("https://api.codegen.com/v1/test-path").mock(
+            return_value=Response(200, json={"items": []})
+        )
+
+        async with CodegenClient(api_key="test", org_id=42, retry=NO_RETRY) as client:
+            await client._request_json("GET", "/test-path", params={"page": 2})
+
+        assert route.calls[0].request.url.params["page"] == "2"
+
+    @respx.mock
+    async def test_raises_on_error_status(self):
+        respx.get("https://api.codegen.com/v1/test-path").mock(
+            return_value=Response(404, json={"detail": "Not found"})
+        )
+
+        async with CodegenClient(api_key="test", org_id=42, retry=NO_RETRY) as client:
+            with pytest.raises(NotFoundError):
+                await client._request_json("GET", "/test-path")
+
+
 # ── Retry Behavior (Integration) ────────────────────────────────
 
 

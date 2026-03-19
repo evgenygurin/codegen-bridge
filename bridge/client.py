@@ -361,12 +361,17 @@ class CodegenClient:
         if metadata is not None:
             body["metadata"] = metadata
 
-        resp = await self._post(f"/organizations/{self.org_id}/agent/run", json=body)
+        resp = await self._request_json(
+            "POST", f"/organizations/{self.org_id}/agent/run",
+            json_body=body,
+        )
         return AgentRun.model_validate(resp)
 
     async def get_run(self, run_id: int) -> AgentRun:
         """Get agent run by ID."""
-        resp = await self._get(f"/organizations/{self.org_id}/agent/run/{run_id}")
+        resp = await self._request_json(
+            "GET", f"/organizations/{self.org_id}/agent/run/{run_id}",
+        )
         return AgentRun.model_validate(resp)
 
     async def list_runs(
@@ -384,7 +389,10 @@ class CodegenClient:
         if user_id is not None:
             params["user_id"] = user_id
 
-        resp = await self._get(f"/organizations/{self.org_id}/agent/runs", params=params)
+        resp = await self._request_json(
+            "GET", f"/organizations/{self.org_id}/agent/runs",
+            params=params,
+        )
         return Page[AgentRun].model_validate(resp)
 
     async def resume_run(
@@ -402,7 +410,10 @@ class CodegenClient:
         if images is not None:
             body["images"] = images
 
-        resp = await self._post(f"/organizations/{self.org_id}/agent/run/resume", json=body)
+        resp = await self._request_json(
+            "POST", f"/organizations/{self.org_id}/agent/run/resume",
+            json_body=body,
+        )
         return AgentRun.model_validate(resp)
 
     async def get_logs(
@@ -422,7 +433,8 @@ class CodegenClient:
             "limit": limit,
             "reverse": reverse,
         }
-        resp = await self._get(
+        resp = await self._request_json(
+            "GET",
             f"/alpha/organizations/{self.org_id}/agent/run/{run_id}/logs",
             params=params,
         )
@@ -446,7 +458,10 @@ class CodegenClient:
         if after_card_order_id is not None:
             body["after_card_order_id"] = after_card_order_id
 
-        resp = await self._post(f"/organizations/{self.org_id}/agent/run/ban", json=body)
+        resp = await self._request_json(
+            "POST", f"/organizations/{self.org_id}/agent/run/ban",
+            json_body=body,
+        )
         return BanActionResponse.model_validate(resp)
 
     async def unban_run(
@@ -467,7 +482,10 @@ class CodegenClient:
         if after_card_order_id is not None:
             body["after_card_order_id"] = after_card_order_id
 
-        resp = await self._post(f"/organizations/{self.org_id}/agent/run/unban", json=body)
+        resp = await self._request_json(
+            "POST", f"/organizations/{self.org_id}/agent/run/unban",
+            json_body=body,
+        )
         return BanActionResponse.model_validate(resp)
 
     async def remove_from_pr(
@@ -488,8 +506,10 @@ class CodegenClient:
         if after_card_order_id is not None:
             body["after_card_order_id"] = after_card_order_id
 
-        resp = await self._post(
-            f"/organizations/{self.org_id}/agent/run/remove-from-pr", json=body
+        resp = await self._request_json(
+            "POST",
+            f"/organizations/{self.org_id}/agent/run/remove-from-pr",
+            json_body=body,
         )
         return BanActionResponse.model_validate(resp)
 
@@ -497,14 +517,17 @@ class CodegenClient:
     async def stop_run(self, run_id: int) -> StopRunResponse:
         """Stop/ban an agent run (legacy alias)."""
         body: dict[str, Any] = {"agent_run_id": run_id}
-        resp = await self._post(f"/organizations/{self.org_id}/agent/run/ban", json=body)
+        resp = await self._request_json(
+            "POST", f"/organizations/{self.org_id}/agent/run/ban",
+            json_body=body,
+        )
         return StopRunResponse.model_validate(resp)
 
     # ── Users ──────────────────────────────────────────────
 
     async def get_current_user(self) -> User:
         """Get current user from API token."""
-        resp = await self._get("/users/me")
+        resp = await self._request_json("GET", "/users/me")
         return User.model_validate(resp)
 
     async def list_users(
@@ -515,19 +538,22 @@ class CodegenClient:
     ) -> Page[User]:
         """List users in the organization."""
         params: dict[str, Any] = {"skip": skip, "limit": limit}
-        resp = await self._get(f"/organizations/{self.org_id}/users", params=params)
+        resp = await self._request_json(
+            "GET", f"/organizations/{self.org_id}/users",
+            params=params,
+        )
         return Page[User].model_validate(resp)
 
     async def get_user(self, user_id: int) -> User:
         """Get user by ID."""
-        resp = await self._get(f"/organizations/{self.org_id}/users/{user_id}")
+        resp = await self._request_json("GET", f"/organizations/{self.org_id}/users/{user_id}")
         return User.model_validate(resp)
 
     # ── Organizations & Repos ───────────────────────────────
 
     async def list_orgs(self) -> Page[Organization]:
         """List organizations."""
-        resp = await self._get("/organizations")
+        resp = await self._request_json("GET", "/organizations")
         return Page[Organization].model_validate(resp)
 
     async def get_organization_settings(self) -> OrganizationSettings:
@@ -536,7 +562,7 @@ class CodegenClient:
         Endpoint: ``GET /v1/organizations/{org_id}/settings``
         """
         try:
-            resp = await self._get(f"/organizations/{self.org_id}/settings")
+            resp = await self._request_json("GET", f"/organizations/{self.org_id}/settings")
             return OrganizationSettings.model_validate(resp)
         except NotFoundError:
             # Compatibility fallback for API variants where settings are only
@@ -555,7 +581,10 @@ class CodegenClient:
     ) -> Page[Repository]:
         """List repositories in the organization."""
         params: dict[str, Any] = {"skip": skip, "limit": limit}
-        resp = await self._get(f"/organizations/{self.org_id}/repos", params=params)
+        resp = await self._request_json(
+            "GET", f"/organizations/{self.org_id}/repos",
+            params=params,
+        )
         return Page[Repository].model_validate(resp)
 
     # ── Pull Requests ───────────────────────────────────────
@@ -568,9 +597,10 @@ class CodegenClient:
     ) -> EditPRResponse:
         """Edit PR properties (RESTful — requires repo_id)."""
         body = {"state": state}
-        resp = await self._patch(
+        resp = await self._request_json(
+            "PATCH",
             f"/organizations/{self.org_id}/repos/{repo_id}/prs/{pr_id}",
-            json=body,
+            json_body=body,
         )
         return EditPRResponse.model_validate(resp)
 
@@ -581,9 +611,10 @@ class CodegenClient:
     ) -> EditPRResponse:
         """Edit PR properties (simple — only requires pr_id)."""
         body = {"state": state}
-        resp = await self._patch(
+        resp = await self._request_json(
+            "PATCH",
             f"/organizations/{self.org_id}/prs/{pr_id}",
-            json=body,
+            json_body=body,
         )
         return EditPRResponse.model_validate(resp)
 
@@ -591,14 +622,14 @@ class CodegenClient:
 
     async def get_integrations(self) -> OrganizationIntegrations:
         """Get all integrations for the organization."""
-        resp = await self._get(f"/organizations/{self.org_id}/integrations")
+        resp = await self._request_json("GET", f"/organizations/{self.org_id}/integrations")
         return OrganizationIntegrations.model_validate(resp)
 
     # ── Webhooks ─────────────────────────────────────────────
 
     async def get_webhook_config(self) -> WebhookConfig:
         """Get agent-run webhook configuration."""
-        resp = await self._get(f"/organizations/{self.org_id}/webhooks/agent-run")
+        resp = await self._request_json("GET", f"/organizations/{self.org_id}/webhooks/agent-run")
         return WebhookConfig.model_validate(resp)
 
     async def set_webhook_config(
@@ -612,16 +643,25 @@ class CodegenClient:
         body: dict[str, Any] = {"url": url, "enabled": enabled}
         if secret is not None:
             body["secret"] = secret
-        return await self._post(f"/organizations/{self.org_id}/webhooks/agent-run", json=body)
+        return await self._request_json(
+            "POST", f"/organizations/{self.org_id}/webhooks/agent-run",
+            json_body=body,
+        )
 
     async def delete_webhook_config(self) -> dict[str, Any]:
         """Delete agent-run webhook configuration."""
-        return await self._delete(f"/organizations/{self.org_id}/webhooks/agent-run")
+        return await self._request_json(
+            "DELETE", f"/organizations/{self.org_id}/webhooks/agent-run",
+        )
 
     async def test_webhook(self, url: str) -> dict[str, Any]:
         """Send a test event to a webhook URL."""
         body: dict[str, Any] = {"url": url}
-        return await self._post(f"/organizations/{self.org_id}/webhooks/agent-run/test", json=body)
+        return await self._request_json(
+            "POST",
+            f"/organizations/{self.org_id}/webhooks/agent-run/test",
+            json_body=body,
+        )
 
     # ── Setup Commands ───────────────────────────────────────
 
@@ -638,14 +678,21 @@ class CodegenClient:
             body["prompt"] = prompt
         if trigger_source is not None:
             body["trigger_source"] = trigger_source
-        resp = await self._post(f"/organizations/{self.org_id}/setup-commands/generate", json=body)
+        resp = await self._request_json(
+            "POST",
+            f"/organizations/{self.org_id}/setup-commands/generate",
+            json_body=body,
+        )
         return SetupCommand.model_validate(resp)
 
     # ── Sandbox ──────────────────────────────────────────────
 
     async def analyze_sandbox_logs(self, run_id: int) -> SandboxLog:
         """Analyze sandbox logs for an agent run."""
-        resp = await self._post(f"/organizations/{self.org_id}/sandbox/{run_id}/analyze-logs")
+        resp = await self._request_json(
+            "POST",
+            f"/organizations/{self.org_id}/sandbox/{run_id}/analyze-logs",
+        )
         return SandboxLog.model_validate(resp)
 
     # ── Slack ────────────────────────────────────────────────
@@ -653,25 +700,22 @@ class CodegenClient:
     async def generate_slack_connect_token(self) -> SlackToken:
         """Generate a short-lived Slack connect token."""
         body: dict[str, Any] = {"org_id": self.org_id}
-        resp = await self._post("/slack-connect/generate-token", json=body)
+        resp = await self._request_json("POST", "/slack-connect/generate-token", json_body=body)
         return SlackToken.model_validate(resp)
 
     # ── MCP Providers & OAuth ──────────────────────────────
 
     async def get_mcp_providers(self) -> list[MCPProvider]:
         """Get all MCP-enabled OAuth providers."""
-        resp = await self._get_raw("/mcp-providers")
-        return [MCPProvider.model_validate(item) for item in resp]
+        resp = await self._request("GET", "/mcp-providers")
+        return [MCPProvider.model_validate(item) for item in resp.json()]
 
     async def get_oauth_status(self) -> list[OAuthTokenStatus]:
         """Get OAuth token status for the current user and organization."""
-        resp = await self._get_raw(
-            "/oauth/tokens/status",
-            params={"org_id": self.org_id},
-        )
+        raw = await self._request("GET", "/oauth/tokens/status", params={"org_id": self.org_id})
         # Normalize: API may return list[str] or list[dict]
         result: list[OAuthTokenStatus] = []
-        for item in resp:
+        for item in raw.json():
             if isinstance(item, str):
                 result.append(OAuthTokenStatus(provider=item))
             else:
@@ -693,7 +737,8 @@ class CodegenClient:
 
         Endpoint: ``GET /v1/organizations/{org_id}/repos/check-suite-settings?repo_id=``
         """
-        resp = await self._get(
+        resp = await self._request_json(
+            "GET",
             f"/organizations/{self.org_id}/repos/check-suite-settings",
             params={"repo_id": repo_id},
         )
@@ -714,9 +759,10 @@ class CodegenClient:
                 ignored_checks, check_retry_counts, custom_prompts,
                 high_priority_apps).
         """
-        return await self._put(
+        return await self._request_json(
+            "PUT",
             f"/organizations/{self.org_id}/repos/check-suite-settings",
-            json=settings,
+            json_body=settings,
             params={"repo_id": repo_id},
         )
 
@@ -724,13 +770,13 @@ class CodegenClient:
 
     async def get_rules(self) -> dict[str, Any]:
         """Get organization and user agent rules."""
-        return await self._get(f"/organizations/{self.org_id}/cli/rules")
+        return await self._request_json("GET", f"/organizations/{self.org_id}/cli/rules")
 
     # ── Models ─────────────────────────────────────────────────
 
     async def list_models(self) -> ModelsResponse:
         """Get available AI models grouped by provider."""
-        resp = await self._get(f"/organizations/{self.org_id}/models")
+        resp = await self._request_json("GET", f"/organizations/{self.org_id}/models")
         return ModelsResponse.model_validate(resp)
 
     # ── Core Request Engine ─────────────────────────────────
@@ -852,43 +898,19 @@ class CodegenClient:
 
     # ── HTTP Helpers ────────────────────────────────────────
 
-    async def _get(self, path: str, *, params: dict[str, Any] | None = None) -> dict[str, Any]:
-        resp = await self._request("GET", path, params=params)
-        result: dict[str, Any] = resp.json()
-        return result
-
-    async def _get_raw(self, path: str, *, params: dict[str, Any] | None = None) -> Any:
-        """GET that returns the raw JSON value (may be a list or dict)."""
-        resp = await self._request("GET", path, params=params)
-        return resp.json()
-
-    async def _post(
+    async def _request_json(
         self,
+        method: str,
         path: str,
         *,
-        json: dict[str, Any] | None = None,
+        json_body: dict[str, Any] | None = None,
         params: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        resp = await self._request("POST", path, json=json, params=params)
-        result: dict[str, Any] = resp.json()
-        return result
+        """Send an HTTP request and return the JSON response as a dict.
 
-    async def _put(
-        self,
-        path: str,
-        *,
-        json: dict[str, Any] | None = None,
-        params: dict[str, Any] | None = None,
-    ) -> dict[str, Any]:
-        resp = await self._request("PUT", path, json=json, params=params)
-        return resp.json()  # type: ignore[no-any-return]
-
-    async def _patch(self, path: str, *, json: dict[str, Any] | None = None) -> dict[str, Any]:
-        resp = await self._request("PATCH", path, json=json)
-        result: dict[str, Any] = resp.json()
-        return result
-
-    async def _delete(self, path: str) -> dict[str, Any]:
-        resp = await self._request("DELETE", path)
+        Thin wrapper around :meth:`_request` for the common case where the
+        caller expects a JSON object (``dict``) back.
+        """
+        resp = await self._request(method, path, json=json_body, params=params)
         result: dict[str, Any] = resp.json()
         return result
