@@ -186,7 +186,7 @@ def _extract_detail(response: httpx.Response) -> str | None:
     """Best-effort extraction of error detail from a JSON response body."""
     try:
         body = response.json()
-    except Exception:
+    except (ValueError, TypeError):
         return None
 
     if isinstance(body, dict):
