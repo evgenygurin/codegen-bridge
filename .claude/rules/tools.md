@@ -11,14 +11,16 @@ paths:
 
 | Module | Count | Tools |
 |--------|-------|-------|
-| `tools/agent/` | 11 | `create_run`, `get_run`, `report_run_result`, `list_runs`, `resume_run`, `stop_run`, `ban_run`, `unban_run`, `remove_from_pr`, `get_logs`, `create_and_monitor` |
+| `tools/agent/` | 13 | `create_run`, `get_run`, `report_run_result`, `list_runs`, `resume_run`, `stop_run`, `ban_run`, `unban_run`, `remove_from_pr`, `get_logs`, `create_and_monitor`, `monitor_run_background`, `bulk_create_runs` |
 | `tools/execution.py` | 3 | `start_execution`, `get_execution_context`, `get_agent_rules` |
 | `tools/pr.py` | 2 | `edit_pr`, `edit_pr_simple` |
-| `tools/setup/` | 12 | `list_users`, `list_orgs`, `get_user`, `list_repos`, `get_organization_settings`, `get_current_user`, `get_mcp_providers`, `get_oauth_status`, `revoke_oauth`, `get_check_suite_settings`, `update_check_suite_settings`, `generate_setup_commands` |
-| `tools/integrations.py` | 7 | `get_integrations`, `get_webhook_config`, `set_webhook_config`, `delete_webhook_config`, `test_webhook`, `analyze_sandbox_logs`, `generate_slack_token` |
+| `tools/setup/` | 13 | `list_users`, `list_orgs`, `get_user`, `list_repos`, `get_organization_settings`, `get_current_user`, `get_mcp_providers`, `get_oauth_status`, `revoke_oauth`, `get_check_suite_settings`, `update_check_suite_settings`, `generate_setup_commands`, `list_models` |
+| `tools/integrations.py` | 8 | `get_integrations`, `get_webhook_config`, `set_webhook_config`, `delete_webhook_config`, `test_webhook`, `analyze_sandbox_logs`, `generate_slack_token`, `check_integration_health` |
+| `tools/analytics.py` | 1 | `get_run_analytics` |
+| `tools/session.py` | 3 | `set_session_preference`, `get_session_preferences`, `clear_session_preferences` |
 | `tools/settings.py` | 2 | `get_settings`, `update_settings` |
 | `sampling/tools.py` | 4 | `summarise_run`, `summarise_execution`, `generate_task_prompt`, `analyse_run_logs` |
-| **Total manual** | **41** | |
+| **Total manual** | **49** | |
 | Auto-generated (OpenAPI) | 5 | Via `OpenAPIProvider` from `openapi_spec.json` |
 
 ## Naming Convention

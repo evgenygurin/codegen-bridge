@@ -4,7 +4,7 @@ Claude Code plugin for delegating implementation plans to [Codegen](https://code
 
 ## What it does
 
-- **~36 MCP tools** — 15 manual core tools + ~21 auto-generated from OpenAPI spec
+- **~54 MCP tools** — 49 manual tools + 5 auto-generated from OpenAPI spec + remote proxy
 - **4 agent skills** — delegation, execution, monitoring, and PR management
 - **2 Task agents** — codegen-delegator and pr-reviewer
 - **5 slash commands** — `/codegen`, `/cg-status`, `/cg-logs`, `/cg-merge`, `/cg-settings`
@@ -40,12 +40,15 @@ When `writing-plans` offers execution options, choose **"Codegen Remote"** to de
 
 | Module | Tools | Purpose |
 |--------|-------|---------|
-| `agent` | `codegen_create_run`, `codegen_get_run`, `codegen_list_runs`, `codegen_resume_run`, `codegen_get_logs` | Agent run lifecycle |
-| `execution` | `codegen_start_execution`, `codegen_get_execution_context` | Multi-task execution plans |
-| `pr` | PR management tools | Review, merge, manage pull requests |
-| `setup` | `codegen_list_orgs`, `codegen_list_repos` | Organization and repository setup |
-| `integrations` | Integration tools | Webhooks, sandbox, Slack connect |
-| `settings` | Settings tools | Plugin settings management |
+| `agent` | `create_run`, `get_run`, `list_runs`, `resume_run`, `stop_run`, `ban_run`, `unban_run`, `remove_from_pr`, `get_logs`, `create_and_monitor`, `monitor_run_background`, `bulk_create_runs`, `report_run_result` | Agent run lifecycle, monitoring, bulk ops |
+| `execution` | `start_execution`, `get_execution_context`, `get_agent_rules` | Multi-task execution plans |
+| `pr` | `edit_pr`, `edit_pr_simple` | Pull request management |
+| `setup` | `list_orgs`, `list_repos`, `list_users`, `get_user`, `get_current_user`, `get_organization_settings`, `get_mcp_providers`, `get_oauth_status`, `revoke_oauth`, `get_check_suite_settings`, `update_check_suite_settings`, `generate_setup_commands`, `list_models` | Organization, repo, user setup |
+| `integrations` | `get_integrations`, `get_webhook_config`, `set_webhook_config`, `delete_webhook_config`, `test_webhook`, `analyze_sandbox_logs`, `generate_slack_token`, `check_integration_health` | Webhooks, sandbox, Slack, health |
+| `analytics` | `get_run_analytics` | Run statistics and metrics |
+| `session` | `set_session_preference`, `get_session_preferences`, `clear_session_preferences` | Per-session state management |
+| `settings` | `get_settings`, `update_settings` | Plugin settings management |
+| `sampling` | `summarise_run`, `summarise_execution`, `generate_task_prompt`, `analyse_run_logs` | LLM sampling tools |
 
 Auto-generated tools from the Codegen OpenAPI spec are also available at runtime via the OpenAPI provider.
 
@@ -93,12 +96,14 @@ codegen-bridge/
 │   ├── resources/           # MCP resources
 │   ├── prompts/             # Prompt templates
 │   ├── providers/           # Custom MCP providers
-│   ├── middleware/          # Request middleware stack
+│   ├── middleware/          # 9-layer request middleware stack
 │   ├── sampling/            # LLM sampling tools
-│   ├── transforms/          # Tool transform chain
+│   ├── services/            # Business logic (RunService, ExecutionService)
+│   ├── transforms/          # 4-stage transform chain
+│   ├── telemetry/           # OpenTelemetry integration
 │   └── ...
 ├── tests/                   # Test suite
-└── pyproject.toml           # Python project config (v0.5.0)
+└── pyproject.toml           # Python project config (v0.6.0)
 ```
 
 ## Development
