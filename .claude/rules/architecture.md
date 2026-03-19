@@ -36,19 +36,20 @@ Claude Code ──MCP──▶ FastMCP Server (bridge/server.py)
 | Layer | Modules | Purpose |
 |-------|---------|---------|
 | Entry | `server.py` | FastMCP instance, lifespan, registration |
-| Client | `client.py` | Async httpx REST client (Pydantic models) |
+| Client | `client.py` | Async httpx REST client (unified `_request_json`) |
 | Models | `models.py` | API response types (named `models` not `types` — stdlib shadow) |
 | Annotations | `annotations.py` | 6 `ToolAnnotations` presets (READ_ONLY, CREATES, MUTATES, etc.) |
-| DI | `dependencies.py` | 7 DI providers for lifespan resources + services |
+| Rate Budget | `rate_budget.py` | Outbound token-bucket rate limiter for API calls |
+| DI | `dependencies.py` | 8 DI providers for lifespan resources, services, session state |
 | Context | `context.py` | Execution/task tracking with `ContextRegistry` |
-| Storage | `storage.py` | `MemoryStorage`/`FileStorage` (Strategy pattern, py-key-value-aio) |
-| Elicitation | `elicitation.py` | Interactive user prompts (`confirm_action`, `select_choice`) |
+| Storage | `storage.py` | `MemoryStorage`/`FileStorage` (Strategy pattern, TTL support) |
+| Elicitation | `elicitation.py` | Interactive user prompts with Pydantic schema support |
 | Services | `services/` | `RunService` (runs.py), `ExecutionService` (execution.py) |
-| Tools | `tools/` | 6 modules, 41 tools total |
+| Tools | `tools/` | 8 modules, 45 manual tools + 4 sampling = 49 total |
 | Sampling | `sampling/` | 4 tools via `ctx.sample()`, `SamplingService` |
 | Resources | `resources/` | 8 resources: config (3) + platform (2) + templates (3) |
 | Prompts | `prompts/` | 4 workflow templates |
-| Providers | `providers/` | OpenAPI, Skills, Commands, Agents |
+| Providers | `providers/` | OpenAPI, Skills, Commands, Agents, remote proxy |
 | Middleware | `middleware/` | 9-layer request pipeline |
 | Transforms | `transforms/` | 4-stage component transformation |
 | Helpers | `helpers/` | Formatting, pagination, repo detection |
@@ -73,7 +74,7 @@ Defined in `bridge/middleware/stack.py`. All configurable via `MiddlewareConfig`
 
 ## Transform Chain (innermost → outermost)
 
-Defined in `bridge/transforms/registry.py`. Default: passthrough (no transforms).
+Defined in `bridge/transforms/registry.py`. Fully configured in v0.6.0.
 
 | # | Transform | Purpose |
 |---|-----------|---------|
@@ -92,6 +93,7 @@ Registered during lifespan in `server.py`.
 | `SkillsDirectoryProvider` | `providers/agents.py` | Skill resources from `skills/` directory |
 | `CommandsProvider` | `providers/commands.py` | Command resources from `commands/` directory |
 | `AgentsProvider` | `providers/agents.py` | Agent resources from `agents/` directory |
+| Remote Proxy | `providers/remote.py` | Mounted Codegen MCP server (`namespace="remote"`) |
 
 ## Lifespan Context Keys
 
@@ -104,6 +106,7 @@ The lifespan yields a dict accessible via `ctx.lifespan_context`:
 | `"registry"` | `ContextRegistry` | `get_registry()` |
 | `"repo_cache"` | `RepoCache` | `get_repo_cache()` |
 | `"sampling_config"` | `SamplingConfig` | `get_sampling_config()` |
+| `"session_state"` | `dict[str, str]` | `get_session_state()` |
 
 ## Registration Order (in `server.py`)
 
@@ -114,12 +117,14 @@ register_execution_tools(mcp)
 register_pr_tools(mcp)
 register_setup_tools(mcp)
 register_integration_tools(mcp)
+register_analytics_tools(mcp)
 register_settings_tools(mcp)
+register_session_tools(mcp)
 register_resources(mcp)           # 3. Resources
 register_prompts(mcp)             # 4. Prompts
 register_sampling_tools(mcp)      # 5. Sampling tools
 configure_transforms(mcp)         # 6. Transform chain
-# Providers added in lifespan:    # 7. OpenAPI + Skills + Commands + Agents
+# Providers added in lifespan:    # 7. OpenAPI + Skills + Commands + Agents + Remote proxy
 ```
 
 ## Adding New Modules

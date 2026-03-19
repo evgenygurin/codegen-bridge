@@ -20,6 +20,15 @@ Load plan, delegate each task to a Codegen cloud agent, monitor until done, repo
 - Repository registered in Codegen organization
 - MCP tools available: `codegen_create_run`, `codegen_get_run`, `codegen_get_logs`, `codegen_resume_run`, `codegen_stop_run`, `codegen_start_execution`, `codegen_get_execution_context`, `codegen_get_agent_rules`
 
+### v0.6 Tools (Optional, Recommended)
+
+These tools enhance the execution workflow but are not required:
+
+- `codegen_check_integration_health` — verify integrations before running (Step 2)
+- `codegen_bulk_create_runs` — batch-create runs for independent tasks (Step 3 alternative)
+- `codegen_monitor_run_background` — background monitoring with progress callbacks (Step 3c alternative)
+- `codegen_get_run_analytics` — analytics after all runs complete (Step 5 enhancement)
+
 ## The Process
 
 ### Step 0: Find the Plan
@@ -51,6 +60,7 @@ Load plan, delegate each task to a Codegen cloud agent, monitor until done, repo
 1. Call `codegen_list_repos` to verify the repository is accessible
 2. Note the `repo_id` for subsequent calls (or let auto-detect handle it)
 3. If repo not found: ask user to check Codegen setup
+4. **(v0.6)** Call `codegen_check_integration_health` to verify webhooks, GitHub app, and API connectivity are healthy before creating runs. If any check fails, surface it to the user before proceeding.
 
 ### Step 2b: Select Model (Optional)
 
@@ -59,6 +69,27 @@ Load plan, delegate each task to a Codegen cloud agent, monitor until done, repo
 3. Use selected model for all runs, or let each run use the default
 
 ### Step 3: Execute Each Task
+
+#### Bulk Delegation (v0.6, Independent Tasks Only)
+
+If the plan contains tasks that are **independent** (no inter-task dependencies), consider using `codegen_bulk_create_runs` to launch them all at once:
+
+```text
+codegen_bulk_create_runs(
+  tasks=[
+    {prompt: <task_1_prompt>, execution_id: <ctx_id>},
+    {prompt: <task_2_prompt>, execution_id: <ctx_id>},
+    ...
+  ],
+  agent_type="claude_code"
+)
+```
+
+This returns all run IDs at once and is faster than sequential creation. Skip to Step 3c for monitoring. See the **bulk-delegation** skill for details.
+
+If tasks have dependencies (Task 2 needs Task 1's output), use sequential execution below.
+
+#### Sequential Execution
 
 For each task in the plan:
 
@@ -101,7 +132,9 @@ If a model was selected in Step 2b, pass `model=<selected>`.
 
 **c. Monitor progress:**
 
-Poll every 30 seconds:
+**(v0.6 preferred)** Use `codegen_monitor_run_background(run_id=<id>, execution_id=<ctx_id>)` to start background monitoring. This automatically polls, detects status transitions, and reports progress without manual sleep loops. You will be notified when the run reaches a terminal state.
+
+**Manual polling (fallback):** Poll every 30 seconds:
 
 ```bash
 sleep 30
@@ -163,6 +196,14 @@ After all tasks, use the `execution_summary` prompt to generate a final report:
 - Suggest: "All PRs created. Review them on GitHub and merge when ready."
 - Offer: "Want to use superpowers:finishing-a-development-branch to handle merging?"
 
+**(v0.6)** Call `codegen_get_run_analytics` to enrich the summary with:
+- Average run duration and token usage
+- Success/failure rates across all tasks
+- Performance trends compared to previous executions
+- Recommendations for prompt or workflow improvements
+
+See the **run-analytics** skill for interpretation guidance.
+
 ## Differences from Local Execution
 
 | Aspect | executing-plans (local) | executing-via-codegen (cloud) |
@@ -197,12 +238,15 @@ If polling times out (10 min):
 - Ask: "Agent still running. Wait longer, check logs, or cancel?"
 
 ## Remember
-- One task = one agent run (NOT batching)
+- One task = one agent run (or use `codegen_bulk_create_runs` for independent tasks)
 - Include full task text in prompt (not file references)
 - Include previous task summaries for context
 - Use `execution_id` with `codegen_create_run` and `codegen_get_run` for automatic context enrichment and parsing
-- Poll with `sleep 30` between checks
+- Prefer `codegen_monitor_run_background` over manual sleep loops when available
+- Poll with `sleep 30` between checks (fallback if background monitoring unavailable)
 - Always show PR links when available
 - Use `codegen_stop_run` for cancellation — don't just stop polling
 - Use `codegen_get_execution_context` for progress tracking
+- Use `codegen_check_integration_health` before starting a batch of runs
+- Use `codegen_get_run_analytics` after completion for performance insights
 - Stop on blockers, don't guess
