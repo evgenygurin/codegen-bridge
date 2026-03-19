@@ -22,7 +22,7 @@ from bridge.icons import ICON_MCP, ICON_OAUTH
 def register_oauth_tools(mcp: FastMCP) -> None:
     """Register OAuth and MCP provider management tools."""
 
-    @mcp.tool(tags={"setup"}, icons=ICON_MCP, annotations=READ_ONLY)
+    @mcp.tool(tags={"setup"}, icons=ICON_MCP, timeout=30, annotations=READ_ONLY)
     async def codegen_get_mcp_providers(
         ctx: Context = CurrentContext(),
         client: CodegenClient = Depends(get_client),    ) -> str: # type: ignore[arg-type]
@@ -52,7 +52,7 @@ def register_oauth_tools(mcp: FastMCP) -> None:
             }
         )
 
-    @mcp.tool(tags={"setup"}, icons=ICON_OAUTH, annotations=READ_ONLY)
+    @mcp.tool(tags={"setup"}, icons=ICON_OAUTH, timeout=30, annotations=READ_ONLY)
     async def codegen_get_oauth_status(
         ctx: Context = CurrentContext(),
         client: CodegenClient = Depends(get_client),    ) -> str: # type: ignore[arg-type]
@@ -74,7 +74,7 @@ def register_oauth_tools(mcp: FastMCP) -> None:
             }
         )
 
-    @mcp.tool(tags={"setup", "dangerous"}, icons=ICON_OAUTH, annotations=DESTRUCTIVE)
+    @mcp.tool(tags={"setup", "dangerous"}, icons=ICON_OAUTH, timeout=30, annotations=DESTRUCTIVE)
     async def codegen_revoke_oauth(
         provider: str,
         confirmed: bool = False,

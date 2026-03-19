@@ -22,7 +22,7 @@ from bridge.settings import load_settings, update_settings
 def register_settings_tools(mcp: FastMCP) -> None:
     """Register plugin settings management tools on the given FastMCP server."""
 
-    @mcp.tool(tags={"settings"}, icons=ICON_CONFIG, annotations=READ_ONLY_LOCAL)
+    @mcp.tool(tags={"settings"}, icons=ICON_CONFIG, timeout=5, annotations=READ_ONLY_LOCAL)
     async def codegen_get_settings(
         ctx: Context = CurrentContext(),
     ) -> str:
@@ -37,7 +37,7 @@ def register_settings_tools(mcp: FastMCP) -> None:
         await ctx.info(f"Settings loaded: {len(data)} fields")
         return json.dumps(data, indent=2)
 
-    @mcp.tool(tags={"settings"}, icons=ICON_CONFIG, annotations=MUTATES_LOCAL)
+    @mcp.tool(tags={"settings"}, icons=ICON_CONFIG, timeout=10, annotations=MUTATES_LOCAL)
     async def codegen_update_settings(
         key: str,
         value: str,

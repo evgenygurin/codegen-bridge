@@ -22,7 +22,7 @@ from bridge.icons import ICON_CHECK_SUITE
 def register_check_suite_tools(mcp: FastMCP) -> None:
     """Register CI check-suite settings tools (get, update)."""
 
-    @mcp.tool(tags={"setup"}, icons=ICON_CHECK_SUITE, annotations=READ_ONLY)
+    @mcp.tool(tags={"setup"}, icons=ICON_CHECK_SUITE, timeout=30, annotations=READ_ONLY)
     async def codegen_get_check_suite_settings(
         repo_id: int,
         ctx: Context = CurrentContext(),
@@ -53,7 +53,7 @@ def register_check_suite_tools(mcp: FastMCP) -> None:
             }
         )
 
-    @mcp.tool(tags={"setup"}, icons=ICON_CHECK_SUITE, annotations=MUTATES)
+    @mcp.tool(tags={"setup"}, icons=ICON_CHECK_SUITE, timeout=30, annotations=MUTATES)
     async def codegen_update_check_suite_settings(
         repo_id: int,
         check_retry_count: int | None = None,

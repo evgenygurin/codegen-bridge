@@ -25,7 +25,7 @@ from bridge.icons import ICON_ORG, ICON_ORG_SETTINGS, ICON_REPO, ICON_SETUP_CMD
 def register_organization_tools(mcp: FastMCP) -> None:
     """Register organization and repository management tools."""
 
-    @mcp.tool(tags={"setup"}, icons=ICON_ORG, annotations=READ_ONLY)
+    @mcp.tool(tags={"setup"}, icons=ICON_ORG, timeout=30, annotations=READ_ONLY)
     async def codegen_list_orgs(
         ctx: Context = CurrentContext(),
         client: CodegenClient = Depends(get_client),    ) -> str: # type: ignore[arg-type]
@@ -39,7 +39,7 @@ def register_organization_tools(mcp: FastMCP) -> None:
             }
         )
 
-    @mcp.tool(tags={"setup"}, icons=ICON_ORG_SETTINGS, annotations=READ_ONLY)
+    @mcp.tool(tags={"setup"}, icons=ICON_ORG_SETTINGS, timeout=30, annotations=READ_ONLY)
     async def codegen_get_organization_settings(
         ctx: Context = CurrentContext(),
         client: CodegenClient = Depends(get_client),    ) -> str: # type: ignore[arg-type]
@@ -61,7 +61,7 @@ def register_organization_tools(mcp: FastMCP) -> None:
             }
         )
 
-    @mcp.tool(tags={"setup"}, icons=ICON_REPO, annotations=READ_ONLY)
+    @mcp.tool(tags={"setup"}, icons=ICON_REPO, timeout=30, annotations=READ_ONLY)
     async def codegen_list_repos(
         limit: int = DEFAULT_PAGE_SIZE,
         cursor: str | None = None,
@@ -99,7 +99,10 @@ def register_organization_tools(mcp: FastMCP) -> None:
             )
         )
 
-    @mcp.tool(tags={"setup", "creates-agent-run"}, icons=ICON_SETUP_CMD, annotations=CREATES)
+    @mcp.tool(
+        tags={"setup", "creates-agent-run"}, icons=ICON_SETUP_CMD,
+        timeout=60, annotations=CREATES,
+    )
     async def codegen_generate_setup_commands(
         repo_id: int,
         prompt: str | None = None,

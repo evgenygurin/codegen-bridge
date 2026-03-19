@@ -96,16 +96,19 @@ def _build_stack(config: MiddlewareConfig) -> list[Middleware]:
             )
         )
 
-    # 8. Caching — TTL-based response caching
+    # 8. Caching — TTL-based response caching with real-time tool exclusions
     if config.caching.enabled:
+        call_tool_cfg = CallToolSettings(
+            enabled=config.caching.tool_call_enabled,
+            ttl=config.caching.tool_ttl,
+        )
+        if config.caching.realtime_tools:
+            call_tool_cfg["excluded_tools"] = config.caching.realtime_tools
         stack.append(
             ResponseCachingMiddleware(
                 list_tools_settings=ListToolsSettings(ttl=config.caching.list_ttl),
                 list_resources_settings=ListResourcesSettings(ttl=config.caching.list_ttl),
-                call_tool_settings=CallToolSettings(
-                    enabled=config.caching.tool_call_enabled,
-                    ttl=config.caching.tool_ttl,
-                ),
+                call_tool_settings=call_tool_cfg,
                 read_resource_settings=ReadResourceSettings(ttl=config.caching.resource_ttl),
                 max_item_size=config.caching.max_item_size,
             )

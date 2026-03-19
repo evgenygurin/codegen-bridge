@@ -25,7 +25,10 @@ from bridge.tools.agent._progress import GET_LOGS_STEPS, GET_LOGS_TASK, report
 def register_log_tools(mcp: FastMCP) -> None:
     """Register agent log retrieval tools."""
 
-    @mcp.tool(tags={"monitoring"}, icons=ICON_LOGS, task=GET_LOGS_TASK, annotations=READ_ONLY)
+    @mcp.tool(
+        tags={"monitoring"}, icons=ICON_LOGS, task=GET_LOGS_TASK,
+        timeout=30, annotations=READ_ONLY,
+    )
     async def codegen_get_logs(
         run_id: int,
         limit: int = DEFAULT_PAGE_SIZE,

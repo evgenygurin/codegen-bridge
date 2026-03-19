@@ -28,7 +28,7 @@ def register_query_tools(mcp: FastMCP) -> None:
 
     # ── Get (pure read) ────────────────────────────────────
 
-    @mcp.tool(tags={"execution"}, icons=ICON_GET_RUN, annotations=READ_ONLY)
+    @mcp.tool(tags={"execution"}, icons=ICON_GET_RUN, timeout=30, annotations=READ_ONLY)
     async def codegen_get_run(
         run_id: int,
         ctx: Context = CurrentContext(),
@@ -47,7 +47,7 @@ def register_query_tools(mcp: FastMCP) -> None:
 
     # ── Report Run Result (explicit mutation) ──────────────
 
-    @mcp.tool(tags={"execution"}, icons=ICON_GET_RUN, annotations=MUTATES)
+    @mcp.tool(tags={"execution"}, icons=ICON_GET_RUN, timeout=30, annotations=MUTATES)
     async def codegen_report_run_result(
         run_id: int,
         execution_id: str,
@@ -73,7 +73,7 @@ def register_query_tools(mcp: FastMCP) -> None:
 
     # ── List ───────────────────────────────────────────────
 
-    @mcp.tool(tags={"execution"}, icons=ICON_LIST, annotations=READ_ONLY)
+    @mcp.tool(tags={"execution"}, icons=ICON_LIST, timeout=30, annotations=READ_ONLY)
     async def codegen_list_runs(
         limit: int = DEFAULT_PAGE_SIZE,
         source_type: str | None = None,

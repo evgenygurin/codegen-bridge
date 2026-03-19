@@ -22,7 +22,7 @@ from bridge.services.execution import ExecutionService
 def register_execution_tools(mcp: FastMCP) -> None:
     """Register all execution context management tools on the given FastMCP server."""
 
-    @mcp.tool(tags={"context"}, icons=ICON_EXECUTION, annotations=CREATES)
+    @mcp.tool(tags={"context"}, icons=ICON_EXECUTION, timeout=60, annotations=CREATES)
     async def codegen_start_execution(
         execution_id: str,
         goal: str,
@@ -88,7 +88,7 @@ def register_execution_tools(mcp: FastMCP) -> None:
         )
         return json.dumps(result)
 
-    @mcp.tool(tags={"context"}, icons=ICON_CONTEXT, annotations=READ_ONLY_LOCAL)
+    @mcp.tool(tags={"context"}, icons=ICON_CONTEXT, timeout=10, annotations=READ_ONLY_LOCAL)
     async def codegen_get_execution_context(
         execution_id: str | None = None,
         ctx: Context = CurrentContext(),
@@ -109,7 +109,7 @@ def register_execution_tools(mcp: FastMCP) -> None:
 
         return exec_ctx.model_dump_json(indent=2)
 
-    @mcp.tool(tags={"context"}, icons=ICON_RULES, annotations=READ_ONLY)
+    @mcp.tool(tags={"context"}, icons=ICON_RULES, timeout=30, annotations=READ_ONLY)
     async def codegen_get_agent_rules(
         ctx: Context = CurrentContext(),
         svc: ExecutionService = Depends(get_execution_service),    ) -> str: # type: ignore[arg-type]

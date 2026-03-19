@@ -24,7 +24,7 @@ def register_moderation_tools(mcp: FastMCP) -> None:
 
     # ── Ban ───────────────────────────────────────────────
 
-    @mcp.tool(tags={"execution", "dangerous"}, icons=ICON_BAN, annotations=DESTRUCTIVE)
+    @mcp.tool(tags={"execution", "dangerous"}, icons=ICON_BAN, timeout=30, annotations=DESTRUCTIVE)
     async def codegen_ban_run(
         run_id: int,
         before_card_order_id: str | None = None,
@@ -66,7 +66,7 @@ def register_moderation_tools(mcp: FastMCP) -> None:
 
     # ── Unban ─────────────────────────────────────────────
 
-    @mcp.tool(tags={"execution"}, icons=ICON_UNBAN, annotations=MUTATES)
+    @mcp.tool(tags={"execution"}, icons=ICON_UNBAN, timeout=30, annotations=MUTATES)
     async def codegen_unban_run(
         run_id: int,
         before_card_order_id: str | None = None,
@@ -95,7 +95,10 @@ def register_moderation_tools(mcp: FastMCP) -> None:
 
     # ── Remove from PR ────────────────────────────────────
 
-    @mcp.tool(tags={"execution", "dangerous"}, icons=ICON_REMOVE_FROM_PR, annotations=DESTRUCTIVE)
+    @mcp.tool(
+        tags={"execution", "dangerous"}, icons=ICON_REMOVE_FROM_PR,
+        timeout=30, annotations=DESTRUCTIVE,
+    )
     async def codegen_remove_from_pr(
         run_id: int,
         before_card_order_id: str | None = None,
