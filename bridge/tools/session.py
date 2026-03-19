@@ -83,7 +83,7 @@ def register_session_tools(mcp: FastMCP) -> None:
     @mcp.tool(
         tags={"session"},
         icons=ICON_SESSION,
-        timeout=5,
+        timeout=30,
         annotations=ToolAnnotations(
             title="Clear Session Preferences",
             readOnlyHint=False,
