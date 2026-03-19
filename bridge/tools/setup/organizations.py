@@ -11,7 +11,6 @@ import json
 from fastmcp import FastMCP
 from fastmcp.server.context import Context
 
-
 from bridge.annotations import CREATES, READ_ONLY
 from bridge.client import CodegenClient
 from bridge.dependencies import CurrentContext, Depends, get_client
@@ -100,7 +99,10 @@ def register_organization_tools(mcp: FastMCP) -> None:
             )
         )
 
-    @mcp.tool(tags={"setup", "creates-agent-run"}, icons=ICON_SETUP_CMD, timeout=60, annotations=CREATES)
+    @mcp.tool(
+        tags={"setup", "creates-agent-run"}, icons=ICON_SETUP_CMD,
+        timeout=60, annotations=CREATES,
+    )
     async def codegen_generate_setup_commands(
         repo_id: int,
         prompt: str | None = None,

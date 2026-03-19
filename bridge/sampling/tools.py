@@ -20,7 +20,6 @@ from fastmcp import FastMCP
 from fastmcp.server.context import Context
 from fastmcp.server.tasks import TaskConfig
 
-
 from bridge.annotations import READ_ONLY
 from bridge.client import CodegenClient
 from bridge.context import ContextRegistry

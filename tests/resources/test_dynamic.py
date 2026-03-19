@@ -45,11 +45,11 @@ class TestRunsResourceTemplate:
     async def test_run_template_registered(self, client: Client):
         """The codegen://runs/{run_id} template should be discoverable."""
         templates = await client.list_resource_templates()
-        uris = {str(t.uri_template) for t in templates}
+        uris = {str(t.uriTemplate) for t in templates}
         assert "codegen://runs/{run_id}" in uris
 
     async def test_logs_template_registered(self, client: Client):
         """The codegen://runs/{run_id}/logs template should be discoverable."""
         templates = await client.list_resource_templates()
-        uris = {str(t.uri_template) for t in templates}
+        uris = {str(t.uriTemplate) for t in templates}
         assert "codegen://runs/{run_id}/logs" in uris

@@ -41,7 +41,7 @@ def register_session_tools(mcp: FastMCP) -> None:
         key: str,
         value: str,
         ctx: Context = CurrentContext(),
-        session: dict[str, str] = Depends(get_session_state),  # type: ignore[arg-type]
+        session: dict[str, str] = Depends(get_session_state),
     ) -> str:
         """Store a session preference (key/value pair).
 
@@ -70,7 +70,7 @@ def register_session_tools(mcp: FastMCP) -> None:
     )
     async def codegen_get_session_preferences(
         ctx: Context = CurrentContext(),
-        session: dict[str, str] = Depends(get_session_state),  # type: ignore[arg-type]
+        session: dict[str, str] = Depends(get_session_state),
     ) -> str:
         """Get all session preferences.
 
@@ -94,7 +94,7 @@ def register_session_tools(mcp: FastMCP) -> None:
     )
     async def codegen_clear_session_preferences(
         ctx: Context = CurrentContext(),
-        session: dict[str, str] = Depends(get_session_state),  # type: ignore[arg-type]
+        session: dict[str, str] = Depends(get_session_state),
     ) -> str:
         """Clear all session preferences.
 

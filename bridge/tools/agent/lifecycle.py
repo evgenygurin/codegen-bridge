@@ -17,7 +17,6 @@ from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from fastmcp.server.context import Context
 
-
 from bridge.annotations import CREATES, DESTRUCTIVE
 from bridge.dependencies import CurrentContext, Depends, get_run_service
 from bridge.elicitation import confirm_action, select_choice
@@ -31,7 +30,10 @@ def register_lifecycle_tools(mcp: FastMCP) -> None:
 
     # ── Create ───────────────────────────────────────────
 
-    @mcp.tool(tags={"execution"}, icons=ICON_RUN, task=CREATE_RUN_TASK, timeout=60, annotations=CREATES)
+    @mcp.tool(
+        tags={"execution"}, icons=ICON_RUN, task=CREATE_RUN_TASK,
+        timeout=60, annotations=CREATES,
+    )
     async def codegen_create_run(
         prompt: str,
         repo_id: int | None = None,
@@ -162,7 +164,10 @@ def register_lifecycle_tools(mcp: FastMCP) -> None:
 
     # ── Stop (legacy alias for ban) ──────────────────────
 
-    @mcp.tool(tags={"execution", "dangerous"}, icons=ICON_STOP, timeout=30, annotations=DESTRUCTIVE)
+    @mcp.tool(
+        tags={"execution", "dangerous"}, icons=ICON_STOP,
+        timeout=30, annotations=DESTRUCTIVE,
+    )
     async def codegen_stop_run(
         run_id: int,
         confirmed: bool = False,

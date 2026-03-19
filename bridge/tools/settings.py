@@ -13,7 +13,6 @@ import json
 from fastmcp import FastMCP
 from fastmcp.server.context import Context
 
-
 from bridge.annotations import MUTATES_LOCAL, READ_ONLY_LOCAL
 from bridge.dependencies import CurrentContext
 from bridge.icons import ICON_CONFIG

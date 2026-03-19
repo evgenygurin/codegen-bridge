@@ -12,7 +12,6 @@ from typing import Literal
 from fastmcp import FastMCP
 from fastmcp.server.context import Context
 
-
 from bridge.annotations import CREATES, READ_ONLY, READ_ONLY_LOCAL
 from bridge.dependencies import CurrentContext, Depends, get_execution_service
 from bridge.elicitation import confirm_action

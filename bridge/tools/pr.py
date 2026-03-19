@@ -16,7 +16,6 @@ import json
 from fastmcp import FastMCP
 from fastmcp.server.context import Context
 
-
 from bridge.annotations import DESTRUCTIVE
 from bridge.client import CodegenClient
 from bridge.dependencies import CurrentContext, Depends, get_client
@@ -28,7 +27,10 @@ from bridge.models import PRState
 def register_pr_tools(mcp: FastMCP) -> None:
     """Register all pull-request management tools on the given FastMCP server."""
 
-    @mcp.tool(tags={"pull-requests", "dangerous"}, icons=ICON_PR_EDIT, timeout=30, annotations=DESTRUCTIVE)
+    @mcp.tool(
+        tags={"pull-requests", "dangerous"}, icons=ICON_PR_EDIT,
+        timeout=30, annotations=DESTRUCTIVE,
+    )
     async def codegen_edit_pr(
         repo_id: int,
         pr_id: int,
@@ -67,7 +69,10 @@ def register_pr_tools(mcp: FastMCP) -> None:
             response["error"] = result.error
         return json.dumps(response)
 
-    @mcp.tool(tags={"pull-requests", "dangerous"}, icons=ICON_PR_EDIT, timeout=30, annotations=DESTRUCTIVE)
+    @mcp.tool(
+        tags={"pull-requests", "dangerous"}, icons=ICON_PR_EDIT,
+        timeout=30, annotations=DESTRUCTIVE,
+    )
     async def codegen_edit_pr_simple(
         pr_id: int,
         state: PRState,

@@ -15,7 +15,6 @@ import json
 from fastmcp import FastMCP
 from fastmcp.server.context import Context
 
-
 from bridge.annotations import CREATES, DESTRUCTIVE, READ_ONLY
 from bridge.client import CodegenClient
 from bridge.dependencies import CurrentContext, Depends, get_client
@@ -128,7 +127,10 @@ def register_integration_tools(mcp: FastMCP) -> None:
         await ctx.info("Webhook configuration updated")
         return json.dumps({"status": "configured", "result": result})
 
-    @mcp.tool(tags={"webhooks", "dangerous"}, icons=ICON_WEBHOOK, timeout=30, annotations=DESTRUCTIVE)
+    @mcp.tool(
+        tags={"webhooks", "dangerous"}, icons=ICON_WEBHOOK,
+        timeout=30, annotations=DESTRUCTIVE,
+    )
     async def codegen_delete_webhook_config(
         confirmed: bool = False,
         ctx: Context = CurrentContext(),
@@ -156,7 +158,10 @@ def register_integration_tools(mcp: FastMCP) -> None:
         await ctx.info("Webhook configuration deleted")
         return json.dumps({"status": "deleted", "result": result})
 
-    @mcp.tool(tags={"webhooks", "external-request"}, icons=ICON_WEBHOOK, timeout=30, annotations=CREATES)
+    @mcp.tool(
+        tags={"webhooks", "external-request"}, icons=ICON_WEBHOOK,
+        timeout=30, annotations=CREATES,
+    )
     async def codegen_test_webhook(
         url: str,
         ctx: Context = CurrentContext(),
@@ -175,7 +180,10 @@ def register_integration_tools(mcp: FastMCP) -> None:
 
     # -- Sandbox ------------------------------------------------------
 
-    @mcp.tool(tags={"sandbox", "creates-agent-run"}, icons=ICON_SANDBOX, timeout=60, annotations=CREATES)
+    @mcp.tool(
+        tags={"sandbox", "creates-agent-run"}, icons=ICON_SANDBOX,
+        timeout=60, annotations=CREATES,
+    )
     async def codegen_analyze_sandbox_logs(
         sandbox_id: int,
         ctx: Context = CurrentContext(),

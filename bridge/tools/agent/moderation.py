@@ -12,7 +12,6 @@ import json
 from fastmcp import FastMCP
 from fastmcp.server.context import Context
 
-
 from bridge.annotations import DESTRUCTIVE, MUTATES
 from bridge.dependencies import CurrentContext, Depends, get_run_service
 from bridge.elicitation import confirm_action
@@ -96,7 +95,10 @@ def register_moderation_tools(mcp: FastMCP) -> None:
 
     # ── Remove from PR ────────────────────────────────────
 
-    @mcp.tool(tags={"execution", "dangerous"}, icons=ICON_REMOVE_FROM_PR, timeout=30, annotations=DESTRUCTIVE)
+    @mcp.tool(
+        tags={"execution", "dangerous"}, icons=ICON_REMOVE_FROM_PR,
+        timeout=30, annotations=DESTRUCTIVE,
+    )
     async def codegen_remove_from_pr(
         run_id: int,
         before_card_order_id: str | None = None,
