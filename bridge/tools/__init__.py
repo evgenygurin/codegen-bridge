@@ -20,6 +20,7 @@ focused SOLID submodules:
 """
 
 from bridge.tools.agent import register_agent_tools
+from bridge.tools.analytics import register_analytics_tools
 from bridge.tools.execution import register_execution_tools
 from bridge.tools.integrations import register_integration_tools
 from bridge.tools.pr import register_pr_tools
@@ -29,6 +30,7 @@ from bridge.tools.setup import register_setup_tools
 
 __all__ = [
     "register_agent_tools",
+    "register_analytics_tools",
     "register_execution_tools",
     "register_integration_tools",
     "register_pr_tools",

@@ -49,6 +49,7 @@ from bridge.sampling import SamplingConfig, register_sampling_tools
 from bridge.storage import FileStorage
 from bridge.tools import (
     register_agent_tools,
+    register_analytics_tools,
     register_execution_tools,
     register_integration_tools,
     register_pr_tools,
@@ -171,6 +172,7 @@ register_execution_tools(mcp)
 register_pr_tools(mcp)
 register_setup_tools(mcp)
 register_integration_tools(mcp)
+register_analytics_tools(mcp)
 register_settings_tools(mcp)
 register_session_tools(mcp)
 register_resources(mcp)
