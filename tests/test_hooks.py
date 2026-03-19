@@ -262,8 +262,8 @@ class TestStopHook:
             for handler in group["hooks"]:
                 if handler["type"] == "prompt":
                     prompt = handler["prompt"].lower()
-                    assert "ok" in prompt and "true" in prompt, (
-                        "Stop prompt should instruct LLM to always return ok=true"
+                    assert "approve" in prompt and "decision" in prompt, (
+                        "Stop prompt should instruct LLM to always approve"
                     )
 
     def test_stop_hook_has_timeout(self, hooks_data):

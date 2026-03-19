@@ -34,12 +34,26 @@ def _reset_server_lifespan():
     ``Client`` context-manager exits, preventing subsequent test sessions
     from re-entering the lifespan.  Clearing the flag **before and after**
     each test ensures every test gets a fresh lifespan.
+
+    Also removes the ResponseCachingMiddleware to prevent stale cached
+    tool responses from leaking between tests.
     """
     mcp._lifespan_result_set = False
     mcp._lifespan_result = None
+    # Remove caching middleware to prevent cross-test cache poisoning.
+    # The middleware list is shared across all tests via the module-level mcp
+    # object.  A cached tool response from test A would be served to test B
+    # if the same tool+args pair is called, bypassing respx mocks entirely.
+    original_middleware = list(mcp.middleware)
+    mcp.middleware[:] = [
+        m for m in mcp.middleware
+        if type(m).__name__ != "ResponseCachingMiddleware"
+    ]
     yield
     mcp._lifespan_result_set = False
     mcp._lifespan_result = None
+    # Restore caching middleware after each test.
+    mcp.middleware[:] = original_middleware
 
 
 @pytest.fixture
