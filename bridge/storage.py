@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
 
@@ -65,37 +66,90 @@ class StorageBackend(Protocol):
         """Return all stored keys."""
         ...
 
+    async def health_check(self) -> dict[str, Any]:
+        """Return a health status dict for the storage backend."""
+        ...
+
 
 # ── MemoryStorage ───────────────────────────────────────────
 
 
 class MemoryStorage:
-    """In-memory storage backed by ``key_value.aio.stores.memory.MemoryStore``.
+    """In-memory storage with optional TTL-based expiry.
 
     Supports full key enumeration.  Data is lost on process exit.
+
+    Parameters
+    ----------
+    ttl_seconds:
+        When set, entries expire after this many seconds.  Expired entries
+        are lazily evicted on ``get`` and ``keys`` calls.  ``None`` means
+        entries never expire.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, ttl_seconds: int | None = None) -> None:
+        self._ttl = ttl_seconds
+        # When TTL is enabled we track expiry ourselves.
+        # key -> (value, expire_time)  — expire_time is 0.0 when TTL is None.
+        self._data: dict[str, tuple[dict[str, Any], float]] = {}
         self._store = MemoryStore()
+        self._setup_done = False
 
     async def setup(self) -> None:
         await self._store.setup()
-        logger.debug("MemoryStorage initialised")
+        self._setup_done = True
+        logger.debug("MemoryStorage initialised (ttl=%s)", self._ttl)
 
     async def get(self, key: str) -> dict[str, Any] | None:
+        if self._ttl is not None:
+            entry = self._data.get(key)
+            if entry is None:
+                return None
+            value, expire_at = entry
+            if time.monotonic() >= expire_at:
+                # Expired — evict
+                self._data.pop(key, None)
+                await self._store.delete(key, collection=_COLLECTION)
+                return None
+            return value
+
         result: dict[str, Any] | None = await self._store.get(key, collection=_COLLECTION)
         return result
 
     async def put(self, key: str, value: dict[str, Any]) -> None:
         await self._store.put(key, value, collection=_COLLECTION)
+        if self._ttl is not None:
+            expire_at = time.monotonic() + self._ttl
+            self._data[key] = (value, expire_at)
+        else:
+            self._data[key] = (value, 0.0)
 
     async def delete(self, key: str) -> bool:
+        self._data.pop(key, None)
         result: bool = await self._store.delete(key, collection=_COLLECTION)
         return result
 
     async def keys(self) -> list[str]:
+        if self._ttl is not None:
+            now = time.monotonic()
+            expired = [k for k, (_, exp) in self._data.items() if now >= exp]
+            for k in expired:
+                self._data.pop(k, None)
+                await self._store.delete(k, collection=_COLLECTION)
+            return list(self._data.keys())
+
         result: list[str] = await self._store.keys(collection=_COLLECTION)
         return result
+
+    async def health_check(self) -> dict[str, Any]:
+        """Return health status of the in-memory storage."""
+        key_count = len(self._data) if self._data else 0
+        return {
+            "backend": "memory",
+            "healthy": self._setup_done,
+            "key_count": key_count,
+            "ttl_seconds": self._ttl,
+        }
 
 
 # ── FileStorage ─────────────────────────────────────────────
@@ -148,6 +202,16 @@ class FileStorage:
 
     async def keys(self) -> list[str]:
         return list(self._key_index)
+
+    async def health_check(self) -> dict[str, Any]:
+        """Return health status of the file storage."""
+        dir_exists = self._storage_dir.exists()
+        return {
+            "backend": "file",
+            "healthy": dir_exists,
+            "key_count": len(self._key_index),
+            "storage_dir": str(self._storage_dir),
+        }
 
     # ── Internal ────────────────────────────────────────────
 
