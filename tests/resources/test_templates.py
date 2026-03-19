@@ -196,6 +196,16 @@ class TestExecutionResource:
         respx.get(
             "https://api.codegen.com/v1/organizations/42/agent/rules"
         ).mock(return_value=Response(200, json={}))
+        respx.get(
+            "https://api.codegen.com/v1/organizations/42/repos"
+        ).mock(
+            return_value=Response(
+                200, json={"items": [], "total": 0, "page": 1, "size": 100, "pages": 0}
+            )
+        )
+        respx.get(
+            "https://api.codegen.com/v1/organizations/42/cli/rules"
+        ).mock(return_value=Response(200, json={}))
 
         await client.call_tool(
             "codegen_start_execution",
