@@ -12,12 +12,13 @@ from __future__ import annotations
 
 import json
 
+import httpx
 from fastmcp import FastMCP
 from fastmcp.server.context import Context
 
 from bridge.annotations import CREATES, DESTRUCTIVE, READ_ONLY
 from bridge.client import CodegenClient
-from bridge.dependencies import CurrentContext, Depends, get_client
+from bridge.dependencies import CurrentContext, Depends, get_client, get_org_id
 from bridge.elicitation import confirm_action
 from bridge.icons import (
     ICON_INTEGRATIONS,
@@ -232,3 +233,80 @@ def register_integration_tools(mcp: FastMCP) -> None:
                 "expires_in_minutes": result.expires_in_minutes,
             }
         )
+
+    # -- Integration Health Check ------------------------------------
+
+    @mcp.tool(
+        tags={"integrations"}, icons=ICON_INTEGRATIONS,
+        timeout=30, annotations=READ_ONLY,
+    )
+    async def codegen_check_integration_health(
+        ctx: Context = CurrentContext(),
+        client: CodegenClient = Depends(get_client),  # type: ignore[arg-type]
+        org_id: int = Depends(get_org_id),  # type: ignore[arg-type]
+    ) -> str:
+        """Check health of all configured integrations.
+
+        Fetches the current integration statuses and the webhook
+        configuration, then reports which integrations are healthy
+        (active) and which are unhealthy (inactive or missing).
+        """
+        await ctx.info("Checking integration health")
+
+        integrations_result = await client.get_integrations()
+
+        # Check webhook health separately
+        webhook_healthy = False
+        webhook_detail = "not configured"
+        try:
+            webhook = await client.get_webhook_config()
+            webhook_healthy = bool(webhook.enabled and webhook.url)
+            webhook_detail = (
+                f"url={webhook.url}, enabled={webhook.enabled}"
+                if webhook.url
+                else "not configured"
+            )
+        except httpx.HTTPStatusError as exc:
+            webhook_detail = f"error: {exc}"
+
+        checks: list[dict[str, object]] = []
+        healthy_count = 0
+        unhealthy_count = 0
+
+        for integration in integrations_result.integrations:
+            is_healthy = bool(integration.active)
+            checks.append({
+                "type": integration.integration_type,
+                "healthy": is_healthy,
+                "active": integration.active,
+            })
+            if is_healthy:
+                healthy_count += 1
+            else:
+                unhealthy_count += 1
+
+        # Webhook as a separate check
+        checks.append({
+            "type": "webhook",
+            "healthy": webhook_healthy,
+            "detail": webhook_detail,
+        })
+        if webhook_healthy:
+            healthy_count += 1
+        else:
+            unhealthy_count += 1
+
+        total = healthy_count + unhealthy_count
+        overall = "healthy" if unhealthy_count == 0 else "degraded"
+
+        await ctx.info(
+            f"Integration health: {healthy_count}/{total} healthy ({overall})"
+        )
+
+        return json.dumps({
+            "organization_id": org_id,
+            "overall_status": overall,
+            "healthy": healthy_count,
+            "unhealthy": unhealthy_count,
+            "checks": checks,
+        })

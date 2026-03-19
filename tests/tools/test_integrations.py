@@ -201,3 +201,73 @@ class TestGenerateSlackToken:
         data = json.loads(result.data)
         assert data["token"] == "abc123"
         assert data["expires_in_minutes"] == 10
+
+
+# ── Integration Health Check ────────────────────────────
+
+
+class TestCheckIntegrationHealth:
+    async def test_tool_registered(self, client: Client):
+        tools = await client.list_tools()
+        names = {t.name for t in tools}
+        assert "codegen_check_integration_health" in names
+
+    @respx.mock
+    async def test_reports_healthy(self, client: Client):
+        respx.get("https://api.codegen.com/v1/organizations/42/integrations").mock(
+            return_value=Response(
+                200,
+                json={
+                    "organization_id": 42,
+                    "organization_name": "My Org",
+                    "integrations": [
+                        {"integration_type": "github", "active": True, "installation_id": 1},
+                        {"integration_type": "slack", "active": True, "token_id": 2},
+                    ],
+                    "total_active_integrations": 2,
+                },
+            )
+        )
+        respx.get("https://api.codegen.com/v1/organizations/42/webhooks/agent-run").mock(
+            return_value=Response(
+                200,
+                json={"url": "https://example.com/hook", "enabled": True, "has_secret": True},
+            )
+        )
+
+        result = await client.call_tool("codegen_check_integration_health", {})
+        data = json.loads(result.data)
+        assert data["organization_id"] == 42
+        assert data["overall_status"] == "healthy"
+        assert data["healthy"] == 3  # 2 integrations + webhook
+        assert data["unhealthy"] == 0
+        assert len(data["checks"]) == 3
+
+    @respx.mock
+    async def test_reports_degraded(self, client: Client):
+        respx.get("https://api.codegen.com/v1/organizations/42/integrations").mock(
+            return_value=Response(
+                200,
+                json={
+                    "organization_id": 42,
+                    "organization_name": "My Org",
+                    "integrations": [
+                        {"integration_type": "github", "active": True, "installation_id": 1},
+                        {"integration_type": "slack", "active": False},
+                    ],
+                    "total_active_integrations": 1,
+                },
+            )
+        )
+        respx.get("https://api.codegen.com/v1/organizations/42/webhooks/agent-run").mock(
+            return_value=Response(
+                200,
+                json={"url": "", "enabled": False, "has_secret": False},
+            )
+        )
+
+        result = await client.call_tool("codegen_check_integration_health", {})
+        data = json.loads(result.data)
+        assert data["overall_status"] == "degraded"
+        assert data["healthy"] == 1  # only github
+        assert data["unhealthy"] == 2  # slack + webhook
