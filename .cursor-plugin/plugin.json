@@ -1,0 +1,25 @@
+{
+  "name": "codegen-bridge",
+  "displayName": "Codegen Bridge",
+  "description": "Bridge to Codegen cloud AI agents: delegate implementation, monitor runs, debug failures, and manage PRs",
+  "version": "0.7.0",
+  "author": {
+    "name": "Evgeny"
+  },
+  "homepage": "https://github.com/evgenygurin/codegen-bridge",
+  "repository": "https://github.com/evgenygurin/codegen-bridge",
+  "license": "MIT",
+  "keywords": [
+    "codegen",
+    "mcp",
+    "agents",
+    "delegation",
+    "cloud",
+    "skills",
+    "workflow"
+  ],
+  "skills": "./skills/",
+  "agents": "./agents/",
+  "commands": "./commands/",
+  "hooks": "./hooks/hooks-cursor.json"
+}

@@ -1,6 +1,6 @@
 # Codegen Bridge
 
-Claude Code plugin for delegating implementation plans to [Codegen](https://codegen.com) cloud AI agents.
+AI-agent plugin and skills pack for delegating implementation plans to [Codegen](https://codegen.com) cloud agents.
 
 ## What it does
 
@@ -8,7 +8,7 @@ Claude Code plugin for delegating implementation plans to [Codegen](https://code
 - **4 agent skills** — delegation, execution, monitoring, and PR management
 - **2 Task agents** — codegen-delegator and pr-reviewer
 - **5 slash commands** — `/codegen`, `/cg-status`, `/cg-logs`, `/cg-merge`, `/cg-settings`
-- **Hooks** — PostToolUse auto-formatting and Stop session summaries
+- **Cross-platform packaging** — Claude, Cursor, Codex, Gemini CLI, and OpenCode install adapters
 
 ## Setup
 
@@ -20,11 +20,68 @@ export CODEGEN_API_KEY="your-api-key"
 export CODEGEN_ORG_ID="your-org-id"
 ```
 
-3. Install the plugin in Claude Code:
+## Installation By Platform
+
+### Claude Code
+
+Install local plugin:
 
 ```text
 /install-plugin ~/.claude/plugins/codegen-bridge
 ```
+
+### Cursor
+
+Install plugin from repository:
+
+```text
+/add-plugin https://github.com/evgenygurin/codegen-bridge
+```
+
+Detailed guide: [docs/README.cursor.md](docs/README.cursor.md)
+
+### Codex
+
+Tell Codex:
+
+```text
+Fetch and follow instructions from https://raw.githubusercontent.com/evgenygurin/codegen-bridge/main/.codex/INSTALL.md
+```
+
+Detailed guide: [docs/README.codex.md](docs/README.codex.md)
+
+### Gemini CLI
+
+```bash
+gemini extensions install https://github.com/evgenygurin/codegen-bridge
+```
+
+Update:
+
+```bash
+gemini extensions update codegen-bridge
+```
+
+Detailed guide: [docs/README.gemini.md](docs/README.gemini.md)
+
+### OpenCode
+
+Tell OpenCode:
+
+```text
+Fetch and follow instructions from https://raw.githubusercontent.com/evgenygurin/codegen-bridge/main/.opencode/INSTALL.md
+```
+
+Detailed guide: [docs/README.opencode.md](docs/README.opencode.md)
+
+### Verify Installation
+
+Start a new agent session and ask for delegation, for example:
+- `delegate this task to codegen`
+- `show latest codegen runs`
+- `summarize run <id>`
+
+The assistant should use `codegen_*` tools and `codegen-bridge` skills.
 
 ## Usage with Superpowers
 
@@ -79,12 +136,22 @@ Hooks live in the root `hooks/` directory and run automatically:
 
 ```text
 codegen-bridge/
+├── .codex/
+│   └── INSTALL.md           # Codex bootstrap instructions
 ├── .claude-plugin/
 │   ├── plugin.json          # Plugin metadata (name, version, keywords)
 │   ├── settings.json        # Runtime settings (model, polling)
 │   └── marketplace.json     # Marketplace listing
-├── hooks/                   # Claude Code hooks (PostToolUse, Stop)
+├── .cursor-plugin/
+│   └── plugin.json          # Cursor plugin manifest
+├── .opencode/
+│   └── INSTALL.md           # OpenCode bootstrap instructions
+├── GEMINI.md                # Gemini context entrypoint
+├── gemini-extension.json    # Gemini extension manifest
+├── hooks/                   # Claude/Cursor hooks
 │   ├── hooks.json
+│   ├── hooks-cursor.json
+│   ├── session-start
 │   └── scripts/
 ├── skills/                  # Agent skills (SKILL.md files)
 ├── agents/                  # Task agents (markdown definitions)

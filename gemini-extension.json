@@ -1,0 +1,6 @@
+{
+  "name": "codegen-bridge",
+  "description": "Bridge to Codegen cloud AI agents with delegation, monitoring, and PR workflows",
+  "version": "0.7.0",
+  "contextFileName": "GEMINI.md"
+}

@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# Cursor SessionStart hook.
+# Reuses the existing Claude session-start logic and adapts output
+# to Cursor's additional_context field.
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PLUGIN_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+SOURCE_SCRIPT="${PLUGIN_ROOT}/hooks/scripts/session-start.sh"
+
+if [ ! -f "$SOURCE_SCRIPT" ]; then
+  printf '{"additional_context":"Codegen Bridge session-start script not found."}\n'
+  exit 0
+fi
+
+OUTPUT="$("$SOURCE_SCRIPT" 2>/dev/null || true)"
+
+printf "%s" "$OUTPUT" | python3 -c '
+import json
+import sys
+
+raw = sys.stdin.read().strip()
+context = raw
+
+try:
+    payload = json.loads(raw)
+    if isinstance(payload, dict):
+        context = (
+            payload.get("additionalContext")
+            or payload.get("hookSpecificOutput", {}).get("additionalContext")
+            or ""
+        )
+except Exception:
+    # Fall back to raw output if it is not valid JSON.
+    pass
+
+print(json.dumps({"additional_context": context}))
+'
