@@ -42,7 +42,7 @@ def register_workflow_tools(mcp: FastMCP) -> None:
         poll_interval: float = 10.0,
         confirmed: bool = False,
         ctx: Context = CurrentContext(),
-        svc: RunService = Depends(get_run_service), # type: ignore[arg-type]
+        svc: RunService = Depends(get_run_service),  # type: ignore[arg-type]
     ) -> str:
         """Create an agent run and poll until completion.
 
@@ -81,8 +81,7 @@ def register_workflow_tools(mcp: FastMCP) -> None:
             available = ["claude-3-5-sonnet", "claude-3-5-haiku", "gpt-4o", "o3"]
             selected = await select_choice(
                 ctx,
-                "Choose a model for this agent run "
-                "(or decline to use the organization default):",
+                "Choose a model for this agent run (or decline to use the organization default):",
                 available,
             )
             if selected is not None:
@@ -95,9 +94,7 @@ def register_workflow_tools(mcp: FastMCP) -> None:
                 f"with model={model or 'org default'}?",
             )
             if not ok:
-                return json.dumps(
-                    {"action": "cancelled", "reason": "User declined"}
-                )
+                return json.dumps({"action": "cancelled", "reason": "User declined"})
 
         # ── Step 2: Create run ────────────────────────────────
         await report(ctx, 1, max_polls + 2, "Creating agent run")
@@ -134,9 +131,11 @@ def register_workflow_tools(mcp: FastMCP) -> None:
                 return json.dumps(data)
 
         # ── Timeout ───────────────────────────────────────────
-        return json.dumps({
-            "timeout": True,
-            "run_id": run_id,
-            "last_status": normalize_status(last_data.get("status")),
-            "polls": max_polls,
-        })
+        return json.dumps(
+            {
+                "timeout": True,
+                "run_id": run_id,
+                "last_status": normalize_status(last_data.get("status")),
+                "polls": max_polls,
+            }
+        )

@@ -302,9 +302,7 @@ class TestRequestJson:
         )
 
         async with CodegenClient(api_key="test", org_id=42, retry=NO_RETRY) as client:
-            result = await client._request_json(
-                "POST", "/test-path", json_body={"name": "test"}
-            )
+            result = await client._request_json("POST", "/test-path", json_body={"name": "test"})
 
         assert result == {"created": True}
         assert b"name" in route.calls[0].request.content

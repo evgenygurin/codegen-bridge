@@ -74,9 +74,7 @@ class TestMonitorRunHappyPath:
     @respx.mock
     async def test_completes_after_polling(self, client: Client):
         """Initial fetch (running) → poll (completed) → return."""
-        get_route = respx.get(
-            "https://api.codegen.com/v1/organizations/42/agent/run/600"
-        )
+        get_route = respx.get("https://api.codegen.com/v1/organizations/42/agent/run/600")
         get_route.side_effect = [
             # Initial fetch
             Response(
@@ -261,15 +259,27 @@ class TestMonitorTimeout:
 class TestTerminalStatusesInLoop:
     @respx.mock
     async def test_failed_stops_loop(self, client: Client):
-        get_route = respx.get(
-            "https://api.codegen.com/v1/organizations/42/agent/run/630"
-        )
+        get_route = respx.get("https://api.codegen.com/v1/organizations/42/agent/run/630")
         get_route.side_effect = [
-            Response(200, json={"id": 630, "organization_id": 42, "status": "running",
-                                "web_url": "https://codegen.com/runs/630"}),
-            Response(200, json={"id": 630, "organization_id": 42, "status": "failed",
-                                "web_url": "https://codegen.com/runs/630",
-                                "result": "Crash"}),
+            Response(
+                200,
+                json={
+                    "id": 630,
+                    "organization_id": 42,
+                    "status": "running",
+                    "web_url": "https://codegen.com/runs/630",
+                },
+            ),
+            Response(
+                200,
+                json={
+                    "id": 630,
+                    "organization_id": 42,
+                    "status": "failed",
+                    "web_url": "https://codegen.com/runs/630",
+                    "result": "Crash",
+                },
+            ),
         ]
 
         result = await client.call_tool(
@@ -283,14 +293,26 @@ class TestTerminalStatusesInLoop:
 
     @respx.mock
     async def test_error_stops_loop(self, client: Client):
-        get_route = respx.get(
-            "https://api.codegen.com/v1/organizations/42/agent/run/631"
-        )
+        get_route = respx.get("https://api.codegen.com/v1/organizations/42/agent/run/631")
         get_route.side_effect = [
-            Response(200, json={"id": 631, "organization_id": 42, "status": "running",
-                                "web_url": "https://codegen.com/runs/631"}),
-            Response(200, json={"id": 631, "organization_id": 42, "status": "error",
-                                "web_url": "https://codegen.com/runs/631"}),
+            Response(
+                200,
+                json={
+                    "id": 631,
+                    "organization_id": 42,
+                    "status": "running",
+                    "web_url": "https://codegen.com/runs/631",
+                },
+            ),
+            Response(
+                200,
+                json={
+                    "id": 631,
+                    "organization_id": 42,
+                    "status": "error",
+                    "web_url": "https://codegen.com/runs/631",
+                },
+            ),
         ]
 
         result = await client.call_tool(
@@ -310,16 +332,35 @@ class TestPureRead:
     @respx.mock
     async def test_only_get_requests(self, client: Client):
         """Monitor should only use GET — no POST/PUT mutations."""
-        get_route = respx.get(
-            "https://api.codegen.com/v1/organizations/42/agent/run/640"
-        )
+        get_route = respx.get("https://api.codegen.com/v1/organizations/42/agent/run/640")
         get_route.side_effect = [
-            Response(200, json={"id": 640, "organization_id": 42, "status": "running",
-                                "web_url": "https://codegen.com/runs/640"}),
-            Response(200, json={"id": 640, "organization_id": 42, "status": "running",
-                                "web_url": "https://codegen.com/runs/640"}),
-            Response(200, json={"id": 640, "organization_id": 42, "status": "completed",
-                                "web_url": "https://codegen.com/runs/640"}),
+            Response(
+                200,
+                json={
+                    "id": 640,
+                    "organization_id": 42,
+                    "status": "running",
+                    "web_url": "https://codegen.com/runs/640",
+                },
+            ),
+            Response(
+                200,
+                json={
+                    "id": 640,
+                    "organization_id": 42,
+                    "status": "running",
+                    "web_url": "https://codegen.com/runs/640",
+                },
+            ),
+            Response(
+                200,
+                json={
+                    "id": 640,
+                    "organization_id": 42,
+                    "status": "completed",
+                    "web_url": "https://codegen.com/runs/640",
+                },
+            ),
         ]
 
         await client.call_tool(
@@ -339,8 +380,10 @@ class TestMonitorTaskConfig:
 
     def test_monitor_task_is_optional(self):
         from bridge.tools.agent._progress import MONITOR_TASK
+
         assert MONITOR_TASK.mode == "optional"
 
     def test_monitor_task_supports_tasks(self):
         from bridge.tools.agent._progress import MONITOR_TASK
+
         assert MONITOR_TASK.supports_tasks() is True

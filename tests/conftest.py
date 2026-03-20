@@ -46,8 +46,7 @@ def _reset_server_lifespan():
     # if the same tool+args pair is called, bypassing respx mocks entirely.
     original_middleware = list(mcp.middleware)
     mcp.middleware[:] = [
-        m for m in mcp.middleware
-        if type(m).__name__ != "ResponseCachingMiddleware"
+        m for m in mcp.middleware if type(m).__name__ != "ResponseCachingMiddleware"
     ]
     yield
     mcp._lifespan_result_set = False

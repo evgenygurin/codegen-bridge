@@ -106,9 +106,7 @@ class TestRunLogsResource:
 
     @respx.mock
     async def test_returns_log_data(self, client: Client):
-        respx.get(
-            "https://api.codegen.com/v1/alpha/organizations/42/agent/run/100/logs"
-        ).mock(
+        respx.get("https://api.codegen.com/v1/alpha/organizations/42/agent/run/100/logs").mock(
             return_value=Response(
                 200,
                 json={
@@ -143,19 +141,14 @@ class TestRunLogsResource:
 
     @respx.mock
     async def test_logs_have_pagination(self, client: Client):
-        respx.get(
-            "https://api.codegen.com/v1/alpha/organizations/42/agent/run/200/logs"
-        ).mock(
+        respx.get("https://api.codegen.com/v1/alpha/organizations/42/agent/run/200/logs").mock(
             return_value=Response(
                 200,
                 json={
                     "id": 200,
                     "status": "running",
                     "total_logs": 50,
-                    "logs": [
-                        {"agent_run_id": 200, "thought": f"Step {i}"}
-                        for i in range(20)
-                    ],
+                    "logs": [{"agent_run_id": 200, "thought": f"Step {i}"} for i in range(20)],
                 },
             )
         )
@@ -179,9 +172,7 @@ class TestExecutionResource:
         assert "codegen://execution/{execution_id}" in uris
 
     async def test_returns_not_found_for_missing(self, client: Client):
-        result = await client.read_resource(
-            "codegen://execution/nonexistent-id"
-        )
+        result = await client.read_resource("codegen://execution/nonexistent-id")
         data = json.loads(result[0].text)
         assert data["status"] == "not_found"
         assert data["execution_id"] == "nonexistent-id"
@@ -190,22 +181,20 @@ class TestExecutionResource:
     async def test_returns_execution_context(self, client: Client):
         """When an execution exists, its full context should be returned."""
         # Create an execution context first via the tool
-        respx.post(
-            "https://api.codegen.com/v1/organizations/42/agent/rules"
-        ).mock(return_value=Response(200, json={}))
-        respx.get(
-            "https://api.codegen.com/v1/organizations/42/agent/rules"
-        ).mock(return_value=Response(200, json={}))
-        respx.get(
-            "https://api.codegen.com/v1/organizations/42/repos"
-        ).mock(
+        respx.post("https://api.codegen.com/v1/organizations/42/agent/rules").mock(
+            return_value=Response(200, json={})
+        )
+        respx.get("https://api.codegen.com/v1/organizations/42/agent/rules").mock(
+            return_value=Response(200, json={})
+        )
+        respx.get("https://api.codegen.com/v1/organizations/42/repos").mock(
             return_value=Response(
                 200, json={"items": [], "total": 0, "page": 1, "size": 100, "pages": 0}
             )
         )
-        respx.get(
-            "https://api.codegen.com/v1/organizations/42/cli/rules"
-        ).mock(return_value=Response(200, json={}))
+        respx.get("https://api.codegen.com/v1/organizations/42/cli/rules").mock(
+            return_value=Response(200, json={})
+        )
 
         await client.call_tool(
             "codegen_start_execution",

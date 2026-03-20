@@ -34,7 +34,8 @@ def register_execution_tools(mcp: FastMCP) -> None:
         repo_structure: str | None = None,
         confirmed: bool = False,
         ctx: Context = CurrentContext(),
-        svc: ExecutionService = Depends(get_execution_service),    ) -> str: # type: ignore[arg-type]
+        svc: ExecutionService = Depends(get_execution_service),
+    ) -> str:  # type: ignore[arg-type]
         """Initialize an execution context, load agent rules and integrations.
 
         Call this at the start of a plan or ad-hoc task to set up full context
@@ -93,7 +94,8 @@ def register_execution_tools(mcp: FastMCP) -> None:
     async def codegen_get_execution_context(
         execution_id: str | None = None,
         ctx: Context = CurrentContext(),
-        svc: ExecutionService = Depends(get_execution_service),    ) -> str: # type: ignore[arg-type]
+        svc: ExecutionService = Depends(get_execution_service),
+    ) -> str:  # type: ignore[arg-type]
         """Get full execution context — active or by ID.
 
         Returns the complete execution state including tasks, rules, and metadata.
@@ -113,7 +115,8 @@ def register_execution_tools(mcp: FastMCP) -> None:
     @mcp.tool(tags={"context"}, icons=ICON_RULES, timeout=30, annotations=READ_ONLY)
     async def codegen_get_agent_rules(
         ctx: Context = CurrentContext(),
-        svc: ExecutionService = Depends(get_execution_service),    ) -> str: # type: ignore[arg-type]
+        svc: ExecutionService = Depends(get_execution_service),
+    ) -> str:  # type: ignore[arg-type]
         """Fetch organization agent rules from the Codegen API.
 
         Returns organization-level rules and user custom prompts that should
@@ -124,11 +127,13 @@ def register_execution_tools(mcp: FastMCP) -> None:
             rules = await svc.get_agent_rules()
         except ServerError as exc:
             await ctx.warning(f"Agent rules API returned server error: {exc.status_code}")
-            return json.dumps({
-                "error": "server_error",
-                "status_code": exc.status_code,
-                "detail": exc.detail or "The Codegen API returned an internal error",
-                "hint": "This is a backend issue — retry later or check API status",
-            })
+            return json.dumps(
+                {
+                    "error": "server_error",
+                    "status_code": exc.status_code,
+                    "detail": exc.detail or "The Codegen API returned an internal error",
+                    "hint": "This is a backend issue — retry later or check API status",
+                }
+            )
         await ctx.info("Agent rules fetched successfully")
         return json.dumps(rules)

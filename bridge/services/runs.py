@@ -139,9 +139,7 @@ class RunService:
     ) -> dict[str, Any]:
         """Fetch step-by-step agent execution logs with pagination."""
         offset = cursor_to_offset(cursor)
-        result = await self._client.get_logs(
-            run_id, skip=offset, limit=limit, reverse=reverse
-        )
+        result = await self._client.get_logs(run_id, skip=offset, limit=limit, reverse=reverse)
         return {
             "run_id": result.id,
             "status": result.status,
@@ -154,9 +152,7 @@ class RunService:
                         "thought": log.thought,
                         "tool_name": log.tool_name,
                         "tool_input": log.tool_input,
-                        "tool_output": (
-                            str(log.tool_output)[:500] if log.tool_output else None
-                        ),
+                        "tool_output": (str(log.tool_output)[:500] if log.tool_output else None),
                         "message_type": log.message_type,
                         "created_at": log.created_at,
                     }.items()
@@ -261,9 +257,7 @@ class RunService:
         images: list[str] | None = None,
     ) -> dict[str, Any]:
         """Resume a paused agent run with new instructions."""
-        run = await self._client.resume_run(
-            run_id, prompt, model=model, images=images
-        )
+        run = await self._client.resume_run(run_id, prompt, model=model, images=images)
         return {"id": run.id, "status": run.status, "web_url": run.web_url}
 
     async def stop_run(self, run_id: int) -> dict[str, Any]:
@@ -358,9 +352,7 @@ class RunService:
 
         exec_ctx = await self._registry.get(execution_id)
         if exec_ctx is None:
-            result["report_skipped"] = (
-                f"Execution context '{execution_id}' not found"
-            )
+            result["report_skipped"] = f"Execution context '{execution_id}' not found"
             return result
 
         idx = task_index if task_index is not None else exec_ctx.current_task_index

@@ -362,7 +362,8 @@ class CodegenClient:
             body["metadata"] = metadata
 
         resp = await self._request_json(
-            "POST", f"/organizations/{self.org_id}/agent/run",
+            "POST",
+            f"/organizations/{self.org_id}/agent/run",
             json_body=body,
         )
         return AgentRun.model_validate(resp)
@@ -370,7 +371,8 @@ class CodegenClient:
     async def get_run(self, run_id: int) -> AgentRun:
         """Get agent run by ID."""
         resp = await self._request_json(
-            "GET", f"/organizations/{self.org_id}/agent/run/{run_id}",
+            "GET",
+            f"/organizations/{self.org_id}/agent/run/{run_id}",
         )
         return AgentRun.model_validate(resp)
 
@@ -390,7 +392,8 @@ class CodegenClient:
             params["user_id"] = user_id
 
         resp = await self._request_json(
-            "GET", f"/organizations/{self.org_id}/agent/runs",
+            "GET",
+            f"/organizations/{self.org_id}/agent/runs",
             params=params,
         )
         return Page[AgentRun].model_validate(resp)
@@ -411,7 +414,8 @@ class CodegenClient:
             body["images"] = images
 
         resp = await self._request_json(
-            "POST", f"/organizations/{self.org_id}/agent/run/resume",
+            "POST",
+            f"/organizations/{self.org_id}/agent/run/resume",
             json_body=body,
         )
         return AgentRun.model_validate(resp)
@@ -459,7 +463,8 @@ class CodegenClient:
             body["after_card_order_id"] = after_card_order_id
 
         resp = await self._request_json(
-            "POST", f"/organizations/{self.org_id}/agent/run/ban",
+            "POST",
+            f"/organizations/{self.org_id}/agent/run/ban",
             json_body=body,
         )
         return BanActionResponse.model_validate(resp)
@@ -483,7 +488,8 @@ class CodegenClient:
             body["after_card_order_id"] = after_card_order_id
 
         resp = await self._request_json(
-            "POST", f"/organizations/{self.org_id}/agent/run/unban",
+            "POST",
+            f"/organizations/{self.org_id}/agent/run/unban",
             json_body=body,
         )
         return BanActionResponse.model_validate(resp)
@@ -518,7 +524,8 @@ class CodegenClient:
         """Stop/ban an agent run (legacy alias)."""
         body: dict[str, Any] = {"agent_run_id": run_id}
         resp = await self._request_json(
-            "POST", f"/organizations/{self.org_id}/agent/run/ban",
+            "POST",
+            f"/organizations/{self.org_id}/agent/run/ban",
             json_body=body,
         )
         return StopRunResponse.model_validate(resp)
@@ -539,7 +546,8 @@ class CodegenClient:
         """List users in the organization."""
         params: dict[str, Any] = {"skip": skip, "limit": limit}
         resp = await self._request_json(
-            "GET", f"/organizations/{self.org_id}/users",
+            "GET",
+            f"/organizations/{self.org_id}/users",
             params=params,
         )
         return Page[User].model_validate(resp)
@@ -582,7 +590,8 @@ class CodegenClient:
         """List repositories in the organization."""
         params: dict[str, Any] = {"skip": skip, "limit": limit}
         resp = await self._request_json(
-            "GET", f"/organizations/{self.org_id}/repos",
+            "GET",
+            f"/organizations/{self.org_id}/repos",
             params=params,
         )
         return Page[Repository].model_validate(resp)
@@ -644,14 +653,16 @@ class CodegenClient:
         if secret is not None:
             body["secret"] = secret
         return await self._request_json(
-            "POST", f"/organizations/{self.org_id}/webhooks/agent-run",
+            "POST",
+            f"/organizations/{self.org_id}/webhooks/agent-run",
             json_body=body,
         )
 
     async def delete_webhook_config(self) -> dict[str, Any]:
         """Delete agent-run webhook configuration."""
         return await self._request_json(
-            "DELETE", f"/organizations/{self.org_id}/webhooks/agent-run",
+            "DELETE",
+            f"/organizations/{self.org_id}/webhooks/agent-run",
         )
 
     async def test_webhook(self, url: str) -> dict[str, Any]:
