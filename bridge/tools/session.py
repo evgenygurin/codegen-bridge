@@ -93,17 +93,21 @@ def register_session_tools(mcp: FastMCP) -> None:
         ),
     )
     async def codegen_clear_session_preferences(
+        confirmed: bool = False,
         ctx: Context = CurrentContext(),
         session: dict[str, str] = Depends(get_session_state),
     ) -> str:
         """Clear all session preferences.
 
         Removes all key/value pairs stored in the current session.
+
+        Args:
+            confirmed: Skip interactive confirmation (for programmatic/automated use).
         """
         count = len(session)
-        if count > 0:
-            confirmed = await confirm_action(ctx, f"Clear all {count} session preferences?")
-            if not confirmed:
+        if count > 0 and not confirmed:
+            user_ok = await confirm_action(ctx, f"Clear all {count} session preferences?")
+            if not user_ok:
                 return json.dumps({"cancelled": True, "reason": "User declined"})
         session.clear()
         await ctx.info(f"Cleared {count} session preferences")

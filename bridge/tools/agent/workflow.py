@@ -20,10 +20,8 @@ from bridge.dependencies import CurrentContext, Depends, get_run_service
 from bridge.elicitation import confirm_action, select_choice
 from bridge.icons import ICON_MONITOR
 from bridge.services.runs import RunService
+from bridge.status import is_terminal, normalize_status
 from bridge.tools.agent._progress import MONITOR_TASK, report
-
-# Terminal statuses that end the polling loop
-_TERMINAL = frozenset({"completed", "failed", "error"})
 
 
 def register_workflow_tools(mcp: FastMCP) -> None:
@@ -122,7 +120,7 @@ def register_workflow_tools(mcp: FastMCP) -> None:
 
             data = await svc.get_run(run_id)
             last_data = data
-            status = data.get("status", "unknown")
+            status = normalize_status(data.get("status"))
 
             await report(
                 ctx,
@@ -131,7 +129,7 @@ def register_workflow_tools(mcp: FastMCP) -> None:
                 f"Poll {i + 1}/{max_polls}: {status}",
             )
 
-            if status in _TERMINAL:
+            if is_terminal(status):
                 data["polls"] = i + 1
                 return json.dumps(data)
 
@@ -139,6 +137,6 @@ def register_workflow_tools(mcp: FastMCP) -> None:
         return json.dumps({
             "timeout": True,
             "run_id": run_id,
-            "last_status": last_data.get("status", "unknown"),
+            "last_status": normalize_status(last_data.get("status")),
             "polls": max_polls,
         })

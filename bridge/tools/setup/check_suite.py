@@ -14,7 +14,7 @@ from fastmcp.exceptions import ToolError
 from fastmcp.server.context import Context
 
 from bridge.annotations import MUTATES, READ_ONLY
-from bridge.client import CodegenClient
+from bridge.client import CodegenClient, ServerError
 from bridge.dependencies import CurrentContext, Depends, get_client
 from bridge.icons import ICON_CHECK_SUITE
 
@@ -36,7 +36,22 @@ def register_check_suite_tools(mcp: FastMCP) -> None:
             repo_id: Repository ID to get check suite settings for.
         """
         await ctx.info(f"Fetching check suite settings: repo_id={repo_id}")
-        settings = await client.get_check_suite_settings(repo_id)
+        try:
+            settings = await client.get_check_suite_settings(repo_id)
+        except ServerError as exc:
+            await ctx.warning(
+                f"Check suite settings API returned server error: {exc.status_code}"
+            )
+            return json.dumps({
+                "error": "server_error",
+                "status_code": exc.status_code,
+                "repo_id": repo_id,
+                "detail": exc.detail or "The Codegen API returned an internal error",
+                "hint": (
+                    "This endpoint may not be available for this repository. "
+                    "Verify repo_id is correct and check-suite feature is enabled."
+                ),
+            })
         await ctx.info(
             f"Check suite settings retrieved: "
             f"{len(settings.ignored_checks)} ignored checks, "
@@ -92,6 +107,21 @@ def register_check_suite_tools(mcp: FastMCP) -> None:
             raise ToolError("At least one setting field must be provided")
 
         await ctx.info(f"Updating check suite settings: repo_id={repo_id}, fields={list(body)}")
-        result = await client.update_check_suite_settings(repo_id, body)
+        try:
+            result = await client.update_check_suite_settings(repo_id, body)
+        except ServerError as exc:
+            await ctx.warning(
+                f"Check suite update API returned server error: {exc.status_code}"
+            )
+            return json.dumps({
+                "error": "server_error",
+                "status_code": exc.status_code,
+                "repo_id": repo_id,
+                "detail": exc.detail or "The Codegen API returned an internal error",
+                "hint": (
+                    "This endpoint may not be available for this repository. "
+                    "Verify repo_id is correct and check-suite feature is enabled."
+                ),
+            })
         await ctx.info("Check suite settings updated")
         return json.dumps({"status": "updated", "result": result})

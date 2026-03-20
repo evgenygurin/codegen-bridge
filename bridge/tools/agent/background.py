@@ -21,10 +21,8 @@ from bridge.annotations import READ_ONLY
 from bridge.dependencies import CurrentContext, Depends, get_run_service
 from bridge.icons import ICON_MONITOR
 from bridge.services.runs import RunService
+from bridge.status import is_terminal, normalize_status
 from bridge.tools.agent._progress import MONITOR_TASK, report
-
-# Terminal statuses that end the polling loop
-_TERMINAL = frozenset({"completed", "failed", "error"})
 
 
 def register_background_tools(mcp: FastMCP) -> None:
@@ -63,10 +61,10 @@ def register_background_tools(mcp: FastMCP) -> None:
         await report(ctx, 0, max_polls, f"Fetching initial status for run {run_id}")
 
         data = await svc.get_run(run_id)
-        status = data.get("status", "unknown")
+        status = normalize_status(data.get("status"))
 
         # Already terminal — return immediately
-        if status in _TERMINAL:
+        if is_terminal(status):
             data["polls"] = 0
             return json.dumps(data)
 
@@ -77,7 +75,7 @@ def register_background_tools(mcp: FastMCP) -> None:
             await asyncio.sleep(delay)
 
             data = await svc.get_run(run_id)
-            status = data.get("status", "unknown")
+            status = normalize_status(data.get("status"))
 
             await report(
                 ctx,
@@ -86,7 +84,7 @@ def register_background_tools(mcp: FastMCP) -> None:
                 f"Poll {i + 1}/{max_polls}: run {run_id} — {status}",
             )
 
-            if status in _TERMINAL:
+            if is_terminal(status):
                 data["polls"] = i + 1
                 return json.dumps(data)
 
@@ -94,6 +92,6 @@ def register_background_tools(mcp: FastMCP) -> None:
         return json.dumps({
             "timeout": True,
             "run_id": run_id,
-            "last_status": data.get("status", "unknown"),
+            "last_status": normalize_status(data.get("status")),
             "polls": max_polls,
         })

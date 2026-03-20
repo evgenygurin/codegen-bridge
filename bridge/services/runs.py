@@ -26,6 +26,7 @@ from bridge.helpers.pagination import (
 from bridge.helpers.repo_detection import RepoCache, detect_repo_id
 from bridge.log_parser import parse_logs
 from bridge.prompt_builder import build_task_prompt
+from bridge.status import normalize_status
 
 logger = logging.getLogger("bridge.services.runs")
 
@@ -348,9 +349,10 @@ class RunService:
         """
         run = await self._client.get_run(run_id)
         result, pr_list = build_run_result(run)
+        status = normalize_status(run.status)
 
         # Only report on terminal statuses
-        if run.status not in ("completed", "failed"):
+        if status not in ("completed", "failed", "error"):
             result["report_skipped"] = f"Run status is '{run.status}', not terminal"
             return result
 
@@ -403,7 +405,7 @@ class RunService:
         )
 
         task_status: Literal["completed", "failed"] = (
-            "completed" if run.status == "completed" else "failed"
+            "completed" if status == "completed" else "failed"
         )
         await self._registry.update_task(
             execution_id=execution_id,
@@ -413,7 +415,7 @@ class RunService:
         )
 
         # Advance current_task_index if completed
-        if run.status == "completed":
+        if status == "completed":
             exec_ctx.current_task_index = idx + 1
             await self._registry._save(exec_ctx)
 

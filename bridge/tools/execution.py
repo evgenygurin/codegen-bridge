@@ -13,6 +13,7 @@ from fastmcp import FastMCP
 from fastmcp.server.context import Context
 
 from bridge.annotations import CREATES, READ_ONLY, READ_ONLY_LOCAL
+from bridge.client import ServerError
 from bridge.dependencies import CurrentContext, Depends, get_execution_service
 from bridge.elicitation import confirm_action
 from bridge.icons import ICON_CONTEXT, ICON_EXECUTION, ICON_RULES
@@ -119,6 +120,15 @@ def register_execution_tools(mcp: FastMCP) -> None:
         guide agent behavior.
         """
         await ctx.info("Fetching agent rules")
-        rules = await svc.get_agent_rules()
+        try:
+            rules = await svc.get_agent_rules()
+        except ServerError as exc:
+            await ctx.warning(f"Agent rules API returned server error: {exc.status_code}")
+            return json.dumps({
+                "error": "server_error",
+                "status_code": exc.status_code,
+                "detail": exc.detail or "The Codegen API returned an internal error",
+                "hint": "This is a backend issue — retry later or check API status",
+            })
         await ctx.info("Agent rules fetched successfully")
         return json.dumps(rules)

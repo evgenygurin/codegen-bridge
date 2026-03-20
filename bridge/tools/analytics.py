@@ -16,6 +16,7 @@ from bridge.annotations import READ_ONLY
 from bridge.client import CodegenClient
 from bridge.dependencies import CurrentContext, Depends, get_client, get_org_id
 from bridge.icons import ICON_DASHBOARD
+from bridge.status import normalize_status
 
 
 def register_analytics_tools(mcp: FastMCP) -> None:
@@ -52,10 +53,10 @@ def register_analytics_tools(mcp: FastMCP) -> None:
 
         status_counts: Counter[str] = Counter()
         for run in runs:
-            status_counts[run.status or "unknown"] += 1
+            status_counts[normalize_status(run.status)] += 1
 
         completed = status_counts.get("completed", 0)
-        failed = status_counts.get("failed", 0)
+        failed = status_counts.get("failed", 0) + status_counts.get("error", 0)
         terminal = completed + failed
         success_rate = round(completed / terminal, 4) if terminal > 0 else 0.0
 
