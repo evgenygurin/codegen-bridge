@@ -1,6 +1,6 @@
 ---
 name: run-analytics
-description: Analyze Codegen agent run performance using codegen_get_run_analytics. Interpret success rates, duration metrics, token usage, and trends. Best used after batch runs or for periodic performance review.
+description: Use when analyzing Codegen agent run performance — interpret success rates, duration metrics, token usage, and trends via codegen_get_run_analytics. Best used after batch runs or for periodic performance review.
 user-invocable: true
 ---
 

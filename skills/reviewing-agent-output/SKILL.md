@@ -1,6 +1,6 @@
 ---
 name: reviewing-agent-output
-description: Two-stage review process for code and PRs created by Codegen agents. Stage 1 checks spec compliance (did the agent do what was asked?). Stage 2 checks code quality (is the code good?). Activates after agent runs complete.
+description: Use when reviewing code and PRs created by Codegen agents — two-stage review process. Stage 1 checks spec compliance (did the agent do what was asked?). Stage 2 checks code quality (is the code good?). Triggers after agent runs complete.
 user-invocable: true
 ---
 

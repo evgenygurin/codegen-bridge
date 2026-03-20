@@ -1,6 +1,6 @@
 ---
 name: debugging-failed-runs
-description: Systematic 4-phase debugging for failed, stuck, or misbehaving Codegen agent runs. Activates when agent runs fail, timeout, or produce unexpected results. Analogous to superpowers systematic-debugging but for cloud agents.
+description: Use when debugging failed, stuck, or misbehaving Codegen agent runs — systematic 4-phase approach. Triggers on agent run failures, timeouts, or unexpected results. Analogous to superpowers systematic-debugging but for cloud agents.
 user-invocable: true
 ---
 

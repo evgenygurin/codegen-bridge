@@ -1,6 +1,6 @@
 ---
 name: bulk-delegation
-description: Batch-delegate multiple independent tasks to Codegen cloud agents in a single call. Uses codegen_bulk_create_runs for parallel execution. Best for plans where tasks have no inter-dependencies.
+description: Use when batch-delegating multiple independent tasks to Codegen cloud agents in a single call. Uses codegen_bulk_create_runs for parallel execution. Best for plans where tasks have no inter-dependencies.
 user-invocable: true
 ---
 
