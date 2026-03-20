@@ -15,7 +15,7 @@ import json
 from fastmcp import FastMCP
 from fastmcp.server.context import Context
 
-from bridge.client import CodegenClient
+from bridge.client import CodegenAPIError, CodegenClient
 from bridge.dependencies import CurrentContext, Depends, get_client
 from bridge.icons import ICON_MODEL
 
@@ -32,5 +32,8 @@ def register_dynamic_resources(mcp: FastMCP) -> None:
 
         URI: ``codegen://models``
         """
-        models_resp = await client.list_models()
-        return json.dumps(models_resp.model_dump(mode="json"), indent=2)
+        try:
+            models_resp = await client.list_models()
+            return json.dumps(models_resp.model_dump(mode="json"), indent=2)
+        except CodegenAPIError as e:
+            return json.dumps({"error": str(e), "hint": "Check CODEGEN_API_KEY"})
