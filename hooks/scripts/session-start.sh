@@ -35,10 +35,11 @@ else
   CONTEXT_PREFIX="Codegen Bridge plugin active. Use its skills for delegating tasks to cloud agents, monitoring runs, and managing PRs."
 fi
 
-# JSON-escape the content
-ESCAPED_CONTENT=$(printf '%s' "$SKILL_CONTENT" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')
-
-# Output JSON with additionalContext
-cat <<ENDJSON
-{"additionalContext": "${CONTEXT_PREFIX}\n\n${ESCAPED_CONTENT:1:-1}"}
-ENDJSON
+# Build JSON output safely — escape both prefix and content via python3
+python3 -c '
+import json, sys
+prefix = sys.argv[1]
+content = sys.stdin.read()
+combined = prefix + "\n\n" + content
+print(json.dumps({"additionalContext": combined}))
+' "$CONTEXT_PREFIX" <<< "$SKILL_CONTENT"

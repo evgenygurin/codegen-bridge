@@ -6,7 +6,6 @@ import pytest
 
 from bridge.status import TERMINAL_STATUSES, is_terminal, normalize_status
 
-
 # ── normalize_status ────────────────────────────────────────────
 
 

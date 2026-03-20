@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 
-import pytest
 from fastmcp import Client
 
 
@@ -36,11 +35,6 @@ class TestGetSessionPreferences:
         data = json.loads(result.data)
         assert data["preferences"] == {}
 
-    @pytest.mark.xfail(
-        reason="FastMCP Docket lifespan caching prevents session state sharing "
-        "across tool calls in multi-test-file runs; works in isolation",
-        strict=False,
-    )
     async def test_set_then_get(self, client: Client):
         """Set two preferences and read them back — within a single session."""
         # Set preferences
@@ -73,11 +67,6 @@ class TestClearSessionPreferences:
         assert data["ok"] is True
         assert data["cleared"] == 0
 
-    @pytest.mark.xfail(
-        reason="FastMCP Docket lifespan caching prevents session state sharing "
-        "across tool calls in multi-test-file runs; works in isolation",
-        strict=False,
-    )
     async def test_set_then_clear(self, client: Client):
         """Set a preference, clear, and verify empty — single session."""
         # Set
@@ -131,11 +120,6 @@ class TestClearSessionElicitation:
             assert data["ok"] is True
             assert data["cleared"] == 0
 
-    @pytest.mark.xfail(
-        reason="FastMCP Docket lifespan caching prevents session state sharing "
-        "across tool calls in multi-test-file runs; works in isolation",
-        strict=False,
-    )
     async def test_clear_cancelled_when_user_declines(self):
         """User declines clearing non-empty session."""
         async with Client(_mcp, elicitation_handler=_decline_handler()) as c:
@@ -149,11 +133,6 @@ class TestClearSessionElicitation:
             assert data["cancelled"] is True
             assert data["reason"] == "User declined"
 
-    @pytest.mark.xfail(
-        reason="FastMCP Docket lifespan caching prevents session state sharing "
-        "across tool calls in multi-test-file runs; works in isolation",
-        strict=False,
-    )
     async def test_clear_proceeds_when_user_confirms(self):
         """User confirms clearing non-empty session."""
         async with Client(_mcp, elicitation_handler=_accept_handler()) as c:

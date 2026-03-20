@@ -109,10 +109,9 @@ Specifically:
 Fix the file upload timeout for large files.
 
 The error from logs:
-```
-httpx.ReadTimeout: timed out
-File "app/routes/upload.py", line 45, in upload_file
-```sql
+
+    httpx.ReadTimeout: timed out
+    File "app/routes/upload.py", line 45, in upload_file
 
 Root cause: The upload handler reads the entire file into memory before processing.
 
