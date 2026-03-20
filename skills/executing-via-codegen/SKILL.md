@@ -152,24 +152,53 @@ Then call `codegen_get_run(run_id=<id>, execution_id=<ctx_id>)`. The `execution_
 
 **Max polling:** 10 minutes per task. After 10 min, show status and ask user.
 
-**d. On completion:**
+**d. On completion — Two-Stage Review Gate:**
 
-1. Call `codegen_get_logs(run_id, limit=20)` to review what happened
+Before moving to the next task, review the agent's output. Use the `reviewing-agent-output` skill process:
+
+**Stage 1: Spec Compliance (always)**
+1. Call `codegen_get_logs(run_id, limit=30, reverse=false)` — chronological review
 2. Call `codegen_get_run(run_id, execution_id=<ctx_id>)` to check for PRs
-3. Report to user:
+3. Verify against the original task from the plan:
+   - [ ] All task items addressed?
+   - [ ] Correct files modified?
+   - [ ] Tests written and passing (check Bash tool outputs in logs)?
+   - [ ] PR created with descriptive title?
+   - [ ] Scope respected — no unrelated changes?
+4. If PARTIAL: `codegen_resume_run(run_id, prompt="Missing: [specific items]")`
+5. If FAIL: use `debugging-failed-runs` skill, then create new run with better prompt
+
+**Stage 2: Code Quality (for risky tasks)**
+Apply full quality review for: auth/security changes, database migrations, multi-file refactors, and the final task in a plan. For simple model/schema/test additions, Stage 1 is sufficient.
+
+6. Check logs for quality signals:
+   - No `console.log`/debug artifacts in Edit tool inputs
+   - No hardcoded secrets or credentials
+   - Agent didn't revert its own changes (indecision signal)
+   - Diff size is proportional to task scope (not excessive)
+7. If MINOR issues: `codegen_resume_run(run_id, prompt="Fix: [specific issues]")`
+8. If MAJOR issues: create new run with clearer guidance
+
+**After review passes:**
+9. Report to user:
    - What the agent did (from logs summary)
    - PR link (if created)
+   - Review verdict (PASS / PASS with notes)
    - Any warnings from logs
-4. Mark task as completed in TodoWrite
+10. Mark task as completed in TodoWrite
 
 **e. On failure:**
 
-1. Call `codegen_get_logs(run_id, limit=30)` to see error details
-2. Show error logs to user
-3. Ask: "Resume with fix instructions, skip this task, or stop?"
-4. If resume: `codegen_resume_run(run_id, prompt=<user guidance>)`
-5. If skip: mark task as skipped, continue to next
-6. If stop: `codegen_stop_run(run_id)` if still running, then halt
+Use the `debugging-failed-runs` skill for systematic diagnosis:
+
+1. Call `codegen_get_logs(run_id, limit=50, reverse=false)` — full chronological view
+2. Classify failure (prompt problem, test failure, environment, scope, loop, git)
+3. Build fix strategy based on classification
+4. Ask: "Resume with fix instructions, skip this task, or stop?"
+5. If resume: `codegen_resume_run(run_id, prompt=<targeted fix based on diagnosis>)`
+6. If skip: mark task as skipped, continue to next
+7. If stop: `codegen_stop_run(run_id)` if still running, then halt
+8. **Max 2 retries per task** — after 2 failures, recommend skipping or doing locally
 
 **f. On pause (agent needs input):**
 

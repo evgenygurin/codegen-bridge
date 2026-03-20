@@ -1,6 +1,18 @@
 {
-  "description": "Codegen Bridge hooks — auto-show run URLs after creation, auto-format run status, and generate session summaries of all agent runs.",
+  "description": "Codegen Bridge hooks — inject meta-skill at session start, auto-show run URLs, auto-format run status, and generate session summaries.",
   "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.cmd\" session-start",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "mcp__.*codegen_create_run",

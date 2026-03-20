@@ -114,7 +114,7 @@ When presenting logs to the user, focus on:
 5. **PR creation:** Note when `gh pr create` or similar commands appear
 
 Format as a concise summary, not raw log dumps:
-```
+```bash
 Agent completed in 12 steps:
 - Modified 3 files: src/auth.py, tests/test_auth.py, src/models.py
 - Ran tests: 45 passed, 0 failed
@@ -129,7 +129,7 @@ For multi-task executions, use `codegen_get_execution_context(execution_id)` to 
 - Run IDs for each task (to drill into specific logs)
 
 Present as a progress dashboard:
-```
+```text
 Execution: "Implement auth system" (3/5 tasks completed)
 
 Task 1: Add user model          [completed] PR #40
@@ -138,6 +138,27 @@ Task 3: Add login endpoint       [completed] PR #42
 Task 4: Add registration flow    [running]   Run #789
 Task 5: Add password reset       [pending]
 ```
+
+## Verification Gates
+
+**Iron Law: NO COMPLETION CLAIMS WITHOUT FRESH EVIDENCE.**
+
+Before telling the user "the agent completed successfully":
+
+1. **Read the logs** — don't rely solely on `status: completed`
+2. **Check for test results** — look for Bash tool calls with test commands in logs
+3. **Verify PR exists** — check `pull_requests` in the run result
+4. **Check for warnings** — agent may have completed with caveats
+
+| Claim | Required Evidence |
+|-------|-------------------|
+| "Agent completed" | `status: completed` from `codegen_get_run` |
+| "Tests pass" | Test command output in logs showing PASS |
+| "PR created" | PR URL in `pull_requests` array |
+| "All files modified" | Edit/Write tool calls in logs matching expected files |
+| "No errors" | Full log scan showing no error outputs |
+
+**Never say "tests pass" without seeing actual test output in logs.** The agent may have skipped tests or tests may have passed vacuously.
 
 ## Proactive Monitoring Tips
 

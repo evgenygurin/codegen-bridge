@@ -1,6 +1,6 @@
 ---
 name: codegen-delegation
-description: Automatically delegate tasks to Codegen cloud agents when user requests code changes, implementations, or fixes that should run remotely. Triggered when codegen_create_run or codegen_start_execution tools are invoked.
+description: Automatically delegate tasks to Codegen cloud agents when user requests code changes, implementations, or fixes that should run remotely. Triggered when codegen_create_run or codegen_start_execution tools are invoked. Includes prompt templates and quality checklist.
 user-invocable: false
 ---
 
@@ -47,7 +47,7 @@ If the task is better done locally, say so and handle it directly instead.
 
 For multi-step work, initialize an execution context first:
 
-```
+```bash
 codegen_start_execution(
   execution_id=<unique_id>,
   goal=<user's goal>,
@@ -62,31 +62,45 @@ For single tasks, skip to Step 3.
 
 ### Step 3: Build and Submit the Prompt
 
-Compose a clear, self-contained prompt for the agent:
+Use the prompt template from `templates/task-prompt-template.md` as your base. Apply the `prompt-crafting` skill for quality.
 
-```
+**Prompt Quality Checklist (verify before submitting):**
+- [ ] Self-contained — agent can work without any other context
+- [ ] Specific task — not vague ("improve X") but precise ("add validation to `path/file.ts`")
+- [ ] File paths included — exact paths, not "the auth file"
+- [ ] Test command specified — exact command to run tests
+- [ ] Acceptance criteria — how to know the task is done
+- [ ] Scope bounded — "Do NOT modify files outside X"
+- [ ] No local references — no localhost, no local file paths, no env vars
+
+Compose the prompt following this structure:
+
+```markdown
 ## Context
-- Repository: <name>
-- Tech stack: <languages, frameworks>
-- Relevant files: <if known>
+- Repository: <owner/repo-name>
+- Tech stack: <languages, frameworks, key libraries>
+- Architecture: <brief — e.g., "Next.js App Router + Prisma">
+- Relevant files: <exact file paths the agent should focus on>
 
 ## Task
-<Detailed description of what needs to be done>
+<Clear, specific description of what needs to be done>
 
 ## Requirements
-- <specific acceptance criteria>
-- Run tests after changes
+- <Specific acceptance criteria — what "done" looks like>
+- Run tests after changes: <exact test command>
 - Create a PR with descriptive title and body
 
 ## Constraints
 - Create a branch from main
 - Use conventional commit messages
-- Do not modify unrelated files
+- Do NOT modify files outside: <scope list>
 ```
+
+For multi-step plan tasks, use `templates/multi-step-prompt-template.md` instead — it includes previous task summaries for context.
 
 Submit via:
 
-```
+```bash
 codegen_create_run(
   prompt=<composed_prompt>,
   execution_id=<ctx_id if multi-step>,

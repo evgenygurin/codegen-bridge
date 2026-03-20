@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What is this
 
-Claude Code plugin (v0.6.0) that bridges to the [Codegen](https://codegen.com) cloud AI agent platform. Hybrid MCP server: **49 manual tools** (8 tool modules + 4 sampling) + **5 auto-generated** from OpenAPI spec + remote proxy, 2 services, 9-layer middleware stack, transform chain (Namespace, Visibility, VersionFilter), 4 providers, 8 resources (3 config + 2 platform + 3 templates), prompts, and sampling via `ctx.sample()`.
+Claude Code plugin (v0.7.0) that bridges to the [Codegen](https://codegen.com) cloud AI agent platform. Hybrid MCP server: **49 manual tools** (8 tool modules + 4 sampling) + **5 auto-generated** from OpenAPI spec + remote proxy, 2 services, 9-layer middleware stack, transform chain (Namespace, Visibility, VersionFilter), 4 providers, 8 resources (3 config + 2 platform + 3 templates), prompts, and sampling via `ctx.sample()`. **10 skills** (4 new in v0.7.0: debugging-failed-runs, prompt-crafting, reviewing-agent-output, using-codegen-bridge), **SessionStart hook** with superpowers detection, **prompt templates**, and **cross-platform hook wrapper**.
 
 ## Commands
 

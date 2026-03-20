@@ -14,8 +14,8 @@ paths:
 ```json
 {
   "name": "codegen-bridge",
-  "version": "0.6.0",
-  "keywords": ["codegen", "agent", "execution", "delegation", "mcp"]
+  "version": "0.7.0",
+  "keywords": ["codegen", "agent", "execution", "delegation", "mcp", "cloud", "review", "debugging"]
 }
 ```
 
@@ -34,6 +34,16 @@ Managed via `codegen_get_settings` / `codegen_update_settings` tools.
 ## Hooks (`hooks/`)
 
 Hook definitions in `hooks/hooks.json`. Scripts in `hooks/scripts/`.
+
+Cross-platform execution via `hooks/run-hook.cmd` polyglot wrapper (Windows CMD / Unix shell).
+
+### SessionStart Hook
+
+| Matcher | Script | Purpose |
+|---------|--------|---------|
+| `startup\|clear\|compact` | `session-start.sh` | Inject `using-codegen-bridge` meta-skill, detect superpowers plugin |
+
+Invoked via `run-hook.cmd session-start`. Outputs JSON with `additionalContext` field containing the meta-skill content. Detects superpowers plugin presence and adjusts context messaging.
 
 ### PostToolUse Hooks
 
@@ -78,12 +88,27 @@ Task tool agents for Claude Code's `/task` delegation:
 
 Each skill is a directory with `SKILL.md`:
 
-| Directory | Skill | Purpose |
-|-----------|-------|---------|
-| `codegen-delegation/` | Codegen delegation | Automated task delegation to agents |
-| `agent-monitoring/` | Agent monitoring | Monitor running agent status |
-| `executing-via-codegen/` | Plan execution | Execute implementation plans via agents |
-| `pr-management/` | PR management | Manage PRs created by agents |
+| Directory | Skill | User-Invocable | Purpose |
+|-----------|-------|----------------|---------|
+| `using-codegen-bridge/` | Meta-skill | No (SessionStart) | Skill map, decision tree, superpowers integration |
+| `codegen-delegation/` | Delegation | No | Task delegation with prompt templates |
+| `agent-monitoring/` | Monitoring | No | Monitor runs with verification gates |
+| `executing-via-codegen/` | Plan execution | Yes | Execute plans via agents with two-stage review |
+| `pr-management/` | PR management | No | Manage PRs created by agents |
+| `bulk-delegation/` | Bulk delegation | Yes | Batch-delegate independent tasks |
+| `run-analytics/` | Analytics | Yes | Analyze agent run performance |
+| `debugging-failed-runs/` | Debugging | Yes | 4-phase systematic debugging for failed runs |
+| `prompt-crafting/` | Prompt crafting | Yes | Guide for writing effective agent prompts |
+| `reviewing-agent-output/` | Output review | Yes | Two-stage review (spec + quality) of agent work |
+
+### Prompt Templates
+
+Located in `skills/codegen-delegation/templates/`:
+
+| Template | Purpose |
+|----------|---------|
+| `task-prompt-template.md` | Single task prompt structure |
+| `multi-step-prompt-template.md` | Task within a plan (includes previous task context) |
 
 ## Adding New Components
 
