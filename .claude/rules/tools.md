@@ -21,7 +21,8 @@ paths:
 | `tools/settings.py` | 2 | `get_settings`, `update_settings` |
 | `sampling/tools.py` | 4 | `summarise_run`, `summarise_execution`, `generate_task_prompt`, `analyse_run_logs` |
 | **Total manual** | **49** | |
-| Auto-generated (OpenAPI) | 5 | Via `OpenAPIProvider` from `openapi_spec.json` |
+| Auto-generated (OpenAPI) | 5 | Via `OpenAPIProvider` from `openapi_spec.json` (3 overlap with manual: `get_current_user`, `get_mcp_providers`, `get_oauth_status`) |
+| **Total unique** | **51** | 49 manual + 2 unique OpenAPI (`get_models`, `revoke_oauth_token`) |
 
 ## Naming Convention
 

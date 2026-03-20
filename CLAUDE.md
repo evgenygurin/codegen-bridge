@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What is this
 
-Claude Code plugin (v0.7.0) that bridges to the [Codegen](https://codegen.com) cloud AI agent platform. Hybrid MCP server: **49 manual tools** (8 tool modules + 4 sampling) + **5 auto-generated** from OpenAPI spec + remote proxy, 2 services, 9-layer middleware stack, transform chain (Namespace, Visibility, VersionFilter), 4 providers, 8 resources (3 config + 2 platform + 3 templates), prompts, and sampling via `ctx.sample()`. **10 skills** (4 new in v0.7.0: debugging-failed-runs, prompt-crafting, reviewing-agent-output, using-codegen-bridge), **SessionStart hook** with superpowers detection, **prompt templates**, and **cross-platform hook wrapper**.
+Claude Code plugin (v0.7.0) that bridges to the [Codegen](https://codegen.com) cloud AI agent platform. Hybrid MCP server: **51 tools** (49 manual across 8 tool modules + 4 sampling, plus 2 unique auto-generated from OpenAPI spec; 3 OpenAPI tools overlap with manual) + remote proxy, 2 services, 9-layer middleware stack, transform chain (Namespace, Visibility, VersionFilter), 4 providers, 33 resources (6 config/platform + 20 skills + 5 commands + 2 agents), 8 prompts, and sampling via `ctx.sample()`. **10 skills** (4 new in v0.7.0: debugging-failed-runs, prompt-crafting, reviewing-agent-output, using-codegen-bridge), **SessionStart hook** with superpowers detection, **prompt templates**, and **cross-platform hook wrapper**.
 
 ## Commands
 
@@ -12,7 +12,7 @@ Claude Code plugin (v0.7.0) that bridges to the [Codegen](https://codegen.com) c
 # Install dependencies
 uv sync --dev
 
-# Run all tests (1347 tests, parallel via xdist)
+# Run all tests (1382 tests, parallel via xdist)
 uv run pytest -v
 
 # Run a single test file / single test

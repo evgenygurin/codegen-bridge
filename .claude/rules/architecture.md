@@ -45,16 +45,16 @@ Claude Code ──MCP──▶ FastMCP Server (bridge/server.py)
 | Storage | `storage.py` | `MemoryStorage`/`FileStorage` (Strategy pattern, TTL support) |
 | Elicitation | `elicitation.py` | Interactive user prompts with Pydantic schema support |
 | Services | `services/` | `RunService` (runs.py), `ExecutionService` (execution.py) |
-| Tools | `tools/` | 8 modules, 45 manual tools + 4 sampling = 49 total |
+| Tools | `tools/` | 8 modules, 45 manual + 4 sampling = 49 manual; 51 total (2 unique from OpenAPI, 3 overlap) |
 | Sampling | `sampling/` | 4 tools via `ctx.sample()`, `SamplingService` |
-| Resources | `resources/` | 8 resources: config (3) + platform (2) + templates (3) |
-| Prompts | `prompts/` | 4 workflow templates |
+| Resources | `resources/` | 33 resources: config/platform (6) + skills (20) + commands (5) + agents (2) |
+| Prompts | `prompts/` | 8 prompt templates |
 | Providers | `providers/` | OpenAPI, Skills, Commands, Agents, remote proxy |
 | Middleware | `middleware/` | 9-layer request pipeline |
 | Transforms | `transforms/` | 4-stage component transformation |
 | Helpers | `helpers/` | Formatting, pagination, repo detection |
 | Telemetry | `telemetry/` | OpenTelemetry integration |
-| OpenAPI | `openapi_utils.py` + `openapi_spec.json` | Auto-generate 5 tools from spec |
+| OpenAPI | `openapi_utils.py` + `openapi_spec.json` | Auto-generate 5 tools from spec (3 overlap with manual) |
 
 ## Middleware Stack (outermost → innermost)
 
@@ -89,7 +89,7 @@ Registered during lifespan in `server.py`.
 
 | Provider | Source | What it provides |
 |----------|--------|-----------------|
-| `OpenAPIProvider` | `openapi_utils.py` | 5 auto-generated tools from REST API spec |
+| `OpenAPIProvider` | `openapi_utils.py` | 5 tools from REST API spec (3 overlap with manual → 2 unique) |
 | `SkillsDirectoryProvider` | `providers/agents.py` | Skill resources from `skills/` directory |
 | `CommandsProvider` | `providers/commands.py` | Command resources from `commands/` directory |
 | `AgentsProvider` | `providers/agents.py` | Agent resources from `agents/` directory |
