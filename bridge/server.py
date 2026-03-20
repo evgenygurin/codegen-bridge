@@ -90,8 +90,7 @@ async def _lifespan(server: FastMCP) -> AsyncIterator[dict[str, Any]]:
     # external providers to avoid stale duplicates across Client() sessions.
     # Keep FastMCP's built-in LocalProvider (manual tools/resources/prompts).
     server.providers[:] = [
-        provider for provider in server.providers
-        if provider is server.local_provider
+        provider for provider in server.providers if provider is server.local_provider
     ]
 
     client = CodegenClient(api_key=api_key, org_id=org_id)

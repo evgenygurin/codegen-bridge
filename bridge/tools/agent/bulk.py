@@ -75,12 +75,14 @@ def register_bulk_tools(mcp: FastMCP) -> None:
                     repo_id=effective_repo_id,
                     model=effective_model,
                 )
-                results.append({
-                    "index": i,
-                    "id": run.id,
-                    "status": run.status,
-                    "web_url": run.web_url,
-                })
+                results.append(
+                    {
+                        "index": i,
+                        "id": run.id,
+                        "status": run.status,
+                        "web_url": run.web_url,
+                    }
+                )
                 created += 1
             except httpx.HTTPStatusError as exc:
                 results.append({"index": i, "error": str(exc)})
@@ -89,9 +91,11 @@ def register_bulk_tools(mcp: FastMCP) -> None:
             await report(ctx, i + 1, total, f"Task {i + 1}/{total}: done")
 
         await ctx.info(f"Bulk create complete: {created} created, {failed} failed")
-        return json.dumps({
-            "total": total,
-            "created": created,
-            "failed": failed,
-            "runs": results,
-        })
+        return json.dumps(
+            {
+                "total": total,
+                "created": created,
+                "failed": failed,
+                "runs": results,
+            }
+        )

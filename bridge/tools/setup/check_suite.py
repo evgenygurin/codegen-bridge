@@ -26,7 +26,8 @@ def register_check_suite_tools(mcp: FastMCP) -> None:
     async def codegen_get_check_suite_settings(
         repo_id: int,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),    ) -> str: # type: ignore[arg-type]
+        client: CodegenClient = Depends(get_client),
+    ) -> str:  # type: ignore[arg-type]
         """Get CI check-suite settings for a repository.
 
         Returns retry counts, ignored checks, custom prompts, high-priority
@@ -39,19 +40,19 @@ def register_check_suite_tools(mcp: FastMCP) -> None:
         try:
             settings = await client.get_check_suite_settings(repo_id)
         except ServerError as exc:
-            await ctx.warning(
-                f"Check suite settings API returned server error: {exc.status_code}"
+            await ctx.warning(f"Check suite settings API returned server error: {exc.status_code}")
+            return json.dumps(
+                {
+                    "error": "server_error",
+                    "status_code": exc.status_code,
+                    "repo_id": repo_id,
+                    "detail": exc.detail or "The Codegen API returned an internal error",
+                    "hint": (
+                        "This endpoint may not be available for this repository. "
+                        "Verify repo_id is correct and check-suite feature is enabled."
+                    ),
+                }
             )
-            return json.dumps({
-                "error": "server_error",
-                "status_code": exc.status_code,
-                "repo_id": repo_id,
-                "detail": exc.detail or "The Codegen API returned an internal error",
-                "hint": (
-                    "This endpoint may not be available for this repository. "
-                    "Verify repo_id is correct and check-suite feature is enabled."
-                ),
-            })
         await ctx.info(
             f"Check suite settings retrieved: "
             f"{len(settings.ignored_checks)} ignored checks, "
@@ -77,7 +78,8 @@ def register_check_suite_tools(mcp: FastMCP) -> None:
         custom_prompts: dict[str, str] | None = None,
         high_priority_apps: list[str] | None = None,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),    ) -> str: # type: ignore[arg-type]
+        client: CodegenClient = Depends(get_client),
+    ) -> str:  # type: ignore[arg-type]
         """Update CI check-suite settings for a repository.
 
         Only the fields you provide will be updated; omitted fields
@@ -110,18 +112,18 @@ def register_check_suite_tools(mcp: FastMCP) -> None:
         try:
             result = await client.update_check_suite_settings(repo_id, body)
         except ServerError as exc:
-            await ctx.warning(
-                f"Check suite update API returned server error: {exc.status_code}"
+            await ctx.warning(f"Check suite update API returned server error: {exc.status_code}")
+            return json.dumps(
+                {
+                    "error": "server_error",
+                    "status_code": exc.status_code,
+                    "repo_id": repo_id,
+                    "detail": exc.detail or "The Codegen API returned an internal error",
+                    "hint": (
+                        "This endpoint may not be available for this repository. "
+                        "Verify repo_id is correct and check-suite feature is enabled."
+                    ),
+                }
             )
-            return json.dumps({
-                "error": "server_error",
-                "status_code": exc.status_code,
-                "repo_id": repo_id,
-                "detail": exc.detail or "The Codegen API returned an internal error",
-                "hint": (
-                    "This endpoint may not be available for this repository. "
-                    "Verify repo_id is correct and check-suite feature is enabled."
-                ),
-            })
         await ctx.info("Check suite settings updated")
         return json.dumps({"status": "updated", "result": result})

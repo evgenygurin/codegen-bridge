@@ -140,9 +140,7 @@ class TestMiddlewareStackE2E:
     @respx.mock
     async def test_tool_call_cache_disabled_by_default(self) -> None:
         """With tool_call_enabled=False, repeated reads should hit API every time."""
-        route = respx.get(
-            "https://api.codegen.com/v1/organizations/42/agent/run/99"
-        ).mock(
+        route = respx.get("https://api.codegen.com/v1/organizations/42/agent/run/99").mock(
             return_value=Response(
                 200,
                 json={

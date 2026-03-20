@@ -116,9 +116,7 @@ class TestSelectMultiple:
         mock_data = MultiSelectSchema(selected="repo-a, repo-c")
         mock_ctx.elicit.return_value = AcceptedElicitation(action="accept", data=mock_data)
 
-        result = await select_multiple(
-            mock_ctx, "Which repos?", ["repo-a", "repo-b", "repo-c"]
-        )
+        result = await select_multiple(mock_ctx, "Which repos?", ["repo-a", "repo-b", "repo-c"])
 
         assert result == ["repo-a", "repo-c"]
         mock_ctx.info.assert_awaited()
@@ -127,9 +125,7 @@ class TestSelectMultiple:
         mock_data = MultiSelectSchema(selected="valid, invalid, also-valid")
         mock_ctx.elicit.return_value = AcceptedElicitation(action="accept", data=mock_data)
 
-        result = await select_multiple(
-            mock_ctx, "Pick:", ["valid", "also-valid", "other"]
-        )
+        result = await select_multiple(mock_ctx, "Pick:", ["valid", "also-valid", "other"])
 
         assert result == ["valid", "also-valid"]
 

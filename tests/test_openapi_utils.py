@@ -150,8 +150,7 @@ class TestBuildRouteMaps:
         from fastmcp.server.providers.openapi import MCPType
 
         tool_patterns = [
-            m.pattern for m in maps
-            if m.pattern is not None and m.mcp_type == MCPType.TOOL
+            m.pattern for m in maps if m.pattern is not None and m.mcp_type == MCPType.TOOL
         ]
         manual_paths = [
             "/v1/organizations/42/users",
@@ -198,14 +197,22 @@ class TestToolNames:
         """Auto-generated tools must NOT overlap with manual tool names."""
         # These are covered by manual tools and must NOT be in TOOL_NAMES
         manual_names = {
-            "codegen_list_users", "codegen_get_user",
-            "codegen_edit_pr", "codegen_edit_repo_pr",
-            "codegen_unban_run", "codegen_remove_from_pr",
-            "codegen_get_webhook", "codegen_set_webhook",
-            "codegen_delete_webhook", "codegen_test_webhook",
-            "codegen_get_integrations", "codegen_get_check_suite",
-            "codegen_set_check_suite", "codegen_generate_setup_commands",
-            "codegen_analyze_sandbox_logs", "codegen_generate_slack_token",
+            "codegen_list_users",
+            "codegen_get_user",
+            "codegen_edit_pr",
+            "codegen_edit_repo_pr",
+            "codegen_unban_run",
+            "codegen_remove_from_pr",
+            "codegen_get_webhook",
+            "codegen_set_webhook",
+            "codegen_delete_webhook",
+            "codegen_test_webhook",
+            "codegen_get_integrations",
+            "codegen_get_check_suite",
+            "codegen_set_check_suite",
+            "codegen_generate_setup_commands",
+            "codegen_analyze_sandbox_logs",
+            "codegen_generate_slack_token",
         }
         auto_names = set(TOOL_NAMES.values())
         overlap = auto_names & manual_names

@@ -303,9 +303,7 @@ class TestVersionFilterFullConfig:
         configure_transforms(
             mcp,
             TransformsConfig(
-                version_filter=VersionFilterConfig(
-                    enabled=False, version_gte="99.0"
-                ),
+                version_filter=VersionFilterConfig(enabled=False, version_gte="99.0"),
             ),
         )
 

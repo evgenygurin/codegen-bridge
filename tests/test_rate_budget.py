@@ -55,9 +55,7 @@ class TestOutboundRateBudget:
         assert budget.available < initial
 
     async def test_acquire_multiple(self):
-        budget = OutboundRateBudget(
-            RateBudgetConfig(max_tokens=5, refill_rate=0.0)
-        )
+        budget = OutboundRateBudget(RateBudgetConfig(max_tokens=5, refill_rate=0.0))
         for _ in range(5):
             await budget.acquire()
         assert budget.available == pytest.approx(0.0, abs=0.1)
@@ -90,18 +88,14 @@ class TestOutboundRateBudget:
         assert exc_info.value.max_wait == 0.01
 
     async def test_acquire_raises_with_zero_refill_rate(self):
-        budget = OutboundRateBudget(
-            RateBudgetConfig(max_tokens=1, refill_rate=0.0, max_wait=1.0)
-        )
+        budget = OutboundRateBudget(RateBudgetConfig(max_tokens=1, refill_rate=0.0, max_wait=1.0))
         await budget.acquire()
 
         with pytest.raises(RateBudgetExhaustedError):
             await budget.acquire()
 
     async def test_refill_over_time(self):
-        budget = OutboundRateBudget(
-            RateBudgetConfig(max_tokens=10, refill_rate=1000.0)
-        )
+        budget = OutboundRateBudget(RateBudgetConfig(max_tokens=10, refill_rate=1000.0))
         # Drain 5 tokens
         for _ in range(5):
             await budget.acquire()
@@ -113,9 +107,7 @@ class TestOutboundRateBudget:
         assert budget.available > 0
 
     def test_refill_caps_at_max(self):
-        budget = OutboundRateBudget(
-            RateBudgetConfig(max_tokens=5, refill_rate=1000.0)
-        )
+        budget = OutboundRateBudget(RateBudgetConfig(max_tokens=5, refill_rate=1000.0))
         # Even with massive refill rate, should not exceed max_tokens
         import time as _time
 
@@ -124,9 +116,7 @@ class TestOutboundRateBudget:
         assert budget._tokens <= 5.0
 
     async def test_custom_cost(self):
-        budget = OutboundRateBudget(
-            RateBudgetConfig(max_tokens=10, refill_rate=0.0)
-        )
+        budget = OutboundRateBudget(RateBudgetConfig(max_tokens=10, refill_rate=0.0))
         await budget.acquire(cost=5)
         assert budget.available == pytest.approx(5.0, abs=0.1)
         await budget.acquire(cost=5)

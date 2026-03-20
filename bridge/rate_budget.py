@@ -59,8 +59,7 @@ class RateBudgetExhaustedError(Exception):
         self.wait_needed = wait_needed
         self.max_wait = max_wait
         super().__init__(
-            f"Rate budget exhausted: need {wait_needed:.1f}s wait "
-            f"but max_wait is {max_wait:.1f}s"
+            f"Rate budget exhausted: need {wait_needed:.1f}s wait but max_wait is {max_wait:.1f}s"
         )
 
 
