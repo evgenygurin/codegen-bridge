@@ -439,3 +439,168 @@ class TestRevokeOAuth:
         tool = next(t for t in tools if t.name == "codegen_revoke_oauth")
         tags = tool.meta.get("fastmcp", {}).get("tags", [])
         assert "dangerous" in tags
+
+
+# ── Repository Rules ──────────────────────────────────────
+
+
+class TestGetRepositoryRules:
+    async def test_tool_registered(self, client: Client):
+        tools = await client.list_tools()
+        names = {t.name for t in tools}
+        assert "codegen_get_repository_rules" in names
+
+    @respx.mock
+    async def test_returns_rules(self, client: Client):
+        respx.get("https://api.codegen.com/v1/organizations/42/cli/rules").mock(
+            return_value=Response(
+                200,
+                json={
+                    "organization_rules": "Always use TypeScript strict mode",
+                    "user_custom_prompt": "Prefer functional style",
+                },
+            )
+        )
+
+        result = await client.call_tool("codegen_get_repository_rules", {})
+        data = json.loads(result.data)
+        assert data["organization_rules"] == "Always use TypeScript strict mode"
+        assert data["user_custom_prompt"] == "Prefer functional style"
+        assert "AGENTS.md" in data["auto_detected_patterns"]
+        assert data["max_budget_chars"] == 25_000
+        assert "docs.codegen.com" in data["documentation_url"]
+
+    @respx.mock
+    async def test_returns_empty_rules(self, client: Client):
+        respx.get("https://api.codegen.com/v1/organizations/42/cli/rules").mock(
+            return_value=Response(
+                200,
+                json={
+                    "organization_rules": "",
+                    "user_custom_prompt": None,
+                },
+            )
+        )
+
+        result = await client.call_tool("codegen_get_repository_rules", {})
+        data = json.loads(result.data)
+        assert data["organization_rules"] is None
+        assert data["user_custom_prompt"] is None
+
+
+class TestConfigureRepositoryRules:
+    async def test_tool_registered(self, client: Client):
+        tools = await client.list_tools()
+        names = {t.name for t in tools}
+        assert "codegen_configure_repository_rules" in names
+
+    async def test_returns_guidance(self, client: Client):
+        result = await client.call_tool(
+            "codegen_configure_repository_rules",
+            {"org_name": "my-org", "repo_name": "my-repo"},
+        )
+        data = json.loads(result.data)
+        assert data["status"] == "guidance"
+        assert data["api_supported"] is False
+        assert "my-org/my-repo" in data["ui_url"]
+        assert len(data["instructions"]) > 0
+        assert "AGENTS.md" in data["supported_rule_files"]
+        assert data["constraints"]["max_budget_chars"] == 25_000
+        assert data["constraints"]["rule_priority"] == "User > Repository > Organization"
+
+    async def test_tagged_as_setup(self, client: Client):
+        tools = await client.list_tools()
+        tool = next(t for t in tools if t.name == "codegen_configure_repository_rules")
+        tags = tool.meta.get("fastmcp", {}).get("tags", [])
+        assert "setup" in tags
+
+
+# ── Web Preview ───────────────────────────────────────────
+
+
+class TestGetWebPreviewGuide:
+    async def test_tool_registered(self, client: Client):
+        tools = await client.list_tools()
+        names = {t.name for t in tools}
+        assert "codegen_get_web_preview_guide" in names
+
+    async def test_returns_guidance(self, client: Client):
+        result = await client.call_tool(
+            "codegen_get_web_preview_guide",
+            {"org_name": "my-org", "repo_name": "my-repo"},
+        )
+        data = json.loads(result.data)
+        assert data["status"] == "guidance"
+        assert data["api_supported"] is False
+        assert "my-org/my-repo" in data["ui_url"]
+        assert data["requirements"]["port"] == 3000
+        assert data["requirements"]["host"] == "127.0.0.1"
+        assert data["requirements"]["env_var"] == "CG_PREVIEW_URL"
+        assert len(data["common_commands"]) > 0
+        assert len(data["instructions"]) > 0
+
+    async def test_filters_by_framework(self, client: Client):
+        result = await client.call_tool(
+            "codegen_get_web_preview_guide",
+            {"org_name": "org", "repo_name": "repo", "framework": "django"},
+        )
+        data = json.loads(result.data)
+        # Should filter down to Django-related commands
+        assert len(data["common_commands"]) >= 1
+        assert any("django" in c["framework"].lower() for c in data["common_commands"])
+
+    async def test_framework_filter_no_match_returns_all(self, client: Client):
+        result = await client.call_tool(
+            "codegen_get_web_preview_guide",
+            {"org_name": "org", "repo_name": "repo", "framework": "nonexistent"},
+        )
+        data = json.loads(result.data)
+        # No match → returns all commands as fallback
+        assert len(data["common_commands"]) > 3
+
+    async def test_tagged_as_setup(self, client: Client):
+        tools = await client.list_tools()
+        tool = next(t for t in tools if t.name == "codegen_get_web_preview_guide")
+        tags = tool.meta.get("fastmcp", {}).get("tags", [])
+        assert "setup" in tags
+
+
+# ── Secrets ───────────────────────────────────────────────
+
+
+class TestGetSecretsGuide:
+    async def test_tool_registered(self, client: Client):
+        tools = await client.list_tools()
+        names = {t.name for t in tools}
+        assert "codegen_get_secrets_guide" in names
+
+    async def test_returns_guidance(self, client: Client):
+        result = await client.call_tool(
+            "codegen_get_secrets_guide",
+            {"org_name": "my-org", "repo_name": "my-repo"},
+        )
+        data = json.loads(result.data)
+        assert data["status"] == "guidance"
+        assert data["api_supported"] is False
+        assert "my-org/my-repo" in data["ui_url"]
+        assert data["security_constraints"]["staging_only"] is True
+        assert "production" in data["security_constraints"]["warning"].lower()
+        assert len(data["common_use_cases"]) > 0
+        assert len(data["instructions"]) > 0
+
+    async def test_common_use_cases_structure(self, client: Client):
+        result = await client.call_tool(
+            "codegen_get_secrets_guide",
+            {"org_name": "org", "repo_name": "repo"},
+        )
+        data = json.loads(result.data)
+        for use_case in data["common_use_cases"]:
+            assert "category" in use_case
+            assert "description" in use_case
+            assert "example_key" in use_case
+
+    async def test_tagged_as_setup(self, client: Client):
+        tools = await client.list_tools()
+        tool = next(t for t in tools if t.name == "codegen_get_secrets_guide")
+        tags = tool.meta.get("fastmcp", {}).get("tags", [])
+        assert "setup" in tags

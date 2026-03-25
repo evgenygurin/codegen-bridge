@@ -289,6 +289,21 @@ ICON_CHECK_SUITE = _svg_icon(  # check-square: check suite settings
     '<path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>'
 )
 
+ICON_REPO_RULES = _svg_icon(  # shield: repository rules / agent rules
+    '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>'
+)
+
+ICON_WEB_PREVIEW = _svg_icon(  # globe: web preview configuration
+    '<circle cx="12" cy="12" r="10"/>'
+    '<line x1="2" y1="12" x2="22" y2="12"/>'
+    '<path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10'
+    ' 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>'
+)
+
+ICON_SECRETS = _svg_icon(  # lock: repository secrets
+    '<rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>'
+)
+
 ICON_SLACK = _svg_icon(  # message-circle: slack connect
     '<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0'
     " 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38"
