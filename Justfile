@@ -3,6 +3,11 @@
 
 set dotenv-load := true
 
+# Prevent sandbox PYTHONPATH (e.g. /usr/local/lib/python3.13/site-packages)
+# from leaking into uv-managed Python 3.12 processes, which causes
+# pydantic_core ABI mismatches.  Safe no-op when PYTHONPATH is unset.
+export PYTHONPATH := ""
+
 # Default: show available recipes
 default:
     @just --list
