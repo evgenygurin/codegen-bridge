@@ -89,9 +89,11 @@ def register_background_tools(mcp: FastMCP) -> None:
                 return json.dumps(data)
 
         # ── Timeout ──────────────────────────────────────────
-        return json.dumps({
-            "timeout": True,
-            "run_id": run_id,
-            "last_status": normalize_status(data.get("status")),
-            "polls": max_polls,
-        })
+        return json.dumps(
+            {
+                "timeout": True,
+                "run_id": run_id,
+                "last_status": normalize_status(data.get("status")),
+                "polls": max_polls,
+            }
+        )

@@ -90,9 +90,7 @@ class ExecutionService:
         # Build task tuples from dicts
         task_tuples: list[tuple[str, str]] | None = None
         if tasks:
-            task_tuples = [
-                (t["title"], t.get("description", t["title"])) for t in tasks
-            ]
+            task_tuples = [(t["title"], t.get("description", t["title"])) for t in tasks]
 
         # Build extra kwargs for ExecutionContext
         kwargs: dict[str, Any] = {}

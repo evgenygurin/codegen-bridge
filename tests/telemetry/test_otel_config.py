@@ -65,16 +65,12 @@ class TestSetupOtlpExporter:
         monkeypatch.delenv("OTEL_EXPORTER_OTLP_ENDPOINT", raising=False)
         assert setup_otlp_exporter() is False
 
-    def test_returns_false_when_config_disabled(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_returns_false_when_config_disabled(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4317")
         cfg = TelemetryConfig(enabled=False)
         assert setup_otlp_exporter(cfg) is False
 
-    def test_returns_false_when_imports_missing(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_returns_false_when_imports_missing(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4317")
         cfg = TelemetryConfig(enabled=True)
         modules_patch = {
@@ -99,9 +95,7 @@ class TestSetupOtlpExporter:
         result = setup_otlp_exporter(cfg)
         assert isinstance(result, bool)
 
-    def test_uses_env_config_when_none_passed(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_uses_env_config_when_none_passed(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.delenv("OTEL_EXPORTER_OTLP_ENDPOINT", raising=False)
         # No endpoint → should return False without error
         assert setup_otlp_exporter(None) is False
@@ -194,18 +188,14 @@ class TestTelemetryDisabledWithoutEnv:
         cfg = telemetry_config_from_env()
         assert cfg.enabled is False
 
-    def test_bridge_span_noop_when_disabled(
-        self, trace_exporter: InMemorySpanExporter
-    ) -> None:
+    def test_bridge_span_noop_when_disabled(self, trace_exporter: InMemorySpanExporter) -> None:
         configure(TelemetryConfig(enabled=False))
         with bridge_span("should.not.appear") as span:
             assert span is None
         spans = trace_exporter.get_finished_spans()
         assert not any(s.name == "should.not.appear" for s in spans)
 
-    def test_tool_span_noop_when_disabled(
-        self, trace_exporter: InMemorySpanExporter
-    ) -> None:
+    def test_tool_span_noop_when_disabled(self, trace_exporter: InMemorySpanExporter) -> None:
         configure(TelemetryConfig(enabled=False))
         with tool_span("noop_tool") as span:
             assert span is None

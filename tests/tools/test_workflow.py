@@ -71,9 +71,7 @@ class TestCreateAndMonitorHappyPath:
         )
 
         # Mock get_run — first call returns running, second returns completed
-        get_route = respx.get(
-            "https://api.codegen.com/v1/organizations/42/agent/run/500"
-        )
+        get_route = respx.get("https://api.codegen.com/v1/organizations/42/agent/run/500")
         get_route.side_effect = [
             Response(
                 200,
@@ -287,9 +285,7 @@ class TestWorkflowNoSideEffects:
     @respx.mock
     async def test_polling_uses_get_not_report(self, client: Client):
         """Verify GET is called (pure read), not POST/PUT (mutation)."""
-        create_route = respx.post(
-            "https://api.codegen.com/v1/organizations/42/agent/run"
-        ).mock(
+        create_route = respx.post("https://api.codegen.com/v1/organizations/42/agent/run").mock(
             return_value=Response(
                 200,
                 json={
@@ -300,9 +296,7 @@ class TestWorkflowNoSideEffects:
                 },
             )
         )
-        get_route = respx.get(
-            "https://api.codegen.com/v1/organizations/42/agent/run/505"
-        )
+        get_route = respx.get("https://api.codegen.com/v1/organizations/42/agent/run/505")
         get_route.side_effect = [
             Response(
                 200,

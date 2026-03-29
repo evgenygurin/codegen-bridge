@@ -28,7 +28,8 @@ def register_organization_tools(mcp: FastMCP) -> None:
     @mcp.tool(tags={"setup"}, icons=ICON_ORG, timeout=30, annotations=READ_ONLY)
     async def codegen_list_orgs(
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),    ) -> str: # type: ignore[arg-type]
+        client: CodegenClient = Depends(get_client),
+    ) -> str:  # type: ignore[arg-type]
         """List Codegen organizations the authenticated user belongs to."""
         await ctx.info("Listing organizations")
         page = await client.list_orgs()
@@ -42,7 +43,8 @@ def register_organization_tools(mcp: FastMCP) -> None:
     @mcp.tool(tags={"setup"}, icons=ICON_ORG_SETTINGS, timeout=30, annotations=READ_ONLY)
     async def codegen_get_organization_settings(
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),    ) -> str: # type: ignore[arg-type]
+        client: CodegenClient = Depends(get_client),
+    ) -> str:  # type: ignore[arg-type]
         """Get organization feature-flag settings.
 
         Returns the current feature flags for the configured organization,
@@ -66,7 +68,8 @@ def register_organization_tools(mcp: FastMCP) -> None:
         limit: int = DEFAULT_PAGE_SIZE,
         cursor: str | None = None,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),    ) -> str: # type: ignore[arg-type]
+        client: CodegenClient = Depends(get_client),
+    ) -> str:  # type: ignore[arg-type]
         """List repositories in the configured Codegen organization.
 
         Supports cursor-based pagination for large repository lists.
@@ -100,15 +103,18 @@ def register_organization_tools(mcp: FastMCP) -> None:
         )
 
     @mcp.tool(
-        tags={"setup", "creates-agent-run"}, icons=ICON_SETUP_CMD,
-        timeout=60, annotations=CREATES,
+        tags={"setup", "creates-agent-run"},
+        icons=ICON_SETUP_CMD,
+        timeout=60,
+        annotations=CREATES,
     )
     async def codegen_generate_setup_commands(
         repo_id: int,
         prompt: str | None = None,
         trigger_source: str = "setup-commands",
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),    ) -> str: # type: ignore[arg-type]
+        client: CodegenClient = Depends(get_client),
+    ) -> str:  # type: ignore[arg-type]
         """Generate setup commands for a repository.
 
         Creates an agent that analyzes the repository structure and generates

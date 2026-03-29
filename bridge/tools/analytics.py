@@ -44,12 +44,14 @@ def register_analytics_tools(mcp: FastMCP) -> None:
 
         total = len(runs)
         if total == 0:
-            return json.dumps({
-                "organization_id": org_id,
-                "total_runs": 0,
-                "success_rate": 0.0,
-                "status_distribution": {},
-            })
+            return json.dumps(
+                {
+                    "organization_id": org_id,
+                    "total_runs": 0,
+                    "success_rate": 0.0,
+                    "status_distribution": {},
+                }
+            )
 
         status_counts: Counter[str] = Counter()
         for run in runs:
@@ -65,11 +67,13 @@ def register_analytics_tools(mcp: FastMCP) -> None:
             f"{failed} failed, success_rate={success_rate}"
         )
 
-        return json.dumps({
-            "organization_id": org_id,
-            "total_runs": total,
-            "completed": completed,
-            "failed": failed,
-            "success_rate": success_rate,
-            "status_distribution": dict(status_counts),
-        })
+        return json.dumps(
+            {
+                "organization_id": org_id,
+                "total_runs": total,
+                "completed": completed,
+                "failed": failed,
+                "success_rate": success_rate,
+                "status_distribution": dict(status_counts),
+            }
+        )

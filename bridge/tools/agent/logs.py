@@ -26,8 +26,11 @@ def register_log_tools(mcp: FastMCP) -> None:
     """Register agent log retrieval tools."""
 
     @mcp.tool(
-        tags={"monitoring"}, icons=ICON_LOGS, task=GET_LOGS_TASK,
-        timeout=30, annotations=READ_ONLY,
+        tags={"monitoring"},
+        icons=ICON_LOGS,
+        task=GET_LOGS_TASK,
+        timeout=30,
+        annotations=READ_ONLY,
     )
     async def codegen_get_logs(
         run_id: int,
@@ -35,7 +38,8 @@ def register_log_tools(mcp: FastMCP) -> None:
         reverse: bool = True,
         cursor: str | None = None,
         ctx: Context = CurrentContext(),
-        svc: RunService = Depends(get_run_service),    ) -> str: # type: ignore[arg-type]
+        svc: RunService = Depends(get_run_service),
+    ) -> str:  # type: ignore[arg-type]
         """Get step-by-step agent execution logs with cursor-based pagination.
 
         Shows agent thoughts, tool calls, and outputs for debugging.

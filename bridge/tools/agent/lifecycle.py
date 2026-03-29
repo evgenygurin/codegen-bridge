@@ -31,8 +31,11 @@ def register_lifecycle_tools(mcp: FastMCP) -> None:
     # ── Create ───────────────────────────────────────────
 
     @mcp.tool(
-        tags={"execution"}, icons=ICON_RUN, task=CREATE_RUN_TASK,
-        timeout=60, annotations=CREATES,
+        tags={"execution"},
+        icons=ICON_RUN,
+        task=CREATE_RUN_TASK,
+        timeout=60,
+        annotations=CREATES,
     )
     async def codegen_create_run(
         prompt: str,
@@ -44,7 +47,8 @@ def register_lifecycle_tools(mcp: FastMCP) -> None:
         task_index: int | None = None,
         confirmed: bool = False,
         ctx: Context = CurrentContext(),
-        svc: RunService = Depends(get_run_service),    ) -> str: # type: ignore[arg-type]
+        svc: RunService = Depends(get_run_service),
+    ) -> str:  # type: ignore[arg-type]
         """Create a new Codegen agent run.
 
         The agent will execute the task in a cloud sandbox and may create a PR.
@@ -75,9 +79,7 @@ def register_lifecycle_tools(mcp: FastMCP) -> None:
 
         # Step 2: Enrich prompt from execution context
         await report(ctx, step, total, "Enriching prompt")
-        effective_prompt, ctx_repo_id = await svc.enrich_prompt(
-            prompt, execution_id, task_index
-        )
+        effective_prompt, ctx_repo_id = await svc.enrich_prompt(prompt, execution_id, task_index)
         if repo_id is None and ctx_repo_id is not None:
             repo_id = ctx_repo_id
         step += 1
@@ -148,7 +150,8 @@ def register_lifecycle_tools(mcp: FastMCP) -> None:
         model: str | None = None,
         images: list[str] | None = None,
         ctx: Context = CurrentContext(),
-        svc: RunService = Depends(get_run_service),    ) -> str: # type: ignore[arg-type]
+        svc: RunService = Depends(get_run_service),
+    ) -> str:  # type: ignore[arg-type]
         """Resume a paused or blocked agent run with new instructions.
 
         Args:
@@ -165,14 +168,17 @@ def register_lifecycle_tools(mcp: FastMCP) -> None:
     # ── Stop (legacy alias for ban) ──────────────────────
 
     @mcp.tool(
-        tags={"execution", "dangerous"}, icons=ICON_STOP,
-        timeout=30, annotations=DESTRUCTIVE,
+        tags={"execution", "dangerous"},
+        icons=ICON_STOP,
+        timeout=30,
+        annotations=DESTRUCTIVE,
     )
     async def codegen_stop_run(
         run_id: int,
         confirmed: bool = False,
         ctx: Context = CurrentContext(),
-        svc: RunService = Depends(get_run_service),    ) -> str: # type: ignore[arg-type]
+        svc: RunService = Depends(get_run_service),
+    ) -> str:  # type: ignore[arg-type]
         """Stop a running agent. Use when a task needs to be cancelled.
 
         Asks for user confirmation before stopping unless ``confirmed=True``.

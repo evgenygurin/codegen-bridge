@@ -28,15 +28,18 @@ def register_pr_tools(mcp: FastMCP) -> None:
     """Register all pull-request management tools on the given FastMCP server."""
 
     @mcp.tool(
-        tags={"pull-requests", "dangerous"}, icons=ICON_PR_EDIT,
-        timeout=30, annotations=DESTRUCTIVE,
+        tags={"pull-requests", "dangerous"},
+        icons=ICON_PR_EDIT,
+        timeout=30,
+        annotations=DESTRUCTIVE,
     )
     async def codegen_edit_pr(
         repo_id: int,
         pr_id: int,
         state: PRState,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),    ) -> str: # type: ignore[arg-type]
+        client: CodegenClient = Depends(get_client),
+    ) -> str:  # type: ignore[arg-type]
         """Edit pull request properties (RESTful endpoint).
 
         Update the state of a pull request (open, closed, draft, ready_for_review).
@@ -70,14 +73,17 @@ def register_pr_tools(mcp: FastMCP) -> None:
         return json.dumps(response)
 
     @mcp.tool(
-        tags={"pull-requests", "dangerous"}, icons=ICON_PR_EDIT,
-        timeout=30, annotations=DESTRUCTIVE,
+        tags={"pull-requests", "dangerous"},
+        icons=ICON_PR_EDIT,
+        timeout=30,
+        annotations=DESTRUCTIVE,
     )
     async def codegen_edit_pr_simple(
         pr_id: int,
         state: PRState,
         ctx: Context = CurrentContext(),
-        client: CodegenClient = Depends(get_client),    ) -> str: # type: ignore[arg-type]
+        client: CodegenClient = Depends(get_client),
+    ) -> str:  # type: ignore[arg-type]
         """Edit pull request properties (simple endpoint).
 
         Update the state of a pull request (open, closed, draft, ready_for_review).

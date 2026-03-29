@@ -65,9 +65,7 @@ class TestMemoryStorageTTL:
         assert result is not None
         assert result["v"] == 2
 
-    async def test_delete_removes_from_ttl_tracking(
-        self, storage: MemoryStorage
-    ) -> None:
+    async def test_delete_removes_from_ttl_tracking(self, storage: MemoryStorage) -> None:
         await storage.put("k", {"id": "k"})
         await storage.delete("k")
         assert await storage.get("k") is None

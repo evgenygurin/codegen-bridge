@@ -260,9 +260,7 @@ class TestAgentToolsIntegration:
             return_value=Response(200, json={"items": [], "total": 0})
         )
 
-        await client.call_tool(
-            "codegen_list_runs", {"source_type": "API", "limit": 5}
-        )
+        await client.call_tool("codegen_list_runs", {"source_type": "API", "limit": 5})
         # Verify the query parameter was sent
         assert route.called
         request = route.calls[0].request
@@ -315,9 +313,7 @@ class TestAgentToolsIntegration:
             return_value=Response(200, json={"message": "Banned"})
         )
 
-        result = await client.call_tool(
-            "codegen_ban_run", {"run_id": 60, "confirmed": True}
-        )
+        result = await client.call_tool("codegen_ban_run", {"run_id": 60, "confirmed": True})
         data = json.loads(result.data)
         assert data["action"] == "banned"
         assert data["message"] == "Banned"
@@ -624,9 +620,7 @@ class TestIntegrationToolsIntegration:
             return_value=Response(200, json={"status": "deleted"})
         )
 
-        result = await client.call_tool(
-            "codegen_delete_webhook_config", {"confirmed": True}
-        )
+        result = await client.call_tool("codegen_delete_webhook_config", {"confirmed": True})
         data = json.loads(result.data)
         assert data["status"] == "deleted"
 
@@ -657,9 +651,7 @@ class TestIntegrationToolsIntegration:
             )
         )
 
-        result = await client.call_tool(
-            "codegen_analyze_sandbox_logs", {"sandbox_id": 80}
-        )
+        result = await client.call_tool("codegen_analyze_sandbox_logs", {"sandbox_id": 80})
         data = json.loads(result.data)
         assert data["agent_run_id"] == 90
         assert data["status"] == "queued"
@@ -816,9 +808,7 @@ class TestSetupToolsEdgeCases:
     @respx.mock
     async def test_get_mcp_providers_empty(self, client: Client):
         """codegen_get_mcp_providers handles empty provider list."""
-        respx.get(f"{BASE}/mcp-providers").mock(
-            return_value=Response(200, json=[])
-        )
+        respx.get(f"{BASE}/mcp-providers").mock(return_value=Response(200, json=[]))
 
         result = await client.call_tool("codegen_get_mcp_providers", {})
         data = json.loads(result.data)
@@ -828,9 +818,7 @@ class TestSetupToolsEdgeCases:
     @respx.mock
     async def test_get_oauth_status_empty(self, client: Client):
         """codegen_get_oauth_status handles no connected providers."""
-        respx.get(f"{BASE}/oauth/tokens/status").mock(
-            return_value=Response(200, json=[])
-        )
+        respx.get(f"{BASE}/oauth/tokens/status").mock(return_value=Response(200, json=[]))
 
         result = await client.call_tool("codegen_get_oauth_status", {})
         data = json.loads(result.data)
@@ -845,9 +833,7 @@ class TestSetupToolsEdgeCases:
         )
 
         with pytest.raises(ToolError):
-            await client.call_tool(
-                "codegen_generate_setup_commands", {"repo_id": 999}
-            )
+            await client.call_tool("codegen_generate_setup_commands", {"repo_id": 999})
 
     @respx.mock
     async def test_get_check_suite_settings_http_error(self, client: Client):
@@ -857,9 +843,7 @@ class TestSetupToolsEdgeCases:
         )
 
         with pytest.raises(ToolError):
-            await client.call_tool(
-                "codegen_get_check_suite_settings", {"repo_id": 999}
-            )
+            await client.call_tool("codegen_get_check_suite_settings", {"repo_id": 999})
 
 
 # ── Settings Tools Edge Cases ─────────────────────────────
@@ -873,9 +857,7 @@ class TestSettingsToolsEdgeCases:
         result = await client.call_tool("codegen_get_settings", {})
         data = json.loads(result.data)
         expected_keys = {"default_model", "auto_monitor", "poll_interval"}
-        assert expected_keys.issubset(data.keys()), (
-            f"Missing keys: {expected_keys - data.keys()}"
-        )
+        assert expected_keys.issubset(data.keys()), f"Missing keys: {expected_keys - data.keys()}"
 
     async def test_update_settings_returns_new_value(self, client: Client):
         """codegen_update_settings returns the updated value."""
@@ -989,7 +971,7 @@ class TestCrossModuleConsistency:
         for tool in tools:
             if tool.name.startswith("codegen_"):
                 # Remove prefix and check it has at least verb + noun
-                rest = tool.name[len("codegen_"):]
+                rest = tool.name[len("codegen_") :]
                 parts = rest.split("_")
                 assert len(parts) >= 2, (
                     f"Tool {tool.name} doesn't follow codegen_<verb>_<noun> pattern"
